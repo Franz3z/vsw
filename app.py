@@ -1,3 +1,6 @@
+import eventlet
+eventlet.monkey_patch()
+
 from flask import Flask, render_template, request, redirect, url_for, flash  
 import firebase_admin  
 from firebase_admin import credentials, db  
@@ -18,7 +21,7 @@ app.secret_key = 'your-secure-secret-key'
 
 app.config['UPLOAD_FOLDER'] = os.path.join('uploads')
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-socketio = SocketIO(app, cors_allowed_origins='*', async_mode='gevent')
+socketio = SocketIO(app, cors_allowed_origins='*', async_mode='eventlet')
 database_url = os.getenv('FIREBASE_DATABASE_URL')
 
 cred = credentials.Certificate("/etc/secrets/serviceAccountKey.json")
