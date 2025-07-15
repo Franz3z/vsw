@@ -39,16 +39,46 @@ def login():
 @app.route('/login_handler', methods=['POST'])
 def login_handler():
     try:
-        username = request.form['username']
-        password = request.form['password']
-        user_data = db.reference(f'users/{username}').get()
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        if not username or not password:
+            flash('Username and password are required')
+            return redirect(url_for('login'))
+        username = username.strip()
+        
+        print(f"Attempting login for user: {username}")
+        
+        try:
+            user_ref = db.reference(f'users/{username}')
+            user_data = user_ref.get()
+            print(f"User data retrieved: {user_data is not None}")  # Debug log
+        except Exception as db_error:
+            print(f"Database error: {db_error}")
+            flash('Database connection error. Please try again.')
+            return redirect(url_for('login'))
+        
         if user_data and user_data.get('password') == password:
+            session.clear()
             session['username'] = username
+            session.permanent = True
+            
+            print(f"Login successful for user: {username}")
             return redirect(url_for('dashboard', username=username))
-        flash('Invalid username or password')
+        else:
+            print(f"Invalid credentials for user: {username}")
+            flash('Invalid username or password')
+            
+    except RecursionError as re:
+        print(f"Recursion error in login_handler: {re}")
+        flash('System error. Please try again.')
+        session.clear()
+        
     except Exception as e:
-        print("Login Handler Error: ", e)
+        print(f"Login Handler Error: {e}")
         flash('Internal server error. Please try again.')
+        session.clear()
+    
     return redirect(url_for('login'))
   
 @app.route('/register')  
