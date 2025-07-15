@@ -373,14 +373,19 @@ def get_messages(group_id):
 
 @app.route('/get_token')
 def get_token():
-    response = requests.post(
-        'https://api.videosdk.live/v2/token',
-        json={},
-        headers={
-            'Authorization': VIDEOSDK_SECRET
-        }
-    )
-    if response.status_code == 200:
-        return jsonify({'token': response.json()['token']})
-    else:
-        return jsonify({'error': 'Unable to generate token'}), 500
+    try:
+        response = requests.post(
+            'https://api.videosdk.live/v2/token',
+            json={},
+            headers={
+                'Authorization': VIDEOSDK_SECRET
+            }
+        )
+        if response.status_code == 200:
+            return jsonify({'token': response.json()['token']})
+        else:
+            print("VideoSDK error:", response.text)
+            return jsonify({'error': 'Unable to generate token'}), 500
+    except Exception as e:
+        print("Exception in /get_token:", str(e))
+        return jsonify({'error': 'Server error'}), 500
