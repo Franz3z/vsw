@@ -23,7 +23,7 @@ firebase_json_path = os.getenv('FIREBASE_CREDENTIAL_PATH')
 database_url = os.getenv('FIREBASE_DATABASE_URL')
 
 cred_json = base64.b64decode(os.getenv('FIREBASE_JSON_B64'))
-cred_dict = json.loads(cred_json)
+cred_dict = json.loads(cred_json.decode('utf-8'))
 cred = credentials.Certificate(cred_dict)
 firebase_admin.initialize_app(cred, {
     'databaseURL': os.getenv('FIREBASE_DATABASE_URL')
@@ -41,13 +41,17 @@ def login():
  
 @app.route('/login_handler', methods=['POST'])
 def login_handler():
-    username = request.form['username']
-    password = request.form['password']
-    user_data = db.reference(f'users/{username}').get()
-    if user_data and user_data.get('password') == password:
-        session['username'] = username
-        return redirect(url_for('dashboard', username=username))
-    flash('Invalid username or password')
+    try:
+        username = request.form['username']
+        password = request.form['password']
+        user_data = db.reference(f'users/{username}').get()
+        if user_data and user_data.get('password') == password:
+            session['username'] = username
+            return redirect(url_for('dashboard', username=username))
+        flash('Invalid username or password')
+    except Exception as e:
+        print("Login Handler Error: ", e)
+        flash('Internal server error. Please try again.')
     return redirect(url_for('login'))
   
 @app.route('/register')  
