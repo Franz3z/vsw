@@ -196,11 +196,43 @@
   setInterval(fetchMessages, 5000);
 </script>
 
+        <script>
+const APP_ID = "YOUR_APP_ID";  // Replace with your Agora App ID
+const CHANNEL = "{{ group_id }}";  // Or any unique group name
+const UID = Math.floor(Math.random() * 10000);
+let client;
+let localTrack;
+
+document.getElementById("joinBtn").onclick = async () => {
+    client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
+    await client.join(APP_ID, CHANNEL, null, UID);
+
+    localTrack = await AgoraRTC.createMicrophoneAudioTrack();
+    await client.publish([localTrack]);
+
+    document.getElementById("joinBtn").disabled = true;
+    document.getElementById("leaveBtn").disabled = false;
+
+    console.log("Joined voice channel:", CHANNEL);
+};
+
+document.getElementById("leaveBtn").onclick = async () => {
+    if (localTrack) {
+        localTrack.stop();
+        localTrack.close();
+    }
+    await client.leave();
+
+    document.getElementById("joinBtn").disabled = false;
+    document.getElementById("leaveBtn").disabled = true;
+
+    console.log("Left voice channel:", CHANNEL);
+};
+</script>
+
+
 </body>
-
 </html>
-
-<script src="https://cdn.socket.io/4.7.1/socket.io.min.js" integrity="sha384-y6Gc5hZhPfu+xF1R/BXg9KWwAqj/cFYkDYc1xloiFGk1smVb4K9r/UalG4Tbyzj3" crossorigin="anonymous"></script>
 
 <script>
 const assignTaskContainer = document.getElementById('assignTaskContainer');
