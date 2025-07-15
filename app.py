@@ -1,6 +1,3 @@
-import eventlet
-eventlet.monkey_patch()
-
 from flask import Flask, render_template, request, redirect, url_for, flash  
 import firebase_admin  
 from firebase_admin import credentials, db  
@@ -10,28 +7,27 @@ import os
 from flask import send_from_directory
 from werkzeug.utils import secure_filename
 from datetime import datetime
-from flask_socketio import SocketIO, emit, join_room, leave_room
 from dotenv import load_dotenv
-import io
-import json
+from flask import Flask, render_template
+from flask_socketio import SocketIO, join_room, leave_room, emit
 
 load_dotenv()
 app = Flask(__name__)  
-app.secret_key = 'your-secure-secret-key'  
+app.secret_key = 'your-secure-secret-key' 
+socketio = SocketIO(app, cors_allowed_origins='*') 
 
 app.config['UPLOAD_FOLDER'] = os.path.join('uploads')
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-socketio = SocketIO(app, cors_allowed_origins='*', async_mode='eventlet')
+firebase_json_path = os.getenv('FIREBASE_CREDENTIAL_PATH')
 database_url = os.getenv('FIREBASE_DATABASE_URL')
 
-cred = credentials.Certificate("/etc/secrets/serviceAccountKey.json")
-
+cred = credentials.Certificate(firebase_json_path)
 firebase_admin.initialize_app(cred, {
     'databaseURL': database_url
 })
 
 @app.route('/')
-def login_page():
+def login():
     if 'username' in session:
         return redirect(url_for('dashboard', username=session['username']))
     response = make_response(render_template('login.html'))
@@ -42,14 +38,14 @@ def login_page():
  
 @app.route('/login_handler', methods=['POST'])
 def login_handler():
-        username = request.form['username']
-        password = request.form['password']
-        user_data = db.reference(f'users/{username}').get()
-        if user_data and user_data.get('password') == password:
-            session['username'] = username
-            return redirect(url_for('dashboard', username=username))
-        flash('Invalid username or password')
-        return redirect(url_for('login_page'))
+    username = request.form['username']
+    password = request.form['password']
+    user_data = db.reference(f'users/{username}').get()
+    if user_data and user_data.get('password') == password:
+        session['username'] = username
+        return redirect(url_for('dashboard', username=username))
+    flash('Invalid username or password')
+    return redirect(url_for('login'))
   
 @app.route('/register')  
 def register():  
@@ -89,7 +85,7 @@ def dashboard(username):
 def logout():
     session.clear()
     flash('Logged out successfully.')
-    return redirect(url_for('login_page'))
+    return redirect(url_for('login'))
 
 @app.route('/create_group_handler/<username>', methods=['POST'])  
 def create_group_handler(username):  
@@ -364,37 +360,28 @@ def get_messages(group_id):
 
     return jsonify({'messages': message_list})
 
-
-@app.route('/signaling')
-def signaling():
-    return 'Voice call signaling server is running!'
-
-@socketio.on('join-room')
-def handle_join(data):
-    room = data.get('room')
-    username = data.get('username', 'Unknown')
-    sid = request.sid
-
+@socketio.on('join_call')
+def on_join(data):
+    room = data['room']
+    username = data['username']
     join_room(room)
+    emit('user_joined', {'username': username}, room=room, include_self=False)
 
-    emit('user-joined', {
-        'room': room,
-        'user': {
-            'id': sid,
-            'username': username
-        }
-    }, room=room, include_self=False)
+@socketio.on('leave_call')
+def on_leave(data):
+    room = data['room']
+    username = data['username']
+    leave_room(room)
+    emit('user_left', {'username': username}, room=room)
 
 @socketio.on('signal')
-def handle_signal(data):
-    room = data['room']
-    emit('signal', data, room=room, include_self=False)
-
-@socketio.on('leave-room')
-def handle_leave(data):
-    room = data['room']
-    leave_room(room)
-    emit('user-left', data, room=room)
+def on_signal(data):
+    # data should contain target user and signaling info (SDP/ICE)
+    target = data['target']
+    emit('signal', data, room=target)
 
 if __name__ == '__main__':
+    import eventlet
+    import eventlet.wsgi
+    eventlet.monkey_patch()
     socketio.run(app, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
