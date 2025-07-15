@@ -19,12 +19,11 @@ app.secret_key = 'your-secure-secret-key'
 app.config['UPLOAD_FOLDER'] = os.path.join('uploads')
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 socketio = SocketIO(app, cors_allowed_origins='*', async_mode='gevent')
+
 firebase_json_path = os.getenv('FIREBASE_CREDENTIAL_PATH')
 database_url = os.getenv('FIREBASE_DATABASE_URL')
 
-cred_json = base64.b64decode(os.getenv('FIREBASE_JSON_B64'))
-cred_dict = json.loads(cred_json.decode('utf-8'))
-cred = credentials.Certificate(cred_dict)
+cred = credentials.Certificate("serviceAccountKey.json")
 firebase_admin.initialize_app(cred, {
     'databaseURL': os.getenv('FIREBASE_DATABASE_URL')
 })
