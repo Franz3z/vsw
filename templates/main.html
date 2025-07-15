@@ -170,9 +170,9 @@ fetch('/get_token')
   .then(res => res.json())
   .then(({ token }) => {
     const meeting = window.VideoSDK.initMeeting({
-      meetingId: 'your-room-id',
+      meetingId: "{{ group_id }}",
       name: '{{ username }}',
-      apiKey: '{{ YOUR_API_KEY }}',
+      apiKey: "{{ api_key }}",
       token: token,
       micEnabled: true,
       webcamEnabled: true,
