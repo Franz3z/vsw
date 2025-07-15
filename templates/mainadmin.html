@@ -298,166 +298,158 @@ function closeApproveRequests() {
 }
 
 (() => {
-  const username = "{{ username }}"; // your server template var
-  const room = "{{ group_id }}";
+ const username = "{{ username }}";
+const room = "{{ group_id }}";
 
-  const joinBtn = document.getElementById('joinCallBtn');
-  const leaveBtn = document.getElementById('leaveCallBtn');
-  const participantsDiv = document.getElementById('callParticipants');
+const joinBtn = document.getElementById('joinCallBtn');
+const leaveBtn = document.getElementById('leaveCallBtn');
+const participantsDiv = document.getElementById('callParticipants');
 
-  const socket = io(); // connect to Flask-SocketIO at current origin
+const socket = io({ transports: ['websocket'] }); // Force websocket only
 
-  let localStream = null;
-  let peerConnections = {}; // key: remote username, value: RTCPeerConnection
-  const config = {
-    iceServers: [
-      { urls: 'stun:stun.l.google.com:19302' } // public STUN server
-    ]
+let localStream = null;
+let peerConnections = {};
+const config = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' }
+  ]
+};
+
+function addAudioElement(id) {
+  if (document.getElementById(id)) return;
+  const audio = document.createElement('audio');
+  audio.id = id;
+  audio.autoplay = true;
+  audio.controls = true;
+  participantsDiv.appendChild(audio);
+}
+
+function removeAudioElement(id) {
+  const audio = document.getElementById(id);
+  if (audio) participantsDiv.removeChild(audio);
+}
+
+async function startLocalStream() {
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (e) {
+    alert('Error accessing microphone: ' + e.message);
+  }
+}
+
+async function createPeerConnection(remoteUser) {
+  const pc = new RTCPeerConnection(config);
+
+  localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+
+  pc.ontrack = (event) => {
+    addAudioElement(`audio-${remoteUser}`);
+    const audioElem = document.getElementById(`audio-${remoteUser}`);
+    audioElem.srcObject = event.streams[0];
   };
 
-  // Helper: create audio element for remote stream
-  function addAudioElement(id) {
-    if (document.getElementById(id)) return; // already exists
-    const audio = document.createElement('audio');
-    audio.id = id;
-    audio.autoplay = true;
-    audio.controls = true;
-    participantsDiv.appendChild(audio);
-  }
-
-  function removeAudioElement(id) {
-    const audio = document.getElementById(id);
-    if (audio) participantsDiv.removeChild(audio);
-  }
-
-  async function startLocalStream() {
-    try {
-      localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch (e) {
-      alert('Error accessing microphone: ' + e.message);
+  pc.onicecandidate = (event) => {
+    if (event.candidate) {
+      socket.emit('signal', {
+        target: remoteUser,
+        sender: username,
+        candidate: event.candidate
+      });
     }
+  };
+
+  return pc;
+}
+
+socket.on('connect', () => {
+  console.log('Connected to socket.io server as', socket.id);
+});
+
+socket.on('signal', async (data) => {
+  if (data.sender === username) return;
+
+  let pc = peerConnections[data.sender];
+  if (!pc) {
+    pc = await createPeerConnection(data.sender);
+    peerConnections[data.sender] = pc;
   }
 
-  async function createPeerConnection(remoteUser) {
-    const pc = new RTCPeerConnection(config);
-
-    // Add local audio tracks to peer connection
-    localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-
-    // Handle remote stream
-    pc.ontrack = (event) => {
-      addAudioElement(`audio-${remoteUser}`);
-      const audioElem = document.getElementById(`audio-${remoteUser}`);
-      audioElem.srcObject = event.streams[0];
-    };
-
-    // ICE candidates
-    pc.onicecandidate = (event) => {
-      if (event.candidate) {
+  if (data.sdp) {
+    try {
+      await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
+      if (data.sdp.type === 'offer') {
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
         socket.emit('signal', {
-          target: remoteUser,
+          target: data.sender,
           sender: username,
-          candidate: event.candidate
+          sdp: pc.localDescription
         });
       }
-    };
+    } catch (e) {
+      console.error(e);
+    }
+  } else if (data.candidate) {
+    try {
+      await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+    } catch (e) {
+      console.error('Error adding ICE candidate', e);
+    }
+  }
+});
 
-    return pc;
+socket.on('user_joined', async (data) => {
+  if (data.username === username) return;
+  console.log(`${data.username} joined call`);
+
+  const pc = await createPeerConnection(data.username);
+  peerConnections[data.username] = pc;
+
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+
+  socket.emit('signal', {
+    target: data.username,
+    sender: username,
+    sdp: pc.localDescription
+  });
+});
+
+socket.on('user_left', (data) => {
+  console.log(`${data.username} left call`);
+
+  if (peerConnections[data.username]) {
+    peerConnections[data.username].close();
+    delete peerConnections[data.username];
+    removeAudioElement(`audio-${data.username}`);
+  }
+});
+
+joinBtn.onclick = async () => {
+  await startLocalStream();
+  console.log('Joining call with room:', room);
+  socket.emit('join_call', { room, username });
+  joinBtn.disabled = true;
+  leaveBtn.disabled = false;
+};
+
+leaveBtn.onclick = () => {
+  socket.emit('leave_call', { room, username });
+
+  for (const pc of Object.values(peerConnections)) {
+    pc.close();
+  }
+  peerConnections = {};
+
+  participantsDiv.innerHTML = '';
+
+  if (localStream) {
+    localStream.getTracks().forEach(track => track.stop());
+    localStream = null;
   }
 
-  // Handle incoming signaling data
-  socket.on('signal', async (data) => {
-    if (data.sender === username) return; // ignore own signals
-
-    let pc = peerConnections[data.sender];
-    if (!pc) {
-      pc = await createPeerConnection(data.sender);
-      peerConnections[data.sender] = pc;
-    }
-
-    if (data.sdp) {
-      try {
-        await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
-        if (data.sdp.type === 'offer') {
-          const answer = await pc.createAnswer();
-          await pc.setLocalDescription(answer);
-          socket.emit('signal', {
-            target: data.sender,
-            sender: username,
-            sdp: pc.localDescription
-          });
-        }
-      } catch (e) {
-        console.error(e);
-      }
-    } else if (data.candidate) {
-      try {
-        await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
-      } catch (e) {
-        console.error('Error adding ICE candidate', e);
-      }
-    }
-  });
-
-  socket.on('user_joined', async (data) => {
-    if (data.username === username) return; // ignore self
-
-    console.log(`${data.username} joined call`);
-
-    // Create peer connection and send offer
-    const pc = await createPeerConnection(data.username);
-    peerConnections[data.username] = pc;
-
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-
-    socket.emit('signal', {
-      target: data.username,
-      sender: username,
-      sdp: pc.localDescription
-    });
-  });
-
-  socket.on('user_left', (data) => {
-    console.log(`${data.username} left call`);
-
-    if (peerConnections[data.username]) {
-      peerConnections[data.username].close();
-      delete peerConnections[data.username];
-      removeAudioElement(`audio-${data.username}`);
-    }
-  });
-
-  joinBtn.onclick = async () => {
-    await startLocalStream();
-    socket.emit('join_call', { room, username });
-    joinBtn.disabled = true;
-    leaveBtn.disabled = false;
-  };
-
-  leaveBtn.onclick = () => {
-    socket.emit('leave_call', { room, username });
-
-    // Close all peer connections
-    for (const pc of Object.values(peerConnections)) {
-      pc.close();
-    }
-    peerConnections = {};
-
-    // Remove remote audio elements
-    participantsDiv.innerHTML = '';
-
-    // Stop local stream tracks
-    if (localStream) {
-      localStream.getTracks().forEach(track => track.stop());
-      localStream = null;
-    }
-
-    joinBtn.disabled = false;
-    leaveBtn.disabled = true;
-  };
-})();
-
-
+  joinBtn.disabled = false;
+  leaveBtn.disabled = true;
+};
 </script>
 
