@@ -179,15 +179,35 @@ let localTrack;
 
 document.getElementById("joinBtn").onclick = async () => {
     client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
-    await client.join(APP_ID, CHANNEL, null, UID);
+        
+        client.on("user-published", async (user, mediaType) => {
+        await client.subscribe(user, mediaType);
+        console.log("User published:", user.uid);
 
-    localTrack = await AgoraRTC.createMicrophoneAudioTrack();
-    await client.publish([localTrack]);
+        if (mediaType === "audio") {
+            const remoteAudioTrack = user.audioTrack;
+            remoteAudioTrack.play();
+            console.log("Playing remote user audio");
+        }
+    });
 
-    document.getElementById("joinBtn").disabled = true;
-    document.getElementById("leaveBtn").disabled = false;
+    client.on("user-unpublished", (user) => {
+        console.log("User unpublished:", user.uid);
+    });
 
-    console.log("Joined voice channel:", CHANNEL);
+    try {
+        await client.join(APP_ID, CHANNEL, null, UID);
+        localTrack = await AgoraRTC.createMicrophoneAudioTrack();
+        await client.publish([localTrack]);
+
+        document.getElementById("joinBtn").disabled = true;
+        document.getElementById("leaveBtn").disabled = false;
+
+        console.log("Joined voice channel:", CHANNEL);
+    } catch (err) {
+        console.error("Failed to join channel:", err);
+        alert("Error joining the call: " + err.message);
+    }
 };
 
 document.getElementById("leaveBtn").onclick = async () => {
@@ -195,12 +215,13 @@ document.getElementById("leaveBtn").onclick = async () => {
         localTrack.stop();
         localTrack.close();
     }
+
     await client.leave();
 
     document.getElementById("joinBtn").disabled = false;
     document.getElementById("leaveBtn").disabled = true;
 
-    console.log("Left voice channel:", CHANNEL);
+    console.log("Left voice channel");
 };
 </script>
 
