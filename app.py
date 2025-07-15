@@ -90,7 +90,7 @@ def dashboard(username):
 def logout():
     session.clear()
     flash('Logged out successfully.')
-    return redirect(url_for('login'))
+    return redirect(url_for('show_login'))
 
 @app.route('/create_group_handler/<username>', methods=['POST'])  
 def create_group_handler(username):  
