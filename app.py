@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, flash  
 import firebase_admin  
-from firebase_admin import credentials, db  
+from firebase_admin import credentials, db, initialize_app
 from flask import session
 from flask import make_response
 import os
@@ -22,13 +22,9 @@ app.config['UPLOAD_FOLDER'] = os.path.join('uploads')
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 database_url = os.getenv('FIREBASE_DATABASE_URL')
 
-b64_str = os.getenv("FIREBASE_CREDS_B64")
-json_str = base64.b64decode(b64_str).decode("utf-8")
-cred_dict = json.loads(json_str)
-cred = credentials.Certificate(cred_dict)
-
-firebase_admin.initialize_app(cred, {
-    'databaseURL': database_url
+cred = credentials.Certificate("/etc/secrets/firebase.json")
+initialize_app(cred, {
+    'databaseURL': os.getenv('FIREBASE_DATABASE_URL')
 })
 
 @app.route('/')
