@@ -13,6 +13,7 @@ from werkzeug.utils import secure_filename
 from datetime import datetime
 from dotenv import load_dotenv
 from flask import Flask, render_template
+from urllib import request as urlrequest
 import json
 import logging
 import requests
@@ -375,22 +376,20 @@ def get_messages(group_id):
 
 @app.route('/get_token')
 def get_token():
+    req = urlrequest.Request(
+        url='https://api.videosdk.live/v2/token',
+        data=b'{}',
+        headers={'Authorization': VIDEOSDK_SECRET},
+        method='POST'
+    )
     try:
-        response = requests.post(
-            'https://api.videosdk.live/v2/token',
-            json={},
-            headers={
-                'Authorization': VIDEOSDK_SECRET
-            }
-        )
-        if response.status_code == 200:
-            return jsonify({'token': response.json()['token']})
-        else:
-            print("VideoSDK error:", response.text)
-            return jsonify({'error': 'Unable to generate token'}), 500
+        with urlrequest.urlopen(req) as response:
+            result = json.loads(response.read().decode())
+            return jsonify({'token': result['token']})
     except Exception as e:
-        print("Exception in /get_token:", str(e))
-        return jsonify({'error': 'Server error'}), 500
+        print("[Token Fetch Error]", e)
+        return jsonify({'error': 'Unable to generate token'}), 500
+
 
 @app.errorhandler(Exception)
 def handle_exception(e):
