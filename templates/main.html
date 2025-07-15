@@ -25,12 +25,7 @@
                 <button class="send-button" onclick="sendMessage()">Send</button>
             </div>
             </div>
-            <div class="voice-call-container">
-                <h4>Voice Call</h4>
-                <button id="joinCallBtn">Join Call</button>
-                <button id="leaveCallBtn" disabled>Leave Call</button>
-                <div id="callParticipants"></div>
-            </div>
+            <div id="videosdk-container"></div>
     </div>
         
 <div class="right-panel">
@@ -326,7 +321,29 @@ leaveBtn.onclick = () => {
 
 </script>
 
+<script src="https://sdk.videosdk.live/js-sdk/0.0.69/videosdk.js"></script>
+        
+<script>
+fetch('/get_token')
+  .then(res => res.json())
+  .then(({ token }) => {
+    const meeting = window.VideoSDK.initMeeting({
+      meetingId: 'your-room-id',
+      name: '{{ username }}',
+      apiKey: '{{ YOUR_API_KEY }}',
+      token: token,
+      micEnabled: true,
+      webcamEnabled: true,
+      participantCanToggleWebcam: true,
+      participantCanToggleMic: true,
+    });
 
+    meeting.join();
+    meeting.render({
+      container: document.getElementById('videosdk-container')
+    });
+  });
+</script>
 
 </body>
 </html>
