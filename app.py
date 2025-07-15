@@ -20,7 +20,7 @@ import logging
 load_dotenv()
 app = Flask(__name__)  
 app.secret_key = 'your-secure-secret-key' 
-socketio = SocketIO(app, cors_allowed_origins='*') 
+socketio = SocketIO(app, cors_allowed_origins='*', async_mode='eventlet')
 logging.basicConfig(level=logging.DEBUG)
 
 app.config['UPLOAD_FOLDER'] = os.path.join('uploads')
@@ -366,11 +366,14 @@ def get_messages(group_id):
 
     return jsonify({'messages': message_list})
 
+user_sid_map = {}
+
 @socketio.on('join_call')
 def on_join(data):
     room = data['room']
     username = data['username']
     join_room(room)
+    user_sid_map[username] = request.sid
     emit('user_joined', {'username': username}, room=room, include_self=False)
 
 @socketio.on('leave_call')
@@ -378,14 +381,18 @@ def on_leave(data):
     room = data['room']
     username = data['username']
     leave_room(room)
+    sid = user_sid_map.pop(username, None)
     emit('user_left', {'username': username}, room=room)
 
 @socketio.on('signal')
 def on_signal(data):
-    # data should contain target user and signaling info (SDP/ICE)
     target = data['target']
-    emit('signal', data, room=target)
+    if target in user_sid_map:
+        emit('signal', data, room=user_sid_map[target])
+
+@socketio.on_error_default
+def default_error_handler(e):
+    print(f'Socket error: {e}')
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    socketio.run(app, host='0.0.0.0', port=port)
+    socketio.run(app, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
