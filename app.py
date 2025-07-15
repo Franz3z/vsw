@@ -21,7 +21,9 @@ app.config['UPLOAD_FOLDER'] = os.path.join('uploads')
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 database_url = os.getenv('FIREBASE_DATABASE_URL')
 
-cred_dict = json.loads(os.getenv('FIREBASE_CREDS_JSON'))
+cred_str = os.getenv("FIREBASE_CREDS_JSON")
+cred_str = cred_str.replace("\\n", "\n")
+cred_dict = json.loads(cred_str)
 cred = credentials.Certificate(cred_dict)
 firebase_admin.initialize_app(cred, {
     'databaseURL': database_url
