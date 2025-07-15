@@ -6,6 +6,7 @@
     <title>Whiteboard and Task Assignment</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <script defer src="{{ url_for('static', filename='dist/bundle.js') }}"></script>
+    <script src="https://sdk.videosdk.live/js-sdk/0.0.69/videosdk.js"></script>
 
 </head>
 <body>
@@ -85,9 +86,6 @@
 
     <button onclick="closeTaskList()">Close</button>
 </div>
-
-<script src="https://cdn.socket.io/4.7.1/socket.io.min.js" integrity="sha384-y6Gc5hZhPfu+xF1R/BXg9KWwAqj/cFYkDYc1xloiFGk1smVb4K9r/UalG4Tbyzj3" crossorigin="anonymous"></script>
-<script src="https://sdk.videosdk.live/js-sdk/0.0.69/videosdk.js"></script>
         
 <script>
         function openTaskList() {
@@ -168,14 +166,30 @@
 
 </script>      
 
-<script>
-  window.videoSdkConfig = {
-    groupId: "{{ group_id }}",
-    username: "{{ username }}",
-    apiKey: "{{ VIDEOSDK_API_KEY }}"
-  };
-</script>
-<script defer src="{{ url_for('static', filename='dist/bundle.js') }}"></script>
+    <script>
+      const username = "{{ username }}";
+      const groupId = "{{ group_id }}";
+      const apiKey = "{{ api_key }}";  // Passed from Flask backend
+
+      fetch('/get_token')
+        .then(res => res.json())
+        .then(({ token }) => {
+          const meeting = window.VideoSDK.initMeeting({
+            meetingId: groupId,
+            name: username,
+            apiKey: apiKey,
+            token: token,
+            micEnabled: true,
+            webcamEnabled: true,
+            participantCanToggleMic: true,
+            participantCanToggleWebcam: true
+          });
+
+          meeting.join();
+          meeting.render({ container: document.getElementById('videosdk-container') });
+        })
+        .catch(err => console.error("VideoSDK Error:", err));
+    </script>
 
         
 </body>
