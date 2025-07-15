@@ -166,27 +166,17 @@
 
   (() => {
 
-fetch('/get_token')
-  .then(res => res.json())
-  .then(({ token }) => {
-    const meeting = window.VideoSDK.initMeeting({
-      meetingId: "{{ group_id }}",
-      name: '{{ username }}',
-      apiKey: "{{ api_key }}",
-      token: token,
-      micEnabled: true,
-      webcamEnabled: true,
-      participantCanToggleWebcam: true,
-      participantCanToggleMic: true,
-    });
-
-    meeting.join();
-    meeting.render({
-      container: document.getElementById('videosdk-container')
-    });
-  });
-
 </script>      
 
+<script>
+  window.videoSdkConfig = {
+    groupId: "{{ group_id }}",
+    username: "{{ username }}",
+    apiKey: "{{ VIDEOSDK_API_KEY }}"
+  };
+</script>
+<script defer src="{{ url_for('static', filename='dist/bundle.js') }}"></script>
+
+        
 </body>
 </html>
