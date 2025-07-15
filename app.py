@@ -46,7 +46,7 @@ def login_handler():
             session['username'] = username
             return redirect(url_for('dashboard', username=username))
         flash('Invalid username or password')
-            return redirect(url_for('login_page'))
+        return redirect(url_for('login_page'))
   
 @app.route('/register')  
 def register():  
