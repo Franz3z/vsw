@@ -28,7 +28,7 @@ firebase_admin.initialize_app(cred, {
 })
 
 @app.route('/')
-def login():
+def login_page():
     if 'username' in session:
         return redirect(url_for('dashboard', username=session['username']))
     response = make_response(render_template('login.html'))
@@ -39,7 +39,6 @@ def login():
  
 @app.route('/login_handler', methods=['POST'])
 def login_handler():
-    try:
         username = request.form['username']
         password = request.form['password']
         user_data = db.reference(f'users/{username}').get()
@@ -47,10 +46,7 @@ def login_handler():
             session['username'] = username
             return redirect(url_for('dashboard', username=username))
         flash('Invalid username or password')
-    except Exception as e:
-        print("Login Handler Error: ", e)
-        flash('Internal server error. Please try again.')
-    return redirect(url_for('login'))
+            return redirect(url_for('login_page'))
   
 @app.route('/register')  
 def register():  
@@ -90,7 +86,7 @@ def dashboard(username):
 def logout():
     session.clear()
     flash('Logged out successfully.')
-    return redirect(url_for('login'))
+    return redirect(url_for('login_page'))
 
 @app.route('/create_group_handler/<username>', methods=['POST'])  
 def create_group_handler(username):  
