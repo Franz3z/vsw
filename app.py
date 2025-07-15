@@ -1,3 +1,7 @@
+import eventlet
+import eventlet.wsgi
+eventlet.monkey_patch()
+
 from flask import Flask, render_template, request, redirect, url_for, flash  
 import firebase_admin  
 from firebase_admin import credentials, db, initialize_app
@@ -382,8 +386,5 @@ def on_signal(data):
     emit('signal', data, room=target)
 
 if __name__ == '__main__':
-    import eventlet
-    import eventlet.wsgi
-    eventlet.monkey_patch()
     port = int(os.environ.get('PORT', 5000))
     socketio.run(app, host='0.0.0.0', port=port)
