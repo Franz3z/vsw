@@ -214,8 +214,7 @@ def mainadmin(username, group_id):
         pending_requests=pending_requests,
         pending_tasks=pending_tasks,
         completed_tasks=completed_tasks,
-        messages=messages,
-        api_key=VIDEOSDK_API_KEY
+        messages=messages
     )
 
 @app.route('/assign_task/<group_id>', methods=['POST'])
@@ -270,9 +269,7 @@ def main(username, group_id):
         group_id=group_id,
         pending_tasks=pending_tasks,
         completed_tasks=completed_tasks,
-        messages=messages,
-        api_key=VIDEOSDK_API_KEY
-
+        messages=messages
     )
     
 
