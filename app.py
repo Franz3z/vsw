@@ -18,10 +18,10 @@ socketio = SocketIO(app, cors_allowed_origins='*')
 
 app.config['UPLOAD_FOLDER'] = os.path.join('uploads')
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-firebase_json_path = os.getenv('FIREBASE_CREDENTIAL_PATH')
 database_url = os.getenv('FIREBASE_DATABASE_URL')
 
-cred = credentials.Certificate(firebase_json_path)
+cred_dict = json.loads(os.getenv('FIREBASE_CREDS_JSON'))
+cred = credentials.Certificate(cred_dict)
 firebase_admin.initialize_app(cred, {
     'databaseURL': database_url
 })
