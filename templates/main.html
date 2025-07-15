@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Whiteboard and Task Assignment</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script defer src="{{ url_for('static', filename='dist/bundle.js') }}"></script>
+
+</head>
+<body>
+    <div class="container">
+        
+        <div class="left-panel">
+            
+            <div class="buttons">
+                <button onclick="document.getElementById('taskListContainer').style.display='block'">View Tasks</button>
+                <a href="{{ url_for('dashboard', username=username) }}" class="styled-button">←</a>
+            </div>
+
+            <div class="chatbox">
+            <div class="messages" id="messagesContainer"></div>
+            <div class="input-container">
+                <textarea id="messageInput" placeholder="Type your message..." rows="2"></textarea>
+                <button class="send-button" onclick="sendMessage()">Send</button>
+            </div>
+            </div>
+            
+            <div class="voice-call-container">
+  
+                <h4>Voice Call</h4>
+                    <button id="startCallBtn">Start Call</button>
+                    <button id="endCallBtn" disabled>End Call</button>
+                    <audio id="remoteAudio" autoplay></audio>
+            </div>
+    </div>
+        
+<div class="right-panel">
+    <div class="whiteboard">
+        <h3>Whiteboard</h3>
+        <canvas id="whiteboardCanvas" style="border: 1px solid #ccc; background-color: white;"></canvas>
+        <button onclick="clearWhiteboard()">Clear Whiteboard</button>
+    </div>
+</div>
+
+
+
+<div class="task-list-container" id="taskListContainer" style="display: none;">
+    <h3>Tasks</h3>
+
+    
+    <h4>Pending Tasks</h4>
+    <ul>
+        {% for task in pending_tasks %}
+        <li>
+            <strong>{{ task.task_name }}</strong>: {{ task.description }}
+            <form action="{{ url_for('submit_progress', username=username, group_id=group_id, task_id=task.task_id) }}"
+                  method="POST" enctype="multipart/form-data" style="display:inline;">
+                <input type="text" name="progress" placeholder="Progress update...">
+                <input type="file" name="file">
+                <button type="submit">Submit</button>
+            </form>
+        </li>
+        {% else %}
+        <li>No pending tasks.</li>
+        {% endfor %}
+    </ul>
+
+    <h4>Completed Tasks</h4>
+    <ul>
+        {% for task in completed_tasks %}
+        <li>
+            <strong>{{ task.task_name }}</strong>: {{ task.description }} ✅<br>
+            <em>Progress Reports:</em>
+            {% if task.progress_reports %}
+                {% for report_id, report in task.progress_reports.items() %}
+                    <div>
+                        - {{ report.progress }} (by {{ report.submitted_by }})
+                        {% if report.file %}
+                            — <a href="{{ url_for('download_file', group_id=group_id, task_id=task.task_id, username=report.submitted_by, filename=report.file) }}" target="_blank">Download File</a>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div><em>No progress logs.</em></div>
+            {% endif %}
+        </li>
+        {% else %}
+        <li>No completed tasks yet.</li>
+        {% endfor %}
+    </ul>
+
+    <button onclick="closeTaskList()">Close</button>
+</div>
+
+<script>
+        function openTaskList() {
+            document.getElementById('taskListContainer').style.display = 'block';
+        }
+
+        function closeTaskList() {
+            document.getElementById('taskListContainer').style.display = 'none';
+        }
+
+    let currentTaskId = null;
+
+    function closeReportProgress() {
+    document.getElementById('reportProgressContainer').style.display = 'none';
+    currentTaskId = null;
+    }
+
+    fetch(`/submit_progress/{{ username }}/{{ group_id }}/${currentTaskId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ progress: progressText })
+    })
+    .then(response => response.text())
+    .then(data => {
+        alert(data);
+        closeReportProgress();
+    })
+    .catch(err => console.error(err));
+
+</script>
+
+<script type="module" src="{{ url_for('static', filename='bundle.js') }}"></script>
+
+<script>
+  const username = "{{ username }}";
+  const groupId = "{{ group_id }}";
+
+  window.onload = fetchMessages;
+
+  function fetchMessages() {
+    fetch(`/get_messages/${groupId}`)
+      .then(res => res.json())
+      .then(data => {
+        const container = document.getElementById('messagesContainer');
+        container.innerHTML = "";
+        data.messages.forEach(msg => {
+        const msgEl = document.createElement('div');
+        msgEl.classList.add('message');
+        msgEl.classList.add(msg.sender === username ? 'right' : 'left');
+        msgEl.innerHTML = `<strong>${msg.sender}</strong>: ${msg.text} <br><small>${msg.timestamp}</small>`;
+        container.appendChild(msgEl);
+        });
+        container.scrollTop = container.scrollHeight;
+      });
+  }
+
+  function sendMessage() {
+    const text = document.getElementById('messageInput').value.trim();
+    if (!text) return;
+
+    fetch(`/send_message/${groupId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sender: username, text })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        document.getElementById('messageInput').value = "";
+        fetchMessages();
+      }
+    });
+  }
+
+  setInterval(fetchMessages, 5000);
+</script>
+
+</body>
+</html>

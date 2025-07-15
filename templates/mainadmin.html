@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Whiteboard and Task Assignment</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script defer src="{{ url_for('static', filename='dist/bundle.js') }}"></script>
+
+</head>
+<body>
+    <div class="container">
+        
+        <div class="left-panel">
+            <div class="buttons">
+                <button onclick="openAssignTask()">Add Task</button>
+                <button onclick="openTaskList()">Task List</button>
+                <button onclick="openApproveRequests()">Pending Requests</button>
+                <a href="{{ url_for('dashboard', username=username) }}" class="styled-button">←</a>
+            </div>
+
+            <div class="chatbox">
+            <div class="messages" id="messagesContainer"></div>
+            <div class="input-container">
+                <textarea id="messageInput" placeholder="Type your message..." rows="2"></textarea>
+                <button class="send-button" onclick="sendMessage()">Send</button>
+            </div>
+            </div>
+
+            <div class="voice-call-container">
+  
+                <h4>Voice Call</h4>
+                    <button id="startCallBtn">Start Call</button>
+                    <button id="endCallBtn" disabled>End Call</button>
+                    <audio id="remoteAudio" autoplay></audio>
+            </div>
+    </div>
+
+<div class="right-panel">
+    <div class="whiteboard">
+        <h3>Whiteboard</h3>
+        <canvas id="whiteboardCanvas" style="border: 1px solid #ccc; background-color: white;"></canvas>
+        <button onclick="clearWhiteboard()">Clear Whiteboard</button>
+    </div>
+</div>
+
+<div class="assign-task-container" id="assignTaskContainer" style="display: none;">
+    <h3>Assign Task</h3>
+    <form id="assignTaskForm">
+        
+        <div class="form-group">
+            <label for="task-name">Task Name</label>
+            <input type="text" id="task-name" name="task_name" placeholder="Task Name" required>
+        </div>
+
+        <div class="form-group">
+            <label for="task-description">Description (Optional)</label>
+            <textarea id="task-description" name="task_description" placeholder="Task Description" rows="3"></textarea>
+        </div>
+
+    <div class="form-group">
+                <label for="assigned-to">Assign To</label>
+                <select id="assigned-to" name="assigned_to" required>
+        <option value="">Select User</option>
+        {% for member in members %}
+            <option value="{{ member.username }}">{{ member.username }}</option>
+        {% endfor %}
+        </select>
+</div>
+
+        <div class="form-group">
+            <label for="priority">Priority</label>
+            <select id="priority" name="priority" required>
+                <option value="">Select Priority</option>
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
+            </select>
+        </div>
+
+        <button type="button" id="assignTaskButton">Assign Task</button>
+        <button type="button" class="cancel-button" onclick="closeAssignTask()">Cancel</button>
+    </form>
+</div>
+
+<div class="task-list-container" id="taskListContainer" style="display: none;">
+    <h3>Task List</h3>
+
+    <h4>Pending Tasks</h4>
+    <ul>
+        {% for task in pending_tasks %}
+        <li>
+            <strong>{{ task.task_name }}</strong>: {{ task.description }}<br>
+
+            {% if task.assigned_to == username %}
+            <form action="{{ url_for('submit_progress', username=username, group_id=group_id, task_id=task.task_id) }}"
+                  method="POST" enctype="multipart/form-data" style="display:inline;">
+                <input type="text" name="progress" placeholder="Progress update..." required>
+                <input type="file" name="file">
+                <button type="submit">Submit</button>
+            </form>
+            {% else %}
+            <div><em>Assigned to:</em> {{ task.assigned_to }}</div>
+            {% endif %}
+        </li>
+        {% else %}
+        <li>No pending tasks.</li>
+        {% endfor %}
+    </ul>
+
+    <h4>Completed Tasks</h4>
+    <ul>
+        {% for task in completed_tasks %}
+        <li>
+            <strong>{{ task.task_name }}</strong>: {{ task.description }} ✅<br>
+            <em>Progress Reports:</em>
+            {% if task.progress_reports %}
+                {% for report_id, report in task.progress_reports.items() %}
+                    <div>
+                        - {{ report.progress }} (by {{ report.submitted_by }})
+                        {% if report.file %}
+                            — <a href="{{ url_for('download_file', group_id=group_id, task_id=task.task_id, username=report.submitted_by, filename=report.file) }}" target="_blank">Download File</a>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div><em>No progress logs.</em></div>
+            {% endif %}
+        </li>
+        {% else %}
+        <li>No completed tasks yet.</li>
+        {% endfor %}
+    </ul>
+
+    <button onclick="closeTaskList()">Close</button>
+</div>
+
+<div class="floating-container" id="approveRequestsContainer" style="display: none;">
+    <h3>Pending Join Requests</h3>
+    <ul id="pending-requests-list">
+        {% for username in pending_requests %}
+        <li>
+            {{ username }}
+                <form action="{{ url_for('approve_request', group_id=group_id, username=username) }}" method="post" style="display: inline;">
+                <button type="submit">Approve</button>
+            </form>
+        </li>
+        {% endfor %}
+    </ul>
+    <button onclick="closeApproveRequests()">Close</button>
+</div>
+
+<script type="module" src="{{ url_for('static', filename='bundle.js') }}"></script>
+
+<script>
+  const username = "{{ username }}";
+  const groupId = "{{ group_id }}";
+
+  window.onload = fetchMessages;
+
+  function fetchMessages() {
+    fetch(`/get_messages/${groupId}`)
+      .then(res => res.json())
+      .then(data => {
+        const container = document.getElementById('messagesContainer');
+        container.innerHTML = "";
+        data.messages.forEach(msg => {
+        const msgEl = document.createElement('div');
+        msgEl.classList.add('message');
+        msgEl.classList.add(msg.sender === username ? 'right' : 'left');
+        msgEl.innerHTML = `<strong>${msg.sender}</strong>: ${msg.text} <br><small>${msg.timestamp}</small>`;
+        container.appendChild(msgEl);
+        });
+        container.scrollTop = container.scrollHeight;
+      });
+  }
+
+  function sendMessage() {
+    const text = document.getElementById('messageInput').value.trim();
+    if (!text) return;
+
+    fetch(`/send_message/${groupId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sender: username, text })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        document.getElementById('messageInput').value = "";
+        fetchMessages();
+      }
+    });
+  }
+
+  setInterval(fetchMessages, 5000);
+</script>
+
+</body>
+
+</html>
+
+<script>
+const assignTaskContainer = document.getElementById('assignTaskContainer');
+const taskListContainer = document.getElementById('taskListContainer');
+const taskList = document.getElementById('task-list');
+const taskNameInput = document.getElementById('task-name');
+const taskDescriptionInput = document.getElementById('task-description');
+const assignedToInput = document.getElementById('assigned-to');
+const assignTaskButton = document.getElementById('assignTaskButton');
+const progressReportContainer = document.getElementById('progressReportContainer');
+const progressReportInput = document.getElementById('progress-report');
+const progressReportList = document.getElementById('progress-report-list');
+
+let tasks = [];
+
+function openAssignTask() {
+    assignTaskContainer.style.display = 'block';
+}
+
+function closeAssignTask() {
+    assignTaskContainer.style.display = 'none';
+}
+
+function openTaskList() {
+    document.getElementById('taskListContainer').style.display = 'block';
+}
+
+
+function closeTaskList() {
+    taskListContainer.style.display = 'none';
+}
+
+function addTask() {
+    const title = taskNameInput.value.trim();
+    const description = taskDescriptionInput.value.trim() || "No description provided";
+    const assignedTo = assignedToInput.value.trim();
+    const priority = document.getElementById('priority').value;
+
+    if (title && assignedTo && priority) {
+        const newTask = { title, description, assignedTo, priority, progressReports: [] };
+        tasks.push(newTask);
+
+        taskNameInput.value = '';
+        taskDescriptionInput.value = '';
+        assignedToInput.value = '';
+        document.getElementById('priority').value = '';
+
+        displayTasks();
+    } else {
+        alert('Please fill all required fields.');
+    }
+}
+
+assignTaskButton.addEventListener('click', function () {
+    const title = taskNameInput.value.trim();
+    const description = taskDescriptionInput.value.trim() || "No description provided";
+    const assignedTo = assignedToInput.value.trim();
+    const priority = document.getElementById('priority').value;
+
+    if (title && assignedTo && priority) {
+        const groupId = "{{ group_id }}";
+
+        fetch(`/assign_task/${groupId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: new URLSearchParams({
+                'task_name': title,
+                'task_description': description,
+                'assigned_to': assignedTo,
+                'priority': priority
+            })
+        })
+        .then(response => response.text())
+        .then(data => {
+            alert(data);
+            location.reload(); // refresh to see updates
+        })
+        .catch(err => {
+            console.error(err);
+            alert("Error assigning task.");
+        });
+    } else {
+        alert('Please fill all required fields.');
+    }
+});
+
+
+function openApproveRequests() {
+    document.getElementById('approveRequestsContainer').style.display = 'block';
+}
+
+function closeApproveRequests() {
+    document.getElementById('approveRequestsContainer').style.display = 'none';
+}
+
+</script>
+

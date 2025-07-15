@@ -1,0 +1,25 @@
+# Python cache
+__pycache__/
+app.py[cod]
+
+# Environment variables
+.env
+
+# Firebase/Google credentials
+firebase.json
+
+# Uploaded user files
+uploads/
+
+# Node.js modules (if using Webpack/Rollup)
+node_modules/
+
+# Frontend build output
+dist/
+
+# VS Code settings
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
