@@ -88,24 +88,3 @@ window.clearWhiteboard = () => {
   set(ref(database, 'whiteboard'), {});
 };
 
-const { groupId, username, apiKey } = window.videoSdkConfig;
-
-fetch('/get_token')
-  .then(res => res.json())
-  .then(({ token }) => {
-    const meeting = window.VideoSDK.initMeeting({
-      meetingId: groupId,
-      name: username,
-      apiKey: apiKey,
-      token: token,
-      micEnabled: true,
-      webcamEnabled: true,
-      participantCanToggleWebcam: true,
-      participantCanToggleMic: true,
-    });
-
-    meeting.join();
-    meeting.render({
-      container: document.getElementById('videosdk-container')
-    });
-  });
