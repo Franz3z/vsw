@@ -10,6 +10,7 @@ from datetime import datetime
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from dotenv import load_dotenv
 import base64, json
+import io
 
 load_dotenv()
 app = Flask(__name__)  
@@ -21,8 +22,9 @@ socketio = SocketIO(app, cors_allowed_origins='*', async_mode='gevent')
 firebase_json_path = os.getenv('FIREBASE_CREDENTIAL_PATH')
 database_url = os.getenv('FIREBASE_DATABASE_URL')
 
-cred_json = base64.b64decode(os.getenv('FIREBASE_JSON_B64')).decode()
-cred = credentials.Certificate(json.loads(cred_json))
+cred_json = base64.b64decode(os.getenv('FIREBASE_JSON_B64'))
+cred_dict = json.loads(cred_json)
+cred = credentials.Certificate(cred_dict)
 firebase_admin.initialize_app(cred, {
     'databaseURL': os.getenv('FIREBASE_DATABASE_URL')
 })
