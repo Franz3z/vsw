@@ -6,7 +6,6 @@
     <title>Whiteboard and Task Assignment</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <script defer src="{{ url_for('static', filename='dist/bundle.js') }}"></script>
-    <script src="https://sdk.videosdk.live/js-sdk/0.0.69/videosdk.js"></script>
 
 </head>
 <body>
@@ -27,7 +26,6 @@
                 <button class="send-button" onclick="sendMessage()">Send</button>
             </div>
             </div>
-            <div id="videosdk-container" style="width:100%; height:500px; border:1px solid #999;"></div>
 
     </div>
 
@@ -296,32 +294,6 @@ function closeApproveRequests() {
 (() => {
 
 </script>
-
-    <script>
-      const username = "{{ username }}";
-      const groupId = "{{ group_id }}";
-      const apiKey = "{{ api_key }}";  // Passed from Flask backend
-
-      fetch('/get_token')
-        .then(res => res.json())
-        .then(({ token }) => {
-          const meeting = window.VideoSDK.initMeeting({
-            meetingId: groupId,
-            name: username,
-            apiKey: apiKey,
-            token: token,
-            micEnabled: true,
-            webcamEnabled: true,
-            participantCanToggleMic: true,
-            participantCanToggleWebcam: true
-          });
-
-          meeting.join();
-          meeting.render({ container: document.getElementById('videosdk-container') });
-        })
-        .catch(err => console.error("VideoSDK Error:", err));
-    </script>
-
 
 
 
