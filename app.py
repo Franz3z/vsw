@@ -9,7 +9,6 @@ from werkzeug.utils import secure_filename
 from datetime import datetime
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from dotenv import load_dotenv
-import base64, json
 import io
 
 load_dotenv()
