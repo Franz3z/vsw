@@ -88,23 +88,3 @@ window.clearWhiteboard = () => {
   set(ref(database, 'whiteboard'), {});
 };
 
-const socket = io();
-const room = "group-call";
-const username = window.username;
-
-socket.emit("join-room", {
-  room: room,
-  username: username
-});
-
-socket.on("user-joined", (data) => {
-    console.log("User joined:", data);
-});
-
-socket.on("signal", (data) => {
-    console.log("Signal received:", data);
-});
-
-socket.on("user-left", (data) => {
-    console.log("User left");
-});
