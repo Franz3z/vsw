@@ -19,12 +19,12 @@ app.config['UPLOAD_FOLDER'] = os.path.join('uploads')
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 socketio = SocketIO(app, cors_allowed_origins='*', async_mode='gevent')
 
-firebase_json_path = os.getenv('FIREBASE_CREDENTIAL_PATH')
-database_url = os.getenv('FIREBASE_DATABASE_URL')
+firebase_json = os.getenv('FIREBASE_CREDENTIAL_PATH')
+cred_dict = json.loads(firebase_json)
+cred = credentials.Certificate(cred_dict)
 
-cred = credentials.Certificate("serviceAccountKey.json")
 firebase_admin.initialize_app(cred, {
-    'databaseURL': os.getenv('FIREBASE_DATABASE_URL')
+    'databaseURL': 'https://virtual-student-workspace-default-rtdb.firebaseio.com'
 })
 
 @app.route('/')
