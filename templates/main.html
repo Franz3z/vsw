@@ -169,6 +169,40 @@
 
   (() => {
 
-</script>      
+</script> 
+<script>
+const APP_ID = "8f0029e7fd2047339fe6822ab5b59abd";  // Replace with your Agora App ID
+const CHANNEL = "{{ group_id }}";  // Or any unique group name
+const UID = Math.floor(Math.random() * 10000);
+let client;
+let localTrack;
+
+document.getElementById("joinBtn").onclick = async () => {
+    client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
+    await client.join(APP_ID, CHANNEL, null, UID);
+
+    localTrack = await AgoraRTC.createMicrophoneAudioTrack();
+    await client.publish([localTrack]);
+
+    document.getElementById("joinBtn").disabled = true;
+    document.getElementById("leaveBtn").disabled = false;
+
+    console.log("Joined voice channel:", CHANNEL);
+};
+
+document.getElementById("leaveBtn").onclick = async () => {
+    if (localTrack) {
+        localTrack.stop();
+        localTrack.close();
+    }
+    await client.leave();
+
+    document.getElementById("joinBtn").disabled = false;
+    document.getElementById("leaveBtn").disabled = true;
+
+    console.log("Left voice channel:", CHANNEL);
+};
+</script>
+
 </body>
 </html>
