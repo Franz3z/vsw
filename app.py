@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 from flask import Flask, render_template
 from flask_socketio import SocketIO, join_room, leave_room, emit
 import json
+import base64
 
 load_dotenv()
 app = Flask(__name__)  
@@ -21,10 +22,11 @@ app.config['UPLOAD_FOLDER'] = os.path.join('uploads')
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 database_url = os.getenv('FIREBASE_DATABASE_URL')
 
-cred_str = os.getenv("FIREBASE_CREDS_JSON")
-cred_str = cred_str.replace("\\n", "\n")
-cred_dict = json.loads(cred_str)
+b64_str = os.getenv("FIREBASE_CREDS_B64")
+json_str = base64.b64decode(b64_str).decode("utf-8")
+cred_dict = json.loads(json_str)
 cred = credentials.Certificate(cred_dict)
+
 firebase_admin.initialize_app(cred, {
     'databaseURL': database_url
 })
