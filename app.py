@@ -19,11 +19,12 @@ app.secret_key = 'your-secure-secret-key'
 app.config['UPLOAD_FOLDER'] = os.path.join('uploads')
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 socketio = SocketIO(app, cors_allowed_origins='*', async_mode='gevent')
+database_url = os.getenv('FIREBASE_DATABASE_URL')
 
 cred = credentials.Certificate("/etc/secrets/serviceAccountKey.json")
 
 firebase_admin.initialize_app(cred, {
-    'databaseURL': 'https://virtual-student-workspace-default-rtdb.firebaseio.com'
+    'databaseURL': database_url
 })
 
 @app.route('/')
