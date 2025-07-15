@@ -17,8 +17,8 @@ import json
 import logging
 import requests
 
-VIDEOSDK_API_KEY = os.getenv('5f862ed0-4cb7-4a70-a438-8b45981356d2')
-VIDEOSDK_SECRET = os.getenv('827410facd53af5036ac74af83bf9c1a9d0a90a0e26c24cc3013a2b24a2d6fd6')
+VIDEOSDK_API_KEY = os.getenv('VIDEOSDK_API_KEY')
+VIDEOSDK_SECRET = os.getenv('VIDEOSDK_SECRET')
 
 load_dotenv()
 app = Flask(__name__)  
@@ -216,6 +216,7 @@ def mainadmin(username, group_id):
         pending_tasks=pending_tasks,
         completed_tasks=completed_tasks,
         messages=messages
+        api_key=VIDEOSDK_API_KEY
     )
 
 @app.route('/assign_task/<group_id>', methods=['POST'])
@@ -271,6 +272,8 @@ def main(username, group_id):
         pending_tasks=pending_tasks,
         completed_tasks=completed_tasks,
         messages=messages
+        api_key=VIDEOSDK_API_KEY
+
     )
     
 
