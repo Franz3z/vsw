@@ -13,14 +13,16 @@ from werkzeug.utils import secure_filename
 from datetime import datetime
 from dotenv import load_dotenv
 from flask import Flask, render_template
-from flask_socketio import SocketIO, join_room, leave_room, emit
 import json
 import logging
+import requests
+
+VIDEOSDK_API_KEY = os.getenv('5f862ed0-4cb7-4a70-a438-8b45981356d2')
+VIDEOSDK_SECRET = os.getenv('827410facd53af5036ac74af83bf9c1a9d0a90a0e26c24cc3013a2b24a2d6fd6')
 
 load_dotenv()
 app = Flask(__name__)  
 app.secret_key = 'your-secure-secret-key' 
-socketio = SocketIO(app, cors_allowed_origins='*', async_mode='eventlet')
 logging.basicConfig(level=logging.DEBUG)
 
 app.config['UPLOAD_FOLDER'] = os.path.join('uploads')
@@ -366,33 +368,19 @@ def get_messages(group_id):
 
     return jsonify({'messages': message_list})
 
-user_sid_map = {}
-
-@socketio.on('join_call')
-def on_join(data):
-    room = data['room']
-    username = data['username']
-    join_room(room)
-    user_sid_map[username] = request.sid
-    emit('user_joined', {'username': username}, room=room, include_self=False)
-
-@socketio.on('leave_call')
-def on_leave(data):
-    room = data['room']
-    username = data['username']
-    leave_room(room)
-    sid = user_sid_map.pop(username, None)
-    emit('user_left', {'username': username}, room=room)
-
-@socketio.on('signal')
-def on_signal(data):
-    target = data['target']
-    if target in user_sid_map:
-        emit('signal', data, room=user_sid_map[target])
-
-@socketio.on_error_default
-def default_error_handler(e):
-    print(f'Socket error: {e}')
+@app.route('/get_token')
+def get_token():
+    response = requests.post(
+        'https://api.videosdk.live/v2/token',
+        json={},
+        headers={
+            'Authorization': VIDEOSDK_SECRET
+        }
+    )
+    if response.status_code == 200:
+        return jsonify({'token': response.json()['token']})
+    else:
+        return jsonify({'error': 'Unable to generate token'}), 500
 
 if __name__ == '__main__':
-    socketio.run(app, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
