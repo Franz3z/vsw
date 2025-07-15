@@ -16,6 +16,8 @@ from flask import Flask, render_template
 import json
 import logging
 import requests
+import traceback
+import sys
 
 VIDEOSDK_API_KEY = os.getenv('VIDEOSDK_API_KEY')
 VIDEOSDK_SECRET = os.getenv('VIDEOSDK_SECRET')
@@ -389,3 +391,9 @@ def get_token():
     except Exception as e:
         print("Exception in /get_token:", str(e))
         return jsonify({'error': 'Server error'}), 500
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    print("UNCAUGHT EXCEPTION:", e, file=sys.stderr)
+    traceback.print_exc()
+    return "Internal Server Error", 500
