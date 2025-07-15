@@ -15,12 +15,13 @@ from dotenv import load_dotenv
 from flask import Flask, render_template
 from flask_socketio import SocketIO, join_room, leave_room, emit
 import json
-import base64
+import logging
 
 load_dotenv()
 app = Flask(__name__)  
 app.secret_key = 'your-secure-secret-key' 
 socketio = SocketIO(app, cors_allowed_origins='*') 
+logging.basicConfig(level=logging.DEBUG)
 
 app.config['UPLOAD_FOLDER'] = os.path.join('uploads')
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
