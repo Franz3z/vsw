@@ -28,7 +28,7 @@ firebase_admin.initialize_app(cred, {
 })
 
 @app.route('/')
-def login():
+def show_login():
     if 'username' in session:
         return redirect(url_for('dashboard', username=session['username']))
     response = make_response(render_template('login.html'))
@@ -50,7 +50,7 @@ def login_handler():
     except Exception as e:
         print("Login Handler Error: ", e)
         flash('Internal server error. Please try again.')
-    return redirect(url_for('login'))
+    return redirect(url_for('show_login'))
   
 @app.route('/register')  
 def register():  
