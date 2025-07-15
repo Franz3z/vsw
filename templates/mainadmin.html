@@ -145,7 +145,8 @@
 </div>
 
 <script type="module" src="{{ url_for('static', filename='bundle.js') }}"></script>
-
+<script src="https://sdk.videosdk.live/js-sdk/0.0.69/videosdk.js"></script>
+        
 <script>
   const username = "{{ username }}";
   const groupId = "{{ group_id }}";
@@ -293,12 +294,7 @@ function closeApproveRequests() {
 }
 
 (() => {
-    
-</script>
 
-<script src="https://sdk.videosdk.live/js-sdk/0.0.69/videosdk.js"></script>
-
-<script>
 fetch('/get_token')
   .then(res => res.json())
   .then(({ token }) => {
@@ -318,6 +314,7 @@ fetch('/get_token')
       container: document.getElementById('videosdk-container')
     });
   });
+
 </script>
 
 
