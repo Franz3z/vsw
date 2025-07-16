@@ -72,12 +72,29 @@ def login():
 def login_handler():
     username = request.form['username']
     password = request.form['password']
-    user_data = db.reference(f'users/{username}').get()
-    if user_data and user_data.get('password') == password:
-        session['username'] = username
-        return redirect(url_for('dashboard', username=username))
-    flash('Invalid username or password')
-    return redirect(url_for('login'))
+    try:
+        user_data = db.reference(f'users/{username}').get()
+
+        if user_data:
+            logging.debug(f"Retrieved user_data for {username}: {user_data}")
+            if user_data.get('password') == password:
+                session['username'] = username
+                logging.info(f"User {username} logged in successfully.")
+                return redirect(url_for('dashboard', username=username))
+            else:
+                logging.warning(f"Failed login attempt for {username}: Incorrect password.")
+                flash('Invalid username or password')
+                return redirect(url_for('login'))
+        else:
+            logging.warning(f"Failed login attempt: Username '{username}' not found.")
+            flash('Invalid username or password')
+            return redirect(url_for('login'))
+
+    except Exception as e:
+        logging.error(f"An unexpected error occurred in login_handler for user {username}: {e}")
+        sys.stderr.write(traceback.format_exc() + '\n')
+        flash('An unexpected error occurred during login. Please try again.')
+        return redirect(url_for('login'))
 
 @app.route('/register')
 def register():
