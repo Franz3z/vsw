@@ -1,9 +1,5 @@
-import eventlet
-import eventlet.wsgi
-eventlet.monkey_patch()
-
-from flask import Flask, render_template, request, redirect, url_for, flash  
-import firebase_admin  
+from flask import Flask, render_template, request, redirect, url_for, flash
+import firebase_admin
 from firebase_admin import credentials, db, initialize_app
 from flask import session
 from flask import make_response
@@ -12,28 +8,37 @@ from flask import send_from_directory
 from werkzeug.utils import secure_filename
 from datetime import datetime
 from dotenv import load_dotenv
-from flask import Flask, render_template
 import json
 import logging
 import requests
 import traceback
 import sys
 
+# Load environment variables from .env file (for local development)
 load_dotenv()
-app = Flask(__name__)  
+
+app = Flask(__name__)
+# Use os.getenv for secret key with a fallback for local testing, but ensure it's set on Vercel
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'your_super_secret_fallback_key_CHANGE_ME')
 logging.basicConfig(level=logging.DEBUG)
 
+# Use /tmp for ephemeral storage on Vercel
 app.config['UPLOAD_FOLDER'] = os.path.join('/tmp', 'uploads')
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True) # Ensure it exists for the current execution
+
 database_url = os.getenv('FIREBASE_DATABASE_URL')
 
 try:
     private_key_value = os.getenv('FIREBASE_PRIVATE_KEY')
+
+    # Ensure private_key_value is not None before attempting replace
     if private_key_value:
         private_key_value = private_key_value.replace('\\n', '\n')
-  
-        service_account_info = {
+    else:
+        # Raise an explicit error if private key is missing, as it's mandatory
+        raise ValueError("FIREBASE_PRIVATE_KEY environment variable is not set or is empty.")
+
+    service_account_info = {
         "type": os.getenv('FIREBASE_TYPE'),
         "project_id": os.getenv('FIREBASE_PROJECT_ID'),
         "private_key_id": os.getenv('FIREBASE_PRIVATE_KEY_ID'),
@@ -45,19 +50,20 @@ try:
         "auth_provider_x509_cert_url": os.getenv('FIREBASE_AUTH_PROVIDER_X509_CERT_URL'),
         "client_x509_cert_url": os.getenv('FIREBASE_CLIENT_X509_CERT_URL'),
         "universe_domain": os.getenv('FIREBASE_UNIVERSE_DOMAIN')
-         }
+    }
 
-         cred = credentials.Certificate(service_account_info)
-            initialize_app(cred, {
-              'databaseURL': database_url
-         })
+    # Initialize Firebase Admin SDK
+    cred = credentials.Certificate(service_account_info)
+    initialize_app(cred, {
+        'databaseURL': database_url
+    })
     app.logger.info("Firebase Admin SDK initialized successfully from environment variables.")
 
 except Exception as e:
     app.logger.error(f"Error initializing Firebase from environment variables: {e}")
-    app.logger.error("Please ensure all Firebase service account environment variables are correctly set.")
+    app.logger.error("Please ensure ALL Firebase service account environment variables are correctly set on Vercel.")
     app.logger.error(traceback.format_exc())
-    sys.exit(1)
+    sys.exit(1) # This will cause the Vercel function to fail on startup
 
 @app.route('/')
 def login():
@@ -68,7 +74,7 @@ def login():
     response.headers['Pragma'] = 'no-cache'
     response.headers['Expires'] = '0'
     return response
- 
+
 @app.route('/login_handler', methods=['POST'])
 def login_handler():
     username = request.form['username']
@@ -79,26 +85,26 @@ def login_handler():
         return redirect(url_for('dashboard', username=username))
     flash('Invalid username or password')
     return redirect(url_for('login'))
-  
-@app.route('/register')  
-def register():  
-    return render_template('register.html')  
- 
-@app.route('/register_handler', methods=['POST'])  
-def register_handler():  
-    user_data = {  
-        'first_name': request.form['first_name'],  
-        'middle_name': request.form.get('middle_name', ''),  
-        'last_name': request.form['last_name'],  
-        'age': request.form['age'],  
-        'email': request.form['email'],  
-        'password': request.form['password']  
-    }  
-    username = request.form['username']  
-    ref = db.reference(f'users/{username}')  
-    if ref.get():  
-        return 'Username exists. <a href="/register">Try again</a>'  
-    ref.set(user_data)  
+
+@app.route('/register')
+def register():
+    return render_template('register.html')
+
+@app.route('/register_handler', methods=['POST'])
+def register_handler():
+    user_data = {
+        'first_name': request.form['first_name'],
+        'middle_name': request.form.get('middle_name', ''),
+        'last_name': request.form['last_name'],
+        'age': request.form['age'],
+        'email': request.form['email'],
+        'password': request.form['password']
+    }
+    username = request.form['username']
+    ref = db.reference(f'users/{username}')
+    if ref.get():
+        return 'Username exists. <a href="/register">Try again</a>'
+    ref.set(user_data)
     return render_template('registration_success.html')
 
 @app.route('/dashboard/<username>')
@@ -107,7 +113,7 @@ def dashboard(username):
         return redirect(url_for('login'))
 
     user_groups = db.reference(f'users/{username}/groups').get() or {}
-    
+
     response = make_response(render_template('dashboard.html', username=username, groups=user_groups))
     response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
     response.headers['Pragma'] = 'no-cache'
@@ -120,32 +126,32 @@ def logout():
     flash('Logged out successfully.')
     return redirect(url_for('login'))
 
-@app.route('/create_group_handler/<username>', methods=['POST'])  
-def create_group_handler(username):  
-    group_name = request.form['group_name']  
-    group_id = request.form['group_id']  
+@app.route('/create_group_handler/<username>', methods=['POST'])
+def create_group_handler(username):
+    group_name = request.form['group_name']
+    group_id = request.form['group_id']
 
-    group_ref = db.reference(f'groups/{group_id}')  
+    group_ref = db.reference(f'groups/{group_id}')
 
-    if group_ref.get():  
-        flash('Group ID already exists. Please try a different one.')  
-        return redirect(url_for('dashboard', username=username))  
- 
-    group_ref.set({  
-        'group_name': group_name,  
+    if group_ref.get():
+        flash('Group ID already exists. Please try a different one.')
+        return redirect(url_for('dashboard', username=username))
+
+    group_ref.set({
+        'group_name': group_name,
         'admin': username,
-        'members': {  
-            username: 'admin' 
-        }  
-    })  
+        'members': {
+            username: 'admin'
+        }
+    })
 
-    db.reference(f'users/{username}/groups/{group_id}').set({  
-        'group_name': group_name,  
-        'role': 'admin'  
-    })  
+    db.reference(f'users/{username}/groups/{group_id}').set({
+        'group_name': group_name,
+        'role': 'admin'
+    })
 
-    flash(f'Group \"{group_name}\" created successfully! You are the admin.')  
-    return redirect(url_for('dashboard', username=username))  
+    flash(f'Group \"{group_name}\" created successfully! You are the admin.')
+    return redirect(url_for('dashboard', username=username))
 
 @app.route('/join_group_handler/<username>', methods=['POST'])
 def join_group_handler(username):
@@ -192,7 +198,7 @@ def group_redirect(username, group_id):
 @app.route('/mainadmin/<username>/<group_id>')
 def mainadmin(username, group_id):
     group_ref = db.reference(f'groups/{group_id}')
-    
+
     members_ref = group_ref.child('members')
     members_data = members_ref.get() or {}
     members = [{'username': m} for m in members_data.keys() if m != username]
@@ -297,7 +303,7 @@ def main(username, group_id):
         completed_tasks=completed_tasks,
         messages=messages
     )
-    
+
 
 @app.route('/approve_request/<group_id>/<username>', methods=['POST'])
 def approve_request(group_id, username):
@@ -353,9 +359,6 @@ def download_file(group_id, task_id, username, filename):
     directory = os.path.join(app.config['UPLOAD_FOLDER'], group_id, task_id, username)
     return send_from_directory(directory, filename, as_attachment=True)
 
-from flask import request, jsonify
-from datetime import datetime
-
 @app.route('/send_message/<group_id>', methods=['POST'])
 def send_message(group_id):
     data = request.get_json()
@@ -382,7 +385,7 @@ def send_message(group_id):
 def get_messages(group_id):
     messages_ref = db.reference(f'groups/{group_id}/chat')
     messages = messages_ref.get() or {}
-    
+
     message_list = []
     for key, msg in messages.items():
         message_list.append({
