@@ -29,20 +29,11 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True) # Ensure it exists for t
 database_url = os.getenv('FIREBASE_DATABASE_URL')
 
 try:
-    private_key_value = os.getenv('FIREBASE_PRIVATE_KEY')
-
-    # Ensure private_key_value is not None before attempting replace
-    if private_key_value:
-        private_key_value = private_key_value.replace('\\n', '\n')
-    else:
-        # Raise an explicit error if private key is missing, as it's mandatory
-        raise ValueError("FIREBASE_PRIVATE_KEY environment variable is not set or is empty.")
-
     service_account_info = {
         "type": os.getenv('FIREBASE_TYPE'),
         "project_id": os.getenv('FIREBASE_PROJECT_ID'),
         "private_key_id": os.getenv('FIREBASE_PRIVATE_KEY_ID'),
-        "private_key": private_key_value, # Use the processed private key
+        "private_key": os.getenv('FIREBASE_PRIVATE_KEY').replace('\\n', '\n') if os.getenv('FIREBASE_PRIVATE_KEY') else None,
         "client_email": os.getenv('FIREBASE_CLIENT_EMAIL'),
         "client_id": os.getenv('FIREBASE_CLIENT_ID'),
         "auth_uri": os.getenv('FIREBASE_AUTH_URI'),
@@ -51,19 +42,21 @@ try:
         "client_x509_cert_url": os.getenv('FIREBASE_CLIENT_X509_CERT_URL'),
         "universe_domain": os.getenv('FIREBASE_UNIVERSE_DOMAIN')
     }
+    
+    # Remove any None values from the dictionary
+    service_account_info = {k: v for k, v in service_account_info.items() if v is not None}
 
-    # Initialize Firebase Admin SDK
     cred = credentials.Certificate(service_account_info)
     initialize_app(cred, {
         'databaseURL': database_url
     })
-    app.logger.info("Firebase Admin SDK initialized successfully from environment variables.")
+    logging.info("Firebase initialized successfully from environment variables.")
 
 except Exception as e:
-    app.logger.error(f"Error initializing Firebase from environment variables: {e}")
-    app.logger.error("Please ensure ALL Firebase service account environment variables are correctly set on Vercel.")
-    app.logger.error(traceback.format_exc())
-    sys.exit(1) # This will cause the Vercel function to fail on startup
+    logging.error(f"Error initializing Firebase from environment variables: {e}")
+    logging.error("Please ensure ALL Firebase service account environment variables are correctly set on Vercel.")
+    logging.error(traceback.format_exc())
+    sys.exit(1)
 
 @app.route('/')
 def login():
