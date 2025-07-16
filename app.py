@@ -28,12 +28,12 @@ app.config['UPLOAD_FOLDER'] = os.path.join('/tmp', 'uploads')
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 database_url = os.getenv('FIREBASE_DATABASE_URL')
 
- try:
+try:
     private_key_value = os.getenv('FIREBASE_PRIVATE_KEY')
     if private_key_value:
         private_key_value = private_key_value.replace('\\n', '\n')
   
-    service_account_info = {
+        service_account_info = {
         "type": os.getenv('FIREBASE_TYPE'),
         "project_id": os.getenv('FIREBASE_PROJECT_ID'),
         "private_key_id": os.getenv('FIREBASE_PRIVATE_KEY_ID'),
@@ -45,12 +45,12 @@ database_url = os.getenv('FIREBASE_DATABASE_URL')
         "auth_provider_x509_cert_url": os.getenv('FIREBASE_AUTH_PROVIDER_X509_CERT_URL'),
         "client_x509_cert_url": os.getenv('FIREBASE_CLIENT_X509_CERT_URL'),
         "universe_domain": os.getenv('FIREBASE_UNIVERSE_DOMAIN')
-        }
+         }
 
-cred = credentials.Certificate(service_account_info)
-    initialize_app(cred, {
-        'databaseURL': database_url
-    })
+         cred = credentials.Certificate(service_account_info)
+            initialize_app(cred, {
+              'databaseURL': database_url
+         })
     app.logger.info("Firebase Admin SDK initialized successfully from environment variables.")
 
 except Exception as e:
