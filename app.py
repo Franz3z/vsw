@@ -301,12 +301,12 @@ def main(username, group_id):
     chat_data = chat_ref.get() or {}
 
     messages = []
-        for _, msg in sorted(chat_data.items(), key=lambda x: x[1].get('timestamp', '')):
-            if isinstance(msg, dict):
-                messages.append({
-                    'sender': msg.get('sender'),
-                    'message': msg.get('text'), 
-                    'timestamp': datetime.fromisoformat(msg['timestamp']).strftime('%b %d, %I:%M %p')
+    for _, msg in sorted(chat_data.items(), key=lambda x: x[1].get('timestamp', '')):
+        if isinstance(msg, dict):
+            messages.append({
+                'sender': msg.get('sender'),
+                'message': msg.get('text'), 
+                'timestamp': datetime.fromisoformat(msg['timestamp']).strftime('%b %d, %I:%M %p')
             })
             
     return render_template(
