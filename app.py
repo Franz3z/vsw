@@ -242,11 +242,14 @@ def mainadmin(username, group_id):
 
     messages = []
     for _, msg in sorted(chat_data.items(), key=lambda x: x[1].get('timestamp', '')):
-        messages.append({
-            'sender': msg.get('sender'),
-            'message': msg.get('message'),
-            'timestamp': datetime.fromisoformat(msg['timestamp']).strftime('%b %d, %I:%M %p')
-        })
+        if isinstance(msg, dict):
+            messages.append({
+                'sender': msg.get('sender'),
+                'message': msg.get('text'), 
+                'timestamp': datetime.fromisoformat(msg['timestamp']).strftime('%b %d, %I:%M %p')
+            })
+        else:
+            logging.warning(f"Skipping malformed message in mainadmin for group {group_id}: {msg}")
 
     return render_template(
         'mainadmin.html',
