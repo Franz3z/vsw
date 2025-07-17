@@ -393,18 +393,31 @@ def send_message(group_id):
 
 @app.route('/get_messages/<group_id>')
 def get_messages(group_id):
-    messages_ref = db.reference(f'groups/{group_id}/chat')
-    messages = messages_ref.get() or {}
+    try:
+        messages_ref = db.reference(f'groups/{group_id}/chat')
+        messages = messages_ref.get() or {}
+        
+        message_list = []
+        for key, msg in messages.items():
+            # Ensure msg is a dictionary before trying to get values
+            if isinstance(msg, dict):
+                message_list.append({
+                    'sender': msg.get('sender', ''),
+                    'text': msg.get('text', ''),
+                    'timestamp': msg.get('timestamp', '')
+                })
+            else:
+                logging.warning(f"Skipping malformed message in group {group_id} with key {key}: {msg}")
 
-    message_list = []
-    for key, msg in messages.items():
-        message_list.append({
-            'sender': msg.get('sender', ''),
-            'text': msg.get('text', ''),
-            'timestamp': msg.get('timestamp', '')
-        })
+        return jsonify({'messages': message_list})
 
-    return jsonify({'messages': message_list})
+    except Exception as e:
+        # Log the error with a full traceback
+        logging.error(f"Error in get_messages for group {group_id}: {e}")
+        sys.stderr.write(traceback.format_exc() + '\n')
+        # Return a 500 error response with a generic message
+        return jsonify({'success': False, 'error': 'Internal server error fetching messages'}), 500
+
 
 @app.errorhandler(Exception)
 def handle_exception(e):
