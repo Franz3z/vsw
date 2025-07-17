@@ -237,7 +237,7 @@ def mainadmin(username, group_id):
         else:
             pending_tasks.append(task_info)
 
-    chat_ref = db.reference(f'chats/{group_id}/chat')
+    chat_ref = db.reference(f'groups/{group_id}/chat')
     chat_data = chat_ref.get() or {}
 
     messages = []
@@ -294,7 +294,7 @@ def main(username, group_id):
             else:
                 pending_tasks.append(task_info)
 
-    chat_ref = db.reference(f'chats/{group_id}/chat')
+    chat_ref = db.reference(f'groups/{group_id}/chat')
     chat_data = chat_ref.get() or {}
 
     messages = []
