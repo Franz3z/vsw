@@ -304,7 +304,7 @@ def main(username, group_id):
     for _, msg in sorted(chat_data.items(), key=lambda x: x[1].get('timestamp', '')):
         messages.append({
             'sender': msg.get('sender'),
-            'message': msg.get('message'),
+            'message': msg.get('text'),
             'timestamp': datetime.fromisoformat(msg['timestamp']).strftime('%b %d, %I:%M %p')
         })
 
