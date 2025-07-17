@@ -391,7 +391,7 @@ def send_message(group_id):
     return jsonify({'success': True})
 
 
-@app.route('/get_messages/<group_id>')
+@app.route('/get_messages/<group_id>/chat')
 def get_messages(group_id):
     try:
         messages_ref = db.reference(f'groups/{group_id}/chat')
