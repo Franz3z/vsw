@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Header -->
+        <div class="header">
+            <h1>Welcome to Student Virtual Workspace</h1>
+            <p></p>
+        </div>
+
+        <!-- Menu -->
+        <div class="menu">
+            <button onclick="showFeature('profile')">Profile</button>
+            <button onclick="showFeature('createGroup')">Create Group</button>
+            <button onclick="showFeature('joinGroup')">Join Group</button>
+        </div>
+
+        <!-- Profile Section -->
+    <div id="profile" class="feature-section">
+        <h2>Your Profile</h2>
+        <p>Here are the groups you've joined:</p>
+        <ul class="group-list">
+            {% for group_id, group_info in groups.items() %}
+                <li>
+                    <a href="{{ url_for('group_redirect', username=username, group_id=group_id) }}">
+                        {{ group_info['group_name'] }} - {{ group_info['role'] | capitalize }}
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
+        <button class="close-button" onclick="closeFeature('profile')">Close</button>
+    </div>
+
+        <!-- Create Group Section -->
+    <div id="createGroup" class="feature-section create-group-container">
+        <h2>Create a Group</h2>
+        <form action="{{ url_for('create_group_handler', username=username) }}" method="POST">
+            <label for="groupName">Group Name:</label>
+            <input type="text" id="groupName" name="group_name" placeholder="Enter group name" required>
+
+            <label for="groupId">Group ID:</label>
+            <input type="text" id="groupId" name="group_id" placeholder="Enter Group ID" required>
+
+            <button type="submit">Create Group</button>
+        </form>
+        <button class="close-button" onclick="closeFeature('createGroup')">Close</button>
+    </div>
+
+
+        <!-- Join Group Section -->
+        <div id="joinGroup" class="feature-section join-group-container">
+    <h2>Join a Group</h2>
+    <form action="/join_group_handler/{{ username }}" method="POST">
+        <p>Enter the Group ID provided to you:</p>
+        <input type="text" name="group_id" placeholder="Enter Group ID" required>
+        <button type="submit">Join Group</button>
+    </form>
+    <button class="close-button" onclick="closeFeature('joinGroup')">Close</button>
+</div>
+
+    
+    <script>
+        // Function to show a specific feature section
+        function showFeature(featureId) {
+            // Hide all feature sections
+            document.querySelectorAll('.feature-section').forEach(section => {
+                section.style.display = 'none';
+            });
+
+            // Show the selected feature section
+            document.getElementById(featureId).style.display = 'block';
+        }
+
+        // Function to close a feature section
+        function closeFeature(featureId) {
+            document.getElementById(featureId).style.display = 'none';
+        }
+    </script>
+
+<form action="{{ url_for('logout') }}" method="POST" style="text-align: center; margin-top: 50px;">
+    <button type="submit" class="logout-button">Logout</button>
+</form>
+
+</body>
+</html>
