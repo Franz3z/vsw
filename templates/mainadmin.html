@@ -3,504 +3,600 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Whiteboard and Task Assignment</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <script defer src="{{ url_for('static', filename='bundle.js') }}"></script>
-    <script src="https://download.agora.io/sdk/release/AgoraRTC_N.js"></script>
-    <style>
-        .task-card {
-            background: white;
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 12px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .task-title {
-            font-weight: bold;
-            font-size: 1.1rem;
-            margin-bottom: 6px;
-        }
-        .task-meta {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.9rem;
-            margin-bottom: 8px;
-        }
-        .priority-tag {
-            padding: 3px 8px;
-            border-radius: 12px;
-            font-size: 0.8rem;
-            font-weight: bold;
-        }
-        .priority-high { background-color: #ffdddd; color: #cc0000; }
-        .priority-medium { background-color: #fff3cd; color: #856404; }
-        .priority-low { background-color: #d4edda; color: #155724; }
-        .assignee-info {
-            font-style: italic;
-            color: #666;
-        }
-        .task-section {
-            margin-bottom: 20px;
-        }
-        .section-header {
-            font-weight: bold;
-            font-size: 1.2rem;
-            padding-bottom: 8px;
-            margin-bottom: 12px;
-            border-bottom: 2px solid #eee;
-        }
-        .collapsible {
-            cursor: pointer;
-            position: relative;
-            padding-left: 20px;
-        }
-        .collapsible::before {
-            content: '▼';
-            position: absolute;
-            left: 0;
-            top: 50%;
-            transform: translateY(-50%);
-            transition: transform 0.3s;
-        }
-        .collapsible.collapsed::before {
-            transform: translateY(-50%) rotate(-90deg);
-        }
-        .task-panel {
-            background: #f8f9fa;
-            padding: 15px;
-            height: 100%;
-            overflow-y: auto;
-            box-shadow: -2px 0 5px rgba(0,0,0,0.1);
-        }
-        .task-panel-content {
-            display: block;
-        }
-        .task-panel.collapsed .task-panel-content {
-            display: none;
-        }
-        .panel-toggle {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            z-index: 100;
-            background: #fff;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            padding: 5px;
-            cursor: pointer;
-        }
-    </style>
+    <title>Collaborative Workspace</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
-    <div class="container">
-        <!-- LEFT PANEL: Navigation & Controls -->
-        <div class="left-panel">
-        <div class="buttons">
-            <button onclick="openAssignTask()">Add Task</button>
-            <button onclick="openApproveRequests()">Pending Requests</button>
-            <button onclick="openRoleManagement()">Manage Roles</button>
-            <a href="{{ url_for('dashboard', username=username) }}" class="styled-button">←</a>
+
+    <div class="login-container" id="loginPage">
+        <img src="your-logo.png" alt="Company Logo">
+        <h2>Welcome Back!</h2>
+        <form>
+            <input type="text" placeholder="Username" required>
+            <input type="password" placeholder="Password" required>
+            <button type="submit">Login</button>
+        </form>
+        <div class="register-link">
+            Don't have an account? <a href="#" id="showRegister">Register here</a>
+        </div>
+    </div>
+
+    <div class="register-container" id="registerPage" style="display: none;">
+        <img src="your-small-logo.png" alt="Company Logo">
+        <h2>Create Your Account</h2>
+        <form>
+            <input type="text" placeholder="Full Name" required>
+            <input type="email" placeholder="Email" required>
+            <input type="text" placeholder="Username" required>
+            <input type="password" placeholder="Password" required>
+            <input type="password" placeholder="Confirm Password" required>
+            <input type="number" placeholder="Age" min="13" max="120">
+            <button type="submit">Register</button>
+        </form>
+        <div class="back-link">
+            Already have an account? <a href="#" id="showLogin">Back to Login</a>
+        </div>
+    </div>
+
+    <div class="dashboard-container" id="dashboardPage" style="display: none;">
+        <div class="header">
+            <h1>Welcome to Your Dashboard!</h1>
+            <p>Manage your groups and collaborate effectively.</p>
+        </div>
+        <div class="menu">
+            <button id="showProfileBtn">My Profile</button>
+            <button id="showCreateGroupBtn">Create Group</button>
+            <button id="showJoinGroupBtn">Join Group</button>
+            <button id="showRequestsBtn">Approve Requests</button>
+            <button id="logoutBtn">Logout</button>
         </div>
 
+        <div id="profileSection" class="feature-section" style="display: none;">
+            <h2>My Profile</h2>
+            <p><strong>Username:</strong> [Logged-in Username]</p>
+            <p><strong>Email:</strong> [Logged-in Email]</p>
+            <h3>My Groups:</h3>
+            <ul class="group-list" id="myGroupsList">
+                <li>Group A <a href="#" class="styled-button enter-group-btn" data-group-id="group1">Enter</a></li>
+                <li>Group B <a href="#" class="styled-button enter-group-btn" data-group-id="group2">Enter</a></li>
+            </ul>
+            <button class="close-button" onclick="hideAllFeatureSections()">Close Profile</button>
+        </div>
+
+        <div id="createGroupSection" class="feature-section" style="display: none;">
+            <h2>Create New Group</h2>
+            <div class="create-group-container">
+                <form>
+                    <label for="groupName">Group Name:</label>
+                    <input type="text" id="groupName" placeholder="Enter group name" required>
+                    <label for="groupDescription">Description:</label>
+                    <textarea id="groupDescription" placeholder="Briefly describe your group"></textarea>
+                    <button type="submit">Create Group</button>
+                </form>
+            </div>
+            <button class="close-button" onclick="hideAllFeatureSections()">Close</button>
+        </div>
+
+        <div id="joinGroupSection" class="feature-section" style="display: none;">
+            <h2>Join a Group</h2>
+            <div class="join-group-container">
+                <input type="text" placeholder="Enter Group ID/Invite Code" required>
+                <button type="submit">Join Group</button>
+            </div>
+            <button class="close-button" onclick="hideAllFeatureSections()">Close</button>
+        </div>
+
+        <div id="approveRequestsSection" class="feature-section" style="display: none;">
+            <h2>Approve Join Requests</h2>
+            <ul id="pending-requests-list">
+                <li>
+                    User A wants to join Group X
+                    <form style="display:inline;">
+                        <button type="submit">Approve</button>
+                    </form>
+                </li>
+            </ul>
+            <button class="close-button" onclick="hideAllFeatureSections()">Close</button>
+        </div>
+    </div>
+
+
+    <div class="container" id="groupWorkspace" style="display: none;">
+        <div class="left-panel">
+            <div class="buttons">
+                <button id="showAssignTaskModalBtn">Assign Task</button>
+                <button id="showMyTasksModalBtn">My Tasks</button>
+                <button id="showGroupTasksModalBtn">Group Tasks</button>
+                <a href="#" class="styled-button" id="leaveGroupBtn">Leave Group</a>
+            </div>
             <div class="chatbox">
-                <div class="messages" id="messagesContainer"></div>
+                <div class="messages" id="chatMessages">
+                    <div class="message left"><strong>John Doe:</strong> Hello everyone!</div>
+                    <div class="message right"><strong>You:</strong> Hi John! How's it going?</div>
+                    <div class="message left"><strong>Jane Smith:</strong> Good morning!</div>
+                </div>
                 <div class="input-container">
-                    <textarea id="messageInput" placeholder="Type your message..." rows="2"></textarea>
-                    <button class="send-button" onclick="sendMessage()">Send</button>
+                    <textarea id="chatInput" placeholder="Type your message..." rows="1"></textarea>
+                    <button id="sendChatBtn" class="send-button">Send</button>
+                    <button id="openWhiteboardBtn" class="open-whiteboard-btn"><i class="fas fa-chalkboard"></i></button>
                 </div>
             </div>
-
             <div class="voice-call-container">
                 <h4>Voice Call</h4>
                 <button id="joinBtn">Join Call</button>
                 <button id="leaveBtn" disabled>Leave Call</button>
             </div>
         </div>
-        
-        <!-- CENTER PANEL: Main Workspace with Whiteboard -->
-        <div class="center-panel">
-            <div class="whiteboard">
-                <h3>Whiteboard</h3>
-                <canvas id="whiteboardCanvas" style="border: 1px solid #ccc; background-color: white;"></canvas>
-                <button onclick="clearWhiteboard()">Clear Whiteboard</button>
-            </div>
-        </div>
-        
-        <!-- RIGHT PANEL: Persistent Task Panel -->
+
         <div class="right-panel" id="taskPanel">
-            <button class="panel-toggle" id="taskPanelToggle">≡</button>
+            <span class="panel-toggle" id="panelToggle"></span>
             <div class="task-panel-content">
-                <h3>Group Tasks</h3>
-                
-                <!-- DONE SECTION -->
                 <div class="task-section">
-                    <div class="collapsible" onclick="toggleCollapsible(this)">✅ Done</div>
-                    <ul id="done-tasks">
-                        {% for task in completed_tasks %}
-                        <li class="task-card">
-                            <div class="task-title">{{ task.task_name }}</div>
-                            <div class="task-meta">
-                                <div class="assignee-info">Assigned to: {{ task.assigned_to }}</div>
-                                <span class="priority-tag priority-{{ task.priority|lower }}">{{ task.priority }}</span>
+                    <h3 class="collapsible" id="myTasksHeader">My Tasks</h3>
+                    <ul id="myTasksList" class="task-scroll-container">
+                        <li class="task-card priority-high">
+                            <div class="task-header">
+                                <span class="task-title">Finish Project Report</span>
+                                <span class="priority-tag">High</span>
                             </div>
-                            <div class="task-description">{{ task.description }}</div>
+                            <div class="task-meta">
+                                <span class="assignee-info">Assigned by: Admin</span>
+                                <span class="deadline">Deadline: 2025-08-15</span>
+                            </div>
+                            <p class="task-description">Complete sections 1-3 and review findings.</p>
                         </li>
-                        {% else %}
-                        <li class="no-tasks">No completed tasks</li>
-                        {% endfor %}
+                        <li class="task-card priority-medium">
+                            <div class="task-header">
+                                <span class="task-title">Prepare Presentation Slides</span>
+                                <span class="priority-tag">Medium</span>
+                            </div>
+                            <div class="task-meta">
+                                <span class="assignee-info">Assigned by: Yourself</span>
+                                <span class="deadline">Deadline: 2025-08-20</span>
+                            </div>
+                            <p class="task-description">Create engaging slides for the team meeting.</p>
+                        </li>
+                        <li class="task-card priority-low">
+                            <div class="task-header">
+                                <span class="task-title">Research New Tools</span>
+                                <span class="priority-tag">Low</span>
+                            </div>
+                            <div class="task-meta">
+                                <span class="assignee-info">Assigned by: John Doe</span>
+                                <span class="deadline">Deadline: 2025-08-30</span>
+                            </div>
+                            <p class="task-description">Look into potential new software for design.</p>
+                        </li>
                     </ul>
                 </div>
 
-                <!-- TO BE DONE THIS WEEK -->
                 <div class="task-section">
-                    <div class="collapsible" onclick="toggleCollapsible(this)">🎯 To Be Done This Week</div>
-                    <ul id="this-week-tasks">
-                        {% for task in tasks_this_week %}
-                        <li class="task-card">
-                            <div class="task-title">{{ task.task_name }}</div>
+                    <h3 class="collapsible" id="groupTasksHeader">Group Tasks</h3>
+                    <ul id="groupTasksList" class="task-scroll-container">
+                        <li class="task-card priority-medium">
+                            <div class="task-header">
+                                <span class="task-title">Brainstorm Marketing Ideas</span>
+                                <span class="priority-tag">Medium</span>
+                            </div>
                             <div class="task-meta">
-                                <div class="assignee-info">Assigned to: {{ task.assigned_to }}</div>
-                                <span class="priority-tag priority-{{ task.priority|lower }}">{{ task.priority }}</span>
+                                <span class="assignee-info">Assigned to: All</span>
+                                <span class="deadline">Deadline: 2025-08-10</span>
                             </div>
-                            <div>
-                                <span style="font-weight: bold;">Deadline:</span> {{ task.deadline }}
-                            </div>
-                            <div class="task-description">{{ task.description }}</div>
+                            <p class="task-description">Collaborate on new marketing strategies.</p>
                         </li>
-                        {% else %}
-                        <li class="no-tasks">No tasks for this week</li>
-                        {% endfor %}
-                    </ul>
-                </div>
-
-                <!-- TASKS NEXT WEEK -->
-                <div class="task-section">
-                    <div class="collapsible" onclick="toggleCollapsible(this)">🗓️ Tasks Next Week</div>
-                    <ul id="next-week-tasks">
-                        {% for task in tasks_next_week %}
-                        <li class="task-card">
-                            <div class="task-title">{{ task.task_name }}</div>
-                            <div class="task-meta">
-                                <div class="assignee-info">Assigned to: {{ task.assigned_to }}</div>
-                                <span class="priority-tag priority-{{ task.priority|lower }}">{{ task.priority }}</span>
-                            </div>
-                            <div class="task-description">{{ task.description }}</div>
-                        </li>
-                        {% else %}
-                        <li class="no-tasks">No tasks for next week</li>
-                        {% endfor %}
                     </ul>
                 </div>
             </div>
         </div>
     </div>
 
-<!-- Existing assign-task-container remains unchanged -->
-<div class="assign-task-container" id="assignTaskContainer" style="display: none;">
-    <h3>Assign Task</h3>
-    <form id="assignTaskForm">
-        <!-- ... existing form ... -->
+    <div class="assign-task-container-overlay" id="whiteboardOverlay" style="display: none;"></div>
+    <div class="whiteboard-popup" id="whiteboardPopup" style="display: none;">
+        <h3>Collaborative Whiteboard</h3>
+        <canvas id="whiteboardCanvas"></canvas>
+        <div class="whiteboard-popup-controls">
+            <button class="clear-whiteboard-btn" id="clearWhiteboardBtn">Clear</button>
+            <button class="close-whiteboard-btn" id="closeWhiteboardBtn">Close</button>
+        </div>
+    </div>
 
-        <button type="button" id="assignTaskButton">Assign Task</button>
-        <button type="button" class="cancel-button" onclick="closeAssignTask()">Cancel</button>
-    </form>
-</div>
+    <div class="assign-task-container-overlay" id="assignTaskOverlay" style="display: none;"></div>
+    <div class="assign-task-container" id="assignTaskModal" style="display: none;">
+        <h3>Assign New Task</h3>
+        <form>
+            <div class="form-group">
+                <label for="taskTitle">Task Title:</label>
+                <input type="text" id="taskTitle" required>
+            </div>
+            <div class="form-group">
+                <label for="taskDescription">Description:</label>
+                <textarea id="taskDescription"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="taskAssignee">Assign To:</label>
+                <select id="taskAssignee">
+                    <option value="all">All Group Members</option>
+                    <option value="user1">User 1</option>
+                    <option value="user2">User 2</option>
+                    </select>
+            </div>
+            <div class="form-group">
+                <label for="taskPriority">Priority:</label>
+                <select id="taskPriority">
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="taskDeadline">Deadline:</label>
+                <input type="date" id="taskDeadline">
+            </div>
+            <button type="submit">Assign Task</button>
+            <button type="button" class="cancel-button" id="cancelAssignTaskBtn">Cancel</button>
+        </form>
+    </div>
 
-<div class="task-list-container" id="taskListContainer" style="display: none;">
-    <h3>Task List</h3>
+    <div class="assign-task-container-overlay" id="myTasksOverlay" style="display: none;"></div>
+    <div class="task-list-container" id="myTasksModal" style="display: none;">
+        <h3>My Assigned Tasks</h3>
+        <p>This is a pop-up showing your assigned tasks, pulled from the right panel.</p>
+        <ul id="myTasksPopupList">
+            <li class="task-card priority-high">
+                <div class="task-header">
+                    <span class="task-title">Finish Project Report</span>
+                    <span class="priority-tag">High</span>
+                </div>
+                <div class="task-meta">
+                    <span class="assignee-info">Assigned by: Admin</span>
+                    <span class="deadline">Deadline: 2025-08-15</span>
+                </div>
+                <p class="task-description">Complete sections 1-3 and review findings.</p>
+                <form>
+                    <input type="text" placeholder="Update progress (e.g., 50%)">
+                    <input type="file" accept="image/*,.pdf,.doc,.docx">
+                    <button type="submit">Update</button>
+                </form>
+            </li>
+        </ul>
+        <button id="closeMyTasksModalBtn">Close</button>
+    </div>
 
-    <h4>Pending Tasks</h4>
-    <ul>
-        {% for task in pending_tasks %}
-        <li>
-            <strong>{{ task.task_name }}</strong>: {{ task.description }}<br>
+    <div class="assign-task-container-overlay" id="groupTasksOverlay" style="display: none;"></div>
+    <div class="task-list-container" id="groupTasksModal" style="display: none;">
+        <h3>All Group Tasks</h3>
+        <p>This is a pop-up showing all tasks for the current group.</p>
+        <ul id="groupTasksPopupList">
+            <li class="task-card priority-medium">
+                <div class="task-header">
+                    <span class="task-title">Brainstorm Marketing Ideas</span>
+                    <span class="priority-tag">Medium</span>
+                </div>
+                <div class="task-meta">
+                    <span class="assignee-info">Assigned to: All</span>
+                    <span class="deadline">Deadline: 2025-08-10</span>
+                </div>
+                <p class="task-description">Collaborate on new marketing strategies.</p>
+            </li>
+        </ul>
+        <button id="closeGroupTasksModalBtn">Close</button>
+    </div>
 
-            {% if task.assigned_to == username %}
-            <form action="{{ url_for('submit_progress', username=username, group_id=group_id, task_id=task.task_id) }}"
-                  method="POST" enctype="multipart/form-data" style="display:inline;">
-                <input type="text" name="progress" placeholder="Progress update..." required>
-                <input type="file" name="file">
-                <button type="submit">Submit</button>
-            </form>
-            {% else %}
-            <div><em>Assigned to:</em> {{ task.assigned_to }}</div>
-            {% endif %}
-        </li>
-        {% else %}
-        <li>No pending tasks.</li>
-        {% endfor %}
-    </ul>
 
-    <h4>Completed Tasks</h4>
-    <ul>
-        {% for task in completed_tasks %}
-        <li>
-            <strong>{{ task.task_name }}</strong>: {{ task.description }} ✅<br>
-            <em>Progress Reports:</em>
-            {% if task.progress_reports %}
-                {% for report_id, report in task.progress_reports.items() %}
-                    <div>
-                        - {{ report.progress }} (by {{ report.submitted_by }})
-                        {% if report.file %}
-                            — <a href="{{ url_for('download_file', group_id=group_id, task_id=task.task_id, username=report.submitted_by, filename=report.file) }}" target="_blank">Download File</a>
-                        {% endif %}
-                    </div>
-                {% endfor %}
-            {% else %}
-                <div><em>No progress logs.</em></div>
-            {% endif %}
-        </li>
-        {% else %}
-        <li>No completed tasks yet.</li>
-        {% endfor %}
-    </ul>
+    <script>
+        // --- Page Navigation Logic ---
+        const loginPage = document.getElementById('loginPage');
+        const registerPage = document.getElementById('registerPage');
+        const dashboardPage = document.getElementById('dashboardPage');
+        const groupWorkspace = document.getElementById('groupWorkspace');
 
-    <button onclick="closeTaskList()">Close</button>
-</div>
+        const showRegisterBtn = document.getElementById('showRegister');
+        const showLoginBtn = document.getElementById('showLogin');
+        const logoutBtn = document.getElementById('logoutBtn');
 
-<div class="floating-container" id="approveRequestsContainer" style="display: none;">
-    <h3>Pending Join Requests</h3>
-    <ul id="pending-requests-list">
-        {% for username in pending_requests %}
-        <li>
-            {{ username }}
-                <form action="{{ url_for('approve_request', group_id=group_id, username=username) }}" method="post" style="display: inline;">
-                <button type="submit">Approve</button>
-            </form>
-        </li>
-        {% endfor %}
-    </ul>
-    <button onclick="closeApproveRequests()">Close</button>
-</div>
+        const showProfileBtn = document.getElementById('showProfileBtn');
+        const showCreateGroupBtn = document.getElementById('showCreateGroupBtn');
+        const showJoinGroupBtn = document.getElementById('showJoinGroupBtn');
+        const showRequestsBtn = document.getElementById('showRequestsBtn');
 
-<script type="module" src="{{ url_for('static', filename='bundle.js') }}"></script>
-        
-<script>
-  const username = "{{ username }}";
-  const groupId = "{{ group_id }}";
+        const profileSection = document.getElementById('profileSection');
+        const createGroupSection = document.getElementById('createGroupSection');
+        const joinGroupSection = document.getElementById('joinGroupSection');
+        const approveRequestsSection = document.getElementById('approveRequestsSection');
 
-  window.onload = fetchMessages;
-
-  function fetchMessages() {
-    fetch(`/get_messages/${groupId}`)
-      .then(res => res.json())
-      .then(data => {
-        const container = document.getElementById('messagesContainer');
-        container.innerHTML = "";
-        data.messages.forEach(msg => {
-        const msgEl = document.createElement('div');
-        msgEl.classList.add('message');
-        msgEl.classList.add(msg.sender === username ? 'right' : 'left');
-        msgEl.innerHTML = `<strong>${msg.sender}</strong>: ${msg.text} <br><small>${msg.timestamp}</small>`;
-        container.appendChild(msgEl);
-        });
-        container.scrollTop = container.scrollHeight;
-      });
-  }
-
-  function sendMessage() {
-    const text = document.getElementById('messageInput').value.trim();
-    if (!text) return;
-
-    fetch(`/send_message/${groupId}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sender: username, text })
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success) {
-        document.getElementById('messageInput').value = "";
-        fetchMessages();
-      }
-    });
-  }
-
-  setInterval(fetchMessages, 5000);
-</script>
-
-<script>
-const APP_ID = "8f0029e7fd2047339fe6822ab5b59abd";  // Replace with your Agora App ID
-const CHANNEL = "{{ group_id }}";  // Or any unique group name
-const UID = Math.floor(Math.random() * 10000);
-let client;
-let localTrack;
-
-document.getElementById("joinBtn").onclick = async () => {
-    client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
-
-   client.on("user-published", async (user, mediaType) => {
-        await client.subscribe(user, mediaType);
-        console.log("User published:", user.uid);
-
-        if (mediaType === "audio") {
-            const remoteAudioTrack = user.audioTrack;
-            remoteAudioTrack.play();
-            console.log("Playing remote user audio");
+        function hideAllPages() {
+            loginPage.style.display = 'none';
+            registerPage.style.display = 'none';
+            dashboardPage.style.display = 'none';
+            groupWorkspace.style.display = 'none';
         }
-    });
 
-    client.on("user-unpublished", (user) => {
-        console.log("User unpublished:", user.uid);
-    });
+        function hideAllFeatureSections() {
+            profileSection.style.display = 'none';
+            createGroupSection.style.display = 'none';
+            joinGroupSection.style.display = 'none';
+            approveRequestsSection.style.display = 'none';
+        }
 
-    try {
-        await client.join(APP_ID, CHANNEL, null, UID);
-        localTrack = await AgoraRTC.createMicrophoneAudioTrack();
-        await client.publish([localTrack]);
+        // Simulating login (replace with actual login logic)
+        loginPage.querySelector('form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            hideAllPages();
+            dashboardPage.style.display = 'flex'; // Show dashboard after login
+        });
 
-        document.getElementById("joinBtn").disabled = true;
-        document.getElementById("leaveBtn").disabled = false;
+        // Simulating register (replace with actual register logic)
+        registerPage.querySelector('form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            alert('Registration successful! Please log in.'); // Placeholder
+            hideAllPages();
+            loginPage.style.display = 'flex'; // Go back to login
+        });
 
-        console.log("Joined voice channel:", CHANNEL);
-    } catch (err) {
-        console.error("Failed to join channel:", err);
-        alert("Error joining the call: " + err.message);
-    }
-};
+        showRegisterBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            loginPage.style.display = 'none';
+            registerPage.style.display = 'flex';
+        });
 
-document.getElementById("leaveBtn").onclick = async () => {
-    if (localTrack) {
-        localTrack.stop();
-        localTrack.close();
-    }
+        showLoginBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            registerPage.style.display = 'none';
+            loginPage.style.display = 'flex';
+        });
 
-    await client.leave();
+        logoutBtn.addEventListener('click', function() {
+            hideAllPages();
+            loginPage.style.display = 'flex'; // Go back to login
+            hideAllFeatureSections(); // Hide any open dashboard sections
+        });
 
-    document.getElementById("joinBtn").disabled = false;
-    document.getElementById("leaveBtn").disabled = true;
+        // Dashboard Feature Navigation
+        showProfileBtn.addEventListener('click', () => { hideAllFeatureSections(); profileSection.style.display = 'block'; });
+        showCreateGroupBtn.addEventListener('click', () => { hideAllFeatureSections(); createGroupSection.style.display = 'block'; });
+        showJoinGroupBtn.addEventListener('click', () => { hideAllFeatureSections(); joinGroupSection.style.display = 'block'; });
+        showRequestsBtn.addEventListener('click', () => { hideAllFeatureSections(); approveRequestsSection.style.display = 'block'; });
 
-    console.log("Left voice channel");
-};
-</script>
 
-<!-- The rest of the file remains unchanged -->
+        // Simulating entering a group (replace with actual group entry logic)
+        document.getElementById('myGroupsList').addEventListener('click', function(e) {
+            if (e.target.classList.contains('enter-group-btn')) {
+                e.preventDefault();
+                const groupId = e.target.dataset.groupId;
+                console.log('Entering group:', groupId);
+                hideAllPages();
+                groupWorkspace.style.display = 'flex'; // Show group workspace
+            }
+        });
 
+        document.getElementById('leaveGroupBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            hideAllPages();
+            dashboardPage.style.display = 'flex'; // Go back to dashboard
+            hideAllFeatureSections(); // Ensure dashboard is clean
+        });
+
+
+        // --- Chatbox Logic ---
+        const chatInput = document.getElementById('chatInput');
+        const sendChatBtn = document.getElementById('sendChatBtn');
+        const chatMessages = document.getElementById('chatMessages');
+
+        sendChatBtn.addEventListener('click', () => {
+            const messageText = chatInput.value.trim();
+            if (messageText) {
+                const newMessage = document.createElement('div');
+                newMessage.classList.add('message', 'right'); // Assume current user's message goes right
+                const now = new Date();
+                const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                newMessage.innerHTML = `<strong>You:</strong> ${messageText}<small>${timeString}</small>`;
+                chatMessages.appendChild(newMessage);
+                chatInput.value = ''; // Clear input
+                chatMessages.scrollTop = chatMessages.scrollHeight; // Scroll to bottom
+            }
+        });
+
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) { // Send on Enter, allow Shift+Enter for new line
+                e.preventDefault();
+                sendChatBtn.click();
+            }
+        });
+
+
+        // --- Voice Call Logic ---
+        const joinBtn = document.getElementById('joinBtn');
+        const leaveBtn = document.getElementById('leaveBtn');
+
+        joinBtn.addEventListener('click', () => {
+            alert('Joining voice call...'); // Placeholder for actual call logic
+            joinBtn.disabled = true;
+            leaveBtn.disabled = false;
+        });
+
+        leaveBtn.addEventListener('click', () => {
+            alert('Leaving voice call...'); // Placeholder for actual call logic
+            joinBtn.disabled = false;
+            leaveBtn.disabled = true;
+        });
+
+        // --- Whiteboard Logic ---
+        const openWhiteboardBtn = document.getElementById('openWhiteboardBtn');
+        const whiteboardPopup = document.getElementById('whiteboardPopup');
+        const whiteboardOverlay = document.getElementById('whiteboardOverlay');
+        const closeWhiteboardBtn = document.getElementById('closeWhiteboardBtn');
+        const clearWhiteboardBtn = document.getElementById('clearWhiteboardBtn');
+        const whiteboardCanvas = document.getElementById('whiteboardCanvas');
+        const ctx = whiteboardCanvas.getContext('2d');
+
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+
+        function resizeCanvas() {
+            whiteboardCanvas.width = whiteboardPopup.clientWidth - 50; // Account for padding
+            whiteboardCanvas.height = whiteboardPopup.clientHeight - 150; // Account for padding and controls
+            redrawCanvas(); // Redraw content if any
+        }
+
+        // Placeholder for drawing content (in a real app, you'd store strokes)
+        function redrawCanvas() {
+            // This is a simplified redraw. In a real app, you'd iterate through stored drawing commands.
+            ctx.clearRect(0, 0, whiteboardCanvas.width, whiteboardCanvas.height);
+        }
+
+        openWhiteboardBtn.addEventListener('click', () => {
+            whiteboardPopup.style.display = 'flex';
+            whiteboardOverlay.style.display = 'block';
+            resizeCanvas(); // Set initial size
+        });
+
+        closeWhiteboardBtn.addEventListener('click', () => {
+            whiteboardPopup.style.display = 'none';
+            whiteboardOverlay.style.display = 'none';
+        });
+
+        clearWhiteboardBtn.addEventListener('click', () => {
+            ctx.clearRect(0, 0, whiteboardCanvas.width, whiteboardCanvas.height);
+        });
+
+        whiteboardCanvas.addEventListener('mousedown', (e) => {
+            isDrawing = true;
+            [lastX, lastY] = [e.offsetX, e.offsetY];
+        });
+
+        whiteboardCanvas.addEventListener('mousemove', (e) => {
+            if (!isDrawing) return;
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(e.offsetX, e.offsetY);
+            ctx.stroke();
+            [lastX, lastY] = [e.offsetX, e.offsetY];
+        });
+
+        whiteboardCanvas.addEventListener('mouseup', () => isDrawing = false);
+        whiteboardCanvas.addEventListener('mouseout', () => isDrawing = false);
+
+        window.addEventListener('resize', () => {
+            if (whiteboardPopup.style.display === 'flex') {
+                resizeCanvas();
+            }
+        });
+
+
+        // --- Task Panel Collapsible Logic ---
+        const panelToggle = document.getElementById('panelToggle');
+        const taskPanel = document.getElementById('taskPanel');
+        const collapsibles = document.querySelectorAll('.task-section .collapsible');
+
+        panelToggle.addEventListener('click', () => {
+            taskPanel.classList.toggle('collapsed');
+            panelToggle.textContent = taskPanel.classList.contains('collapsed') ? '◀' : '▶'; // Toggle arrow
+            // Adjust body display if the right panel becomes completely hidden/shown
+            if (taskPanel.classList.contains('collapsed')) {
+                 // You might want to adjust left-panel width here if it's dynamic
+            } else {
+                 // You might want to readjust left-panel width here
+            }
+        });
+
+        // Initialize collapsible sections
+        collapsibles.forEach(header => {
+            header.addEventListener('click', () => {
+                header.classList.toggle('collapsed');
+                const content = header.nextElementSibling; // Get the UL list
+                if (header.classList.contains('collapsed')) {
+                    content.style.display = 'none';
+                } else {
+                    content.style.display = 'block';
+                }
+            });
+            // Initially collapse all task sections
+            header.classList.add('collapsed');
+            header.nextElementSibling.style.display = 'none';
+        });
+
+
+        // --- Assign Task Modal Logic ---
+        const showAssignTaskModalBtn = document.getElementById('showAssignTaskModalBtn');
+        const assignTaskModal = document.getElementById('assignTaskModal');
+        const assignTaskOverlay = document.getElementById('assignTaskOverlay');
+        const cancelAssignTaskBtn = document.getElementById('cancelAssignTaskBtn');
+
+        showAssignTaskModalBtn.addEventListener('click', () => {
+            assignTaskModal.style.display = 'block';
+            assignTaskOverlay.style.display = 'block';
+        });
+
+        cancelAssignTaskBtn.addEventListener('click', () => {
+            assignTaskModal.style.display = 'none';
+            assignTaskOverlay.style.display = 'none';
+        });
+
+        assignTaskModal.querySelector('form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            alert('Task assigned! (This is a placeholder action)');
+            assignTaskModal.style.display = 'none';
+            assignTaskOverlay.style.display = 'none';
+            // In a real application, you'd send data to a server and refresh tasks
+        });
+
+
+        // --- My Tasks & Group Tasks Pop-ups Logic ---
+        const showMyTasksModalBtn = document.getElementById('showMyTasksModalBtn');
+        const myTasksModal = document.getElementById('myTasksModal');
+        const myTasksOverlay = document.getElementById('myTasksOverlay');
+        const closeMyTasksModalBtn = document.getElementById('closeMyTasksModalBtn');
+        const myTasksPopupList = document.getElementById('myTasksPopupList');
+
+        const showGroupTasksModalBtn = document.getElementById('showGroupTasksModalBtn');
+        const groupTasksModal = document.getElementById('groupTasksModal');
+        const groupTasksOverlay = document.getElementById('groupTasksOverlay');
+        const closeGroupTasksModalBtn = document.getElementById('closeGroupTasksModalBtn');
+        const groupTasksPopupList = document.getElementById('groupTasksPopupList');
+
+        function populateTasksInModal(sourceListId, destinationListElement) {
+            destinationListElement.innerHTML = ''; // Clear current content
+            const sourceList = document.getElementById(sourceListId);
+            const tasks = sourceList.querySelectorAll('.task-card');
+            if (tasks.length === 0) {
+                const noTasksItem = document.createElement('li');
+                noTasksItem.classList.add('no-tasks');
+                noTasksItem.textContent = 'No tasks found in this section.';
+                destinationListElement.appendChild(noTasksItem);
+            } else {
+                tasks.forEach(task => {
+                    const clonedTask = task.cloneNode(true);
+                    // Optionally remove forms or add specific modal actions here if needed
+                    destinationListElement.appendChild(clonedTask);
+                });
+            }
+        }
+
+
+        showMyTasksModalBtn.addEventListener('click', () => {
+            populateTasksInModal('myTasksList', myTasksPopupList);
+            myTasksModal.style.display = 'block';
+            myTasksOverlay.style.display = 'block';
+        });
+
+        closeMyTasksModalBtn.addEventListener('click', () => {
+            myTasksModal.style.display = 'none';
+            myTasksOverlay.style.display = 'none';
+        });
+
+        showGroupTasksModalBtn.addEventListener('click', () => {
+            populateTasksInModal('groupTasksList', groupTasksPopupList);
+            groupTasksModal.style.display = 'block';
+            groupTasksOverlay.style.display = 'block';
+        });
+
+        closeGroupTasksModalBtn.addEventListener('click', () => {
+            groupTasksModal.style.display = 'none';
+            groupTasksOverlay.style.display = 'none';
+        });
+
+    </script>
 </body>
 </html>
-
-<script>
-    // Add this new script block for the task panel toggling
-    document.getElementById('taskPanelToggle').addEventListener('click', function() {
-        const panel = document.getElementById('taskPanel');
-        panel.classList.toggle('collapsed');
-        this.textContent = panel.classList.contains('collapsed') ? '≡' : '×';
-    });
-    
-    function toggleCollapsible(element) {
-        element.classList.toggle('collapsed');
-        const ul = element.nextElementSibling;
-        if (ul.style.display === 'none') {
-            ul.style.display = 'block';
-        } else {
-            ul.style.display = 'none';
-        }
-    }
-    
-    window.onload = function() {
-        // Initialize all collapsible sections as expanded
-        document.querySelectorAll('.collapsible').forEach(el => {
-            el.classList.remove('collapsed');
-            el.nextElementSibling.style.display = 'block';
-        });
-        // ... rest of existing onload code ...
-    };
-</script>
-<script>
-const assignTaskContainer = document.getElementById('assignTaskContainer');
-const taskListContainer = document.getElementById('taskListContainer');
-const taskList = document.getElementById('task-list');
-const taskNameInput = document.getElementById('task-name');
-const taskDescriptionInput = document.getElementById('task-description');
-const assignedToInput = document.getElementById('assigned-to');
-const assignTaskButton = document.getElementById('assignTaskButton');
-const progressReportContainer = document.getElementById('progressReportContainer');
-const progressReportInput = document.getElementById('progress-report');
-const progressReportList = document.getElementById('progress-report-list');
-
-let tasks = [];
-
-function openAssignTask() {
-    assignTaskContainer.style.display = 'block';
-}
-
-function closeAssignTask() {
-    assignTaskContainer.style.display = 'none';
-}
-
-function openTaskList() {
-    document.getElementById('taskListContainer').style.display = 'block';
-}
-
-
-function closeTaskList() {
-    taskListContainer.style.display = 'none';
-}
-
-function addTask() {
-    const title = taskNameInput.value.trim();
-    const description = taskDescriptionInput.value.trim() || "No description provided";
-    const assignedTo = assignedToInput.value.trim();
-    const priority = document.getElementById('priority').value;
-
-    if (title && assignedTo && priority) {
-        const newTask = { title, description, assignedTo, priority, progressReports: [] };
-        tasks.push(newTask);
-
-        taskNameInput.value = '';
-        taskDescriptionInput.value = '';
-        assignedToInput.value = '';
-        document.getElementById('priority').value = '';
-
-        displayTasks();
-    } else {
-        alert('Please fill all required fields.');
-    }
-}
-
-assignTaskButton.addEventListener('click', function () {
-    const title = taskNameInput.value.trim();
-    const description = taskDescriptionInput.value.trim() || "No description provided";
-    const assignedTo = assignedToInput.value.trim();
-    const priority = document.getElementById('priority').value;
-
-    if (title && assignedTo && priority) {
-        const groupId = "{{ group_id }}";
-
-        fetch(`/assign_task/${groupId}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
-        body: new URLSearchParams({
-            'task_name': title,
-            'task_description': description,
-            'assigned_to': assignedTo,
-            'priority': priority,
-            'assigned_type': assignType
-        })
-        })
-        .then(response => response.text())
-        .then(data => {
-            alert(data);
-            location.reload(); // refresh to see updates
-        })
-        .catch(err => {
-            console.error(err);
-            alert("Error assigning task.");
-        });
-    } else {
-        alert('Please fill all required fields.');
-    }
-});
-
-
-function openApproveRequests() {
-    document.getElementById('approveRequestsContainer').style.display = 'block';
-}
-
-function closeApproveRequests() {
-    document.getElementById('approveRequestsContainer').style.display = 'none';
-}
-
-</script>
