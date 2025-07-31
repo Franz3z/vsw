@@ -95,11 +95,12 @@
     <div class="container">
         <!-- LEFT PANEL: Navigation & Controls -->
         <div class="left-panel">
-            <div class="buttons">
-                <button onclick="openAssignTask()">Add Task</button>
-                <button onclick="openApproveRequests()">Pending Requests</button>
-                <a href="{{ url_for('dashboard', username=username) }}" class="styled-button">←</a>
-            </div>
+        <div class="buttons">
+            <button onclick="openAssignTask()">Add Task</button>
+            <button onclick="openApproveRequests()">Pending Requests</button>
+            <button onclick="openRoleManagement()">Manage Roles</button>
+            <a href="{{ url_for('dashboard', username=username) }}" class="styled-button">←</a>
+        </div>
 
             <div class="chatbox">
                 <div class="messages" id="messagesContainer"></div>
@@ -471,12 +472,13 @@ assignTaskButton.addEventListener('click', function () {
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded'
             },
-            body: new URLSearchParams({
-                'task_name': title,
-                'task_description': description,
-                'assigned_to': assignedTo,
-                'priority': priority
-            })
+        body: new URLSearchParams({
+            'task_name': title,
+            'task_description': description,
+            'assigned_to': assignedTo,
+            'priority': priority,
+            'assigned_type': assignType
+        })
         })
         .then(response => response.text())
         .then(data => {
@@ -502,6 +504,3 @@ function closeApproveRequests() {
 }
 
 </script>
-
-
-
