@@ -7,9 +7,93 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <script defer src="{{ url_for('static', filename='bundle.js') }}"></script>
     <script src="https://download.agora.io/sdk/release/AgoraRTC_N.js"></script>
+    <style>
+        .task-card {
+            background: white;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .task-title {
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-bottom: 6px;
+        }
+        .task-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+        }
+        .priority-tag {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        .priority-high { background-color: #ffdddd; color: #cc0000; }
+        .priority-medium { background-color: #fff3cd; color: #856404; }
+        .priority-low { background-color: #d4edda; color: #155724; }
+        .assignee-info {
+            font-style: italic;
+            color: #666;
+        }
+        .task-section {
+            margin-bottom: 20px;
+        }
+        .section-header {
+            font-weight: bold;
+            font-size: 1.2rem;
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+            border-bottom: 2px solid #eee;
+        }
+        .collapsible {
+            cursor: pointer;
+            position: relative;
+            padding-left: 20px;
+        }
+        .collapsible::before {
+            content: '▼';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            transition: transform 0.3s;
+        }
+        .collapsible.collapsed::before {
+            transform: translateY(-50%) rotate(-90deg);
+        }
+        .task-panel {
+            background: #f8f9fa;
+            padding: 15px;
+            height: 100%;
+            overflow-y: auto;
+            box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+        }
+        .task-panel-content {
+            display: block;
+        }
+        .task-panel.collapsed .task-panel-content {
+            display: none;
+        }
+        .panel-toggle {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 100;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 5px;
+            cursor: pointer;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
+        <!-- LEFT PANEL: Navigation & Controls -->
         <div class="left-panel">
         <div class="buttons">
             <button onclick="openAssignTask()">Add Task</button>
@@ -19,6 +103,10 @@
         </div>
 
             <div class="chatbox">
+                <div class="chatbox-header">
+                    <span>Chat</span>
+                    <button id="whiteboardToggleBtn">Show Whiteboard</button>
+                </div>
                 <div class="messages" id="messagesContainer"></div>
                 <div class="input-container">
                     <textarea id="messageInput" placeholder="Type your message..." rows="2"></textarea>
@@ -33,19 +121,15 @@
             </div>
         </div>
         
-        <div class="center-panel">
-            <div class="whiteboard">
-                <h3>Whiteboard</h3>
-                <canvas id="whiteboardCanvas" style="border: 1px solid #ccc; background-color: white;"></canvas>
-                <button onclick="clearWhiteboard()">Clear Whiteboard</button>
-            </div>
-        </div>
+
         
+        <!-- RIGHT PANEL: Persistent Task Panel -->
         <div class="right-panel" id="taskPanel">
             <button class="panel-toggle" id="taskPanelToggle">≡</button>
             <div class="task-panel-content">
                 <h3>Group Tasks</h3>
                 
+                <!-- DONE SECTION -->
                 <div class="task-section">
                     <div class="collapsible" onclick="toggleCollapsible(this)">✅ Done</div>
                     <ul id="done-tasks">
@@ -64,6 +148,7 @@
                     </ul>
                 </div>
 
+                <!-- TO BE DONE THIS WEEK -->
                 <div class="task-section">
                     <div class="collapsible" onclick="toggleCollapsible(this)">🎯 To Be Done This Week</div>
                     <ul id="this-week-tasks">
@@ -85,6 +170,7 @@
                     </ul>
                 </div>
 
+                <!-- TASKS NEXT WEEK -->
                 <div class="task-section">
                     <div class="collapsible" onclick="toggleCollapsible(this)">🗓️ Tasks Next Week</div>
                     <ul id="next-week-tasks">
@@ -106,9 +192,12 @@
         </div>
     </div>
 
+<!-- Existing assign-task-container remains unchanged -->
 <div class="assign-task-container" id="assignTaskContainer" style="display: none;">
     <h3>Assign Task</h3>
     <form id="assignTaskForm">
+        <!-- ... existing form ... -->
+
         <button type="button" id="assignTaskButton">Assign Task</button>
         <button type="button" class="cancel-button" onclick="closeAssignTask()">Cancel</button>
     </form>
@@ -184,47 +273,47 @@
 <script type="module" src="{{ url_for('static', filename='bundle.js') }}"></script>
         
 <script>
-    const username = "{{ username }}";
-    const groupId = "{{ group_id }}";
+  const username = "{{ username }}";
+  const groupId = "{{ group_id }}";
 
-    window.onload = fetchMessages;
+  window.onload = fetchMessages;
 
-    function fetchMessages() {
-        fetch(`/get_messages/${groupId}`)
-            .then(res => res.json())
-            .then(data => {
-                const container = document.getElementById('messagesContainer');
-                container.innerHTML = "";
-                data.messages.forEach(msg => {
-                    const msgEl = document.createElement('div');
-                    msgEl.classList.add('message');
-                    msgEl.classList.add(msg.sender === username ? 'right' : 'left');
-                    msgEl.innerHTML = `<strong>${msg.sender}</strong>: ${msg.text} <br><small>${msg.timestamp}</small>`;
-                    container.appendChild(msgEl);
-                });
-                container.scrollTop = container.scrollHeight;
-            });
-    }
-
-    function sendMessage() {
-        const text = document.getElementById('messageInput').value.trim();
-        if (!text) return;
-
-        fetch(`/send_message/${groupId}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ sender: username, text })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                document.getElementById('messageInput').value = "";
-                fetchMessages();
-            }
+  function fetchMessages() {
+    fetch(`/get_messages/${groupId}`)
+      .then(res => res.json())
+      .then(data => {
+        const container = document.getElementById('messagesContainer');
+        container.innerHTML = "";
+        data.messages.forEach(msg => {
+        const msgEl = document.createElement('div');
+        msgEl.classList.add('message');
+        msgEl.classList.add(msg.sender === username ? 'right' : 'left');
+        msgEl.innerHTML = `<strong>${msg.sender}</strong>: ${msg.text} <br><small>${msg.timestamp}</small>`;
+        container.appendChild(msgEl);
         });
-    }
+        container.scrollTop = container.scrollHeight;
+      });
+  }
 
-    setInterval(fetchMessages, 5000);
+  function sendMessage() {
+    const text = document.getElementById('messageInput').value.trim();
+    if (!text) return;
+
+    fetch(`/send_message/${groupId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sender: username, text })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        document.getElementById('messageInput').value = "";
+        fetchMessages();
+      }
+    });
+  }
+
+  setInterval(fetchMessages, 5000);
 </script>
 
 <script>
@@ -282,8 +371,37 @@ document.getElementById("leaveBtn").onclick = async () => {
 };
 </script>
 
+<!-- The rest of the file remains unchanged -->
+
 </body>
 </html>
+
+<!-- Whiteboard Modal -->
+<div id="whiteboardModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center;">
+    <div style="background:white; border-radius:8px; padding:20px; width:80%; max-width:800px; max-height:90vh; overflow:auto;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h3>Whiteboard</h3>
+            <button onclick="closeWhiteboard()" style="background:#ff5555; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">Close</button>
+        </div>
+        <canvas id="whiteboardCanvas" style="border:1px solid #ccc; background-color:white; width:100%; height:500px;"></canvas>
+        <div style="text-align:center; margin-top:10px;">
+            <button onclick="clearWhiteboard()" style="padding:8px 15px; background:#4CAF50; color:white; border:none; border-radius:4px; cursor:pointer;">Clear Whiteboard</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openWhiteboard() {
+        document.getElementById('whiteboardModal').style.display = 'flex';
+    }
+    
+    function closeWhiteboard() {
+        document.getElementById('whiteboardModal').style.display = 'none';
+    }
+    
+    // Initialize whiteboard button event listener
+    document.getElementById('whiteboardToggleBtn').addEventListener('click', openWhiteboard);
+</script>
 
 <script>
     // Add this new script block for the task panel toggling
@@ -366,12 +484,9 @@ function addTask() {
 
 assignTaskButton.addEventListener('click', function () {
     const title = taskNameInput.value.trim();
-    const description = taskDescriptionInput.value.trim();
+    const description = taskDescriptionInput.value.trim() || "No description provided";
     const assignedTo = assignedToInput.value.trim();
     const priority = document.getElementById('priority').value;
-    // Assuming 'assignType' is defined elsewhere, potentially from a radio button or similar.
-    // For this example, I'll set a placeholder or assume it's always 'individual' or 'group'
-    const assignType = 'individual'; // You might need to adjust this based on your actual form
 
     if (title && assignedTo && priority) {
         const groupId = "{{ group_id }}";
