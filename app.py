@@ -18,13 +18,12 @@ import sys
 load_dotenv()
 
 app = Flask(__name__)
-# Use os.getenv for secret key with a fallback for local testing, but ensure it's set on Vercel
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'your_super_secret_fallback_key_CHANGE_ME')
 logging.basicConfig(level=logging.DEBUG)
 
 # Use /tmp for ephemeral storage on Vercel
 app.config['UPLOAD_FOLDER'] = os.path.join('/tmp', 'uploads')
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True) # Ensure it exists for the current execution
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 database_url = os.getenv('FIREBASE_DATABASE_URL')
 
@@ -43,7 +42,6 @@ try:
         "universe_domain": os.getenv('FIREBASE_UNIVERSE_DOMAIN')
     }
     
-    # Remove any None values from the dictionary
     service_account_info = {k: v for k, v in service_account_info.items() if v is not None}
 
     cred = credentials.Certificate(service_account_info)
@@ -54,7 +52,6 @@ try:
 
 except Exception as e:
     logging.error(f"Error initializing Firebase from environment variables: {e}")
-    logging.error("Please ensure ALL Firebase service account environment variables are correctly set on Vercel.")
     logging.error(traceback.format_exc())
     sys.exit(1)
 
@@ -152,7 +149,8 @@ def create_group_handler(username):
         'admin': username,
         'members': {
             username: 'admin'
-        }
+        },
+        'roles': {}  # Initialize roles dictionary
     })
 
     db.reference(f'users/{username}/groups/{group_id}').set({
@@ -230,13 +228,20 @@ def mainadmin(username, group_id):
             'description': task.get('description', ''),
             'assigned_to': task.get('assigned_to', ''),
             'priority': task.get('priority', ''),
-            'progress_reports': task.get('progress_reports', {})
+            'progress_reports': task.get('progress_reports', {}),
+            'assigned_type': task.get('assigned_type', 'user'),  # Add assigned_type
+            'deadline': task.get('deadline', '')
         }
         if task_info['progress_reports']:
             completed_tasks.append(task_info)
         else:
             pending_tasks.append(task_info)
 
+    # Get custom roles
+    roles_ref = db.reference(f'groups/{group_id}/roles')
+    roles_data = roles_ref.get() or {}
+
+    # Get member roles (replaced with actual implementation)
     chat_ref = db.reference(f'groups/{group_id}/chat')
     chat_data = chat_ref.get() or {}
 
@@ -259,8 +264,38 @@ def mainadmin(username, group_id):
         pending_requests=pending_requests,
         pending_tasks=pending_tasks,
         completed_tasks=completed_tasks,
-        messages=messages
+        messages=messages,
+        group_roles=roles_data
     )
+
+@app.route('/create_role/<group_id>', methods=['POST'])
+def create_role(group_id):
+    role_name = request.json['role_name']
+    ref = db.reference(f'groups/{group_id}/roles')
+    ref.child(role_name).set(True)  # Store role as key
+    
+    return jsonify({
+        'success': True,
+        'message': f'Role "{role_name}" created successfully!'
+    })
+
+@app.route('/assign_role/<group_id>', methods=['POST'])
+def assign_role(group_id):
+    username = request.json['username']
+    role_name = request.json['role_name']
+    
+    ref = db.reference(f'groups/{group_id}/members/{username}/roles')
+    current_roles = ref.get() or {}
+    current_roles[role_name] = True
+    
+    try:
+        ref.set(current_roles)
+        # Also update the user's group role reference
+        user_group_ref = db.reference(f'users/{username}/groups/{group_id}/roles')
+        user_group_ref.set(current_roles)
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/assign_task/<group_id>', methods=['POST'])
 def assign_task(group_id):
@@ -268,7 +303,8 @@ def assign_task(group_id):
     task_description = request.form['task_description']
     assigned_to = request.form['assigned_to']
     priority = request.form['priority']
-    deadline = request.form['deadline']  # Add deadline param
+    deadline = request.form.get('deadline', '')
+    assigned_type = request.form.get('assigned_type', 'user')  # Default to user
 
     task_data = {
         'task_name': task_name,
@@ -276,11 +312,27 @@ def assign_task(group_id):
         'assigned_to': assigned_to,
         'priority': priority,
         'deadline': deadline,
-        'completed': False,  # New tasks are incomplete
-        'progress_reports': {}
+        'completed': False,
+        'progress_reports': {},
+        'assigned_type': assigned_type  # Added field
     }
 
     db.reference(f'groups/{group_id}/tasks').push(task_data)
+    
+    # Create notification for role assignments
+    if assigned_type == 'role':
+        role_ref = db.reference(f'groups/{group_id}/members')
+        members = role_ref.get() or {}
+        for member, data in members.items():
+            if data.get('roles', {}).get(assigned_to):
+                # Send notification to relevant member
+                notifications_ref = db.reference(f'users/{member}/notifications').push()
+                notifications_ref.set({
+                    'message': f'New task assigned to your role: {task_name}',
+                    'group_id': group_id,
+                    'timestamp': datetime.now().isoformat(),
+                    'read': False
+                })
 
     return jsonify({
         'success': True,
@@ -318,7 +370,12 @@ def get_tasks_by_week(tasks):
 
 @app.route('/main/<username>/<group_id>')
 def main(username, group_id):
-    # Get tasks assigned to current user
+    # Get group roles to check role assignments
+    group_ref = db.reference(f'groups/{group_id}/roles')
+    roles_data = group_ref.get() or {}
+    user_roles = db.reference(f'users/{username}/groups/{group_id}/roles').get() or {}
+
+    # Get all tasks
     tasks_ref = db.reference(f'groups/{group_id}/tasks').get() or {}
     
     pending_tasks = []
@@ -326,8 +383,14 @@ def main(username, group_id):
     
     # Separate pending and completed tasks
     for task_id, task_info in tasks_ref.items():
-        if task_info.get('assigned_to') == username:
-            task_info['task_id'] = task_id
+        task_info['task_id'] = task_id
+        # Add assigned_type if missing for backward compatibility
+        if 'assigned_type' not in task_info:
+            task_info['assigned_type'] = 'user'
+        
+        # Include tasks assigned to user directly or to role
+        if (task_info['assigned_type'] == 'user' and task_info.get('assigned_to') == username) or \
+           (task_info['assigned_type'] == 'role' and task_info.get('assigned_to') in user_roles and user_roles[task_info['assigned_to']]):
             if task_info.get('completed'):
                 completed_tasks.append(task_info)
             else:
@@ -335,6 +398,17 @@ def main(username, group_id):
     
     # Get tasks due this week with priority formatting
     tasks_this_week = get_tasks_by_week(pending_tasks)
+    
+    # Get unread notifications
+    notifications_ref = db.reference(f'users/{username}/notifications').get() or {}
+    unread_notifications = []
+    for nid, notif in notifications_ref.items():
+        if not notif.get('read', False):
+            unread_notifications.append({**notif, 'nid': nid})
+            
+    # Mark notifications as read
+    for notif in unread_notifications:
+        db.reference(f'users/{username}/notifications/{notif["nid"]}/read').set(True)
     
     # Get chat messages
     chat_ref = db.reference(f'groups/{group_id}/chat')
@@ -348,7 +422,7 @@ def main(username, group_id):
                 'timestamp': datetime.fromisoformat(msg['timestamp']).strftime('%b %d, %I:%M %p')
             })
     
-    # Sort tasks_this_week by priority (high:1, medium:2, low:3)
+    # Sort tasks_this_week by priority
     priority_order = {'high': 1, 'medium': 2, 'low': 3}
     tasks_this_week = sorted(
         tasks_this_week,
@@ -362,9 +436,10 @@ def main(username, group_id):
         pending_tasks=pending_tasks,
         completed_tasks=completed_tasks,
         tasks_this_week=tasks_this_week,
-        messages=messages
+        messages=messages,
+        notifications=unread_notifications,
+        user_roles=list(user_roles.keys())
     )
-
 
 @app.route('/approve_request/<group_id>/<username>', methods=['POST'])
 def approve_request(group_id, username):
@@ -373,14 +448,19 @@ def approve_request(group_id, username):
     members_ref = group_ref.child('members')
 
     if pending_ref.child(username).get():
-        members_ref.child(username).set('member')
+        members_ref.child(username).set({
+            'role': 'member',
+            'roles': {'member': True}
+        })
+
         pending_ref.child(username).delete()
 
         user_group_ref = db.reference(f'users/{username}/groups/{group_id}')
         group_data = group_ref.get()
         user_group_ref.set({
             'group_name': group_data.get('group_name', ''),
-            'role': 'member'
+            'role': 'member',
+            'roles': {'member': True}
         })
 
     return redirect(url_for('mainadmin', username=session.get('username'), group_id=group_id))
@@ -398,7 +478,8 @@ def submit_progress(username, group_id, task_id):
 
     progress_data = {
         'submitted_by': username,
-        'progress': progress_text or ''
+        'progress': progress_text or '',
+        'timestamp': datetime.now().isoformat()
     }
 
     if file and file.filename:
@@ -450,7 +531,6 @@ def get_messages(group_id):
         
         message_list = []
         for key, msg in messages.items():
-            # Ensure msg is a dictionary before trying to get values
             if isinstance(msg, dict):
                 message_list.append({
                     'sender': msg.get('sender', ''),
@@ -463,12 +543,22 @@ def get_messages(group_id):
         return jsonify({'messages': message_list})
 
     except Exception as e:
-        # Log the error with a full traceback
         logging.error(f"Error in get_messages for group {group_id}: {e}")
         sys.stderr.write(traceback.format_exc() + '\n')
-        # Return a 500 error response with a generic message
         return jsonify({'success': False, 'error': 'Internal server error fetching messages'}), 500
 
+@app.route('/clear_notification/<notification_id>', methods=['POST'])
+def clear_notification(notification_id):
+    if 'username' not in session:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    try:
+        ref = db.reference(f'users/{session["username"]}/notifications/{notification_id}')
+        ref.delete()
+        return jsonify({'success': True})
+    except Exception as e:
+        logging.error(f"Error deleting notification: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @app.errorhandler(Exception)
 def handle_exception(e):
