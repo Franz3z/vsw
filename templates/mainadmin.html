@@ -136,16 +136,36 @@
 <div class="floating-container" id="assignOptionsContainer" style="display: none;">
         <h3>Assign Action</h3>
         <p>Please choose an action:</p>
-        <button onclick="openAssignRoleModal()">Assign Role</button>
-        <button onclick="openCreateAssignTaskModal()">Create/Assign Task</button>
+        <button onclick="openAssignRoleOptions()">Assign Role</button> <button onclick="openCreateAssignTaskModal()">Create/Assign Task</button>
         <button onclick="closeAssignOptions()">Cancel</button>
     </div>
-<div class="floating-container" id="assignRoleContainer" style="display: none;">
-        <h3>Assign Role</h3>
-        <div id="assignRoleContent">
-            </div>
-        <button onclick="closeAssignRoleModal()">Close</button>
+
+    <div class="floating-container" id="assignRoleOptionsContainer" style="display: none;">
+        <h3>Role Assignment Options</h3>
+        <p>Do you want to create a new role or assign an existing role?</p>
+        <button onclick="openRoleManagement()">Manage & Create Roles</button> <button onclick="openAssignExistingRoleModal()">Assign Existing Role</button> <button onclick="closeAssignRoleOptions()">Cancel</button>
     </div>
+
+
+    <div class="floating-container" id="assignExistingRoleContainer" style="display: none;">
+        <h3>Assign Existing Role</h3>
+        <form id="assignExistingRoleForm">
+            <label for="select-role-to-assign">Select Role:</label>
+            <select id="select-role-to-assign" required>
+                </select>
+            <br>
+            <label for="select-users-for-role">Select Users (Ctrl/Cmd + click to select multiple):</label>
+            <select id="select-users-for-role" multiple required>
+                {% for member in members %}
+                <option value="{{ member.username }}">{{ member.username }}</option>
+                {% endfor %}
+            </select>
+            <br>
+            <button type="button" onclick="submitAssignExistingRole()">Assign Role</button>
+            <button type="button" class="cancel-button" onclick="closeAssignExistingRoleModal()">Cancel</button>
+        </form>
+    </div>
+
 
     <div class="floating-container" id="assignTaskContainer" style="display: none;">
         <h3>Assign Task</h3>
