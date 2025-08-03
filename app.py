@@ -601,6 +601,11 @@ def assign_existing_task(group_id):
         if not current_task_data:
             return jsonify({'success': False, 'message': 'Task not found.'}), 404
         
+        # Ensure current_task_data is a dictionary, default to empty dict if not
+        if not isinstance(current_task_data, dict):
+            logging.warning(f"Task data for {task_id} in group {group_id} is not a dictionary. Value: {current_task_data}. Defaulting to empty dict.")
+            current_task_data = {}
+
         # Update assignment details
         task_ref.update({
             'assigned_to_type': assigned_to_type,
@@ -608,13 +613,6 @@ def assign_existing_task(group_id):
             'completed': False # Re-open task if it was completed and re-assigned
         })
 
-    except Exception as e:
-        logging.error(f"Error assigning existing task for group {group_id}: {e}")
-        traceback.print_exc()
-        return jsonify({'success': False, 'message': f'Error assigning existing task: {str(e)}'}), 500
-
-
-        # Notification logic for re-assignment
         task_name = current_task_data.get('task_name', 'Unnamed Task')
         if assigned_to_type == 'everyone':
             members_data = db.reference(f'groups/{group_id}/members').get() or {}
