@@ -15,17 +15,76 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
 
-const canvas = document.getElementById('whiteboardCanvas');
-const ctx = canvas.getContext('2d');
-let drawing = false;
-let current = { x: 0, y: 0 };
+let canvas, ctx, drawing, current;
 
-function resizeCanvas() {
-  canvas.width = canvas.clientWidth;
-  canvas.height = canvas.clientHeight;
+function initializeWhiteboard() {
+    canvas = document.getElementById('whiteboardCanvas');
+    ctx = canvas.getContext('2d');
+    drawing = false;
+    current = { x: 0, y: 0 };
+    
+    function resizeCanvas() {
+        canvas.width = canvas.clientWidth;
+        canvas.height = canvas.clientHeight;
+        console.log("Canvas resized to:", canvas.width, "x", canvas.height);
+    }
+    
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    // Rest of the whiteboard functionality...
+    function getMousePos(evt) {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: evt.clientX - rect.left,
+        y: evt.clientY - rect.top
+      };
+    }
+
+    function drawLine(x0, y0, x1, y1, color = 'black', emit = true) {
+      // ... existing implementation ...
+    }
+
+    canvas.addEventListener('mousedown', (e) => {
+      drawing = true;
+      const pos = getMousePos(e);
+      current.x = pos.x;
+      current.y = pos.y;
+    });
+
+    canvas.addEventListener('mouseup', () => drawing = false);
+    canvas.addEventListener('mouseout', () => drawing = false);
+
+    canvas.addEventListener('mousemove', (e) => {
+      if (!drawing) return;
+      const pos = getMousePos(e);
+      drawLine(current.x, current.y, pos.x, pos.y);
+      current.x = pos.x;
+      current.y = pos.y;
+    });
+
+    onValue(ref(database, 'whiteboard/last_line'), (snapshot) => {
+      const data = snapshot.val();
+      if (data && data.x0 !== undefined) {
+        drawLine(data.x0, data.y0, data.x1, data.y1, data.color, false);
+      }
+    });
+
+    onValue(ref(database, 'whiteboard'), (snapshot) => {
+      const data = snapshot.val();
+      if (!data || Object.keys(data).length === 0) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    });
 }
-resizeCanvas();
-window.addEventListener('resize', resizeCanvas);
+
+window.initializeWhiteboard = initializeWhiteboard;
+window.clearWhiteboard = () => {
+  if (ctx) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+  set(ref(database, 'whiteboard'), {});
+};
 
 function getMousePos(evt) {
   const rect = canvas.getBoundingClientRect();
