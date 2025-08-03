@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -14,8 +15,8 @@
     <div class="container">
         <div class="left-panel">
             <div class="buttons">
-                <!-- This button now opens the single main Assign modal -->
-                <button onclick="openAssignMainModal()">Assign</button>
+                <!-- Updated the onclick event to open the new, combined modal -->
+                <button onclick="openAssignModal()">Assign</button>
                 <button onclick="openApproveRequests()">Pending Requests</button>
                 <a href="{{ url_for('dashboard', username=username) }}" class="styled-button">←</a>
             </div>
@@ -28,7 +29,7 @@
                 <div class="messages" id="messagesContainer"></div>
                 <div class="input-container">
                     <textarea id="messageInput" placeholder="Type your message..." rows="2"></textarea>
-                    <button class="send-button" onclick="sendMessage()\">Send</button>
+                    <button class="send-button" onclick="sendMessage()">Send</button>
                 </div>
             </div>
 
@@ -104,6 +105,7 @@
         </div>
     </div>
 
+    <!-- Modals (pop-ups) -->
     <div class="floating-container" id="approveRequestsContainer" style="display: none;">
         <h3>Pending Join Requests</h3>
         <ul id="pending-requests-list">
@@ -119,42 +121,49 @@
         <button onclick="closeApproveRequests()">Close</button>
     </div>
 
-    <!-- The new, single floating container for all Assign-related functions -->
-    <div class="floating-container" id="assignMainModal" style="display: none;">
-        
-        <!-- Step 1: Main Assign Options -->
-        <div id="assignStep1_Options">
+    <!-- NEW combined Assign Modal -->
+    <div class="floating-container" id="assignModal" style="display: none;">
+        <div id="assignOptionsContainer">
             <h3>Assign Action</h3>
             <p>Please choose an action:</p>
-            <button onclick="showAssignRoleOptions()">Assign Role</button>
-            <button onclick="showAssignTaskOptions()">Assign Task</button>
-            <button type="button" class="cancel-button" onclick="closeAssignMainModal()">Cancel</button>
+            <button onclick="showAssignPanel('role')">Assign Role</button>
+            <button onclick="showAssignPanel('task')">Assign Task</button>
+            <button onclick="closeAssignModal()">Cancel</button>
         </div>
 
-        <!-- Step 2: Role Assignment Options -->
-        <div id="assignStep2_RoleOptions" style="display: none;">
+        <!-- Role Assignment Panel -->
+        <div id="assignRoleOptionsContainer" style="display: none;">
             <h3>Role Assignment Options</h3>
             <p>What role action do you want to perform?</p>
-            <button onclick="showRoleManagement()">Manage & Create Roles</button>
-            <button onclick="showAssignExistingRoleModal()">Assign Existing Role to Members</button>
-            <button type="button" class="cancel-button" onclick="showAssignOptions()">Back</button>
+            <button onclick="openRoleManagement()">Manage & Create Roles</button>
+            <button onclick="openAssignExistingRoleModal()">Assign Existing Role to Members</button>
+            <button onclick="showAssignPanel('main')">← Back</button>
         </div>
-
-        <!-- Step 2: Task Assignment Options -->
-        <div id="assignStep2_TaskOptions" style="display: none;">
+    
+        <!-- Task Assignment Panel -->
+        <div id="assignTaskOptionsContainer" style="display: none;">
             <h3>Task Assignment Options</h3>
             <p>Do you want to create a new project with tasks, or assign an existing task?</p>
-            <button onclick="showCreateProjectModal()">Create Project</button>
-            <button onclick="showAssignExistingTaskModal()">Assign Existing Task</button>
-            <button type="button" class="cancel-button" onclick="showAssignOptions()">Back</button>
+            <button onclick="openCreateProjectModal()">Create Project</button>
+            <button onclick="openAssignExistingTaskModal()">Assign Existing Task</button>
+            <button type="button" class="cancel-button" onclick="showAssignPanel('main')">← Back</button>
         </div>
 
-        <!-- Step 3: Assign Existing Role Form -->
-        <div id="assignStep3_AssignExistingRole" style="display: none;">
+        <!-- Role Management Panel -->
+        <div id="roleManagementContainer" style="display: none;">
+            <h3>Manage & Create Roles</h3>
+            <div id="roleManagementContent">
+            </div>
+            <button onclick="showAssignPanel('role')">← Back</button>
+        </div>
+
+        <!-- Assign Existing Role Panel -->
+        <div id="assignExistingRoleContainer" style="display: none;">
             <h3>Assign Existing Role</h3>
             <form id="assignExistingRoleForm">
                 <label for="select-role-to-assign">Select Role:</label>
-                <select id="select-role-to-assign" required></select>
+                <select id="select-role-to-assign" required>
+                    </select>
                 <br>
                 <label for="select-users-for-role">Select Users (Ctrl/Cmd + click to select multiple):</label>
                 <select id="select-users-for-role" multiple required>
@@ -164,41 +173,36 @@
                 </select>
                 <br>
                 <button type="button" onclick="submitAssignExistingRole()">Assign Role</button>
-                <button type="button" class="cancel-button" onclick="showAssignRoleOptions()">Back</button>
+                <button type="button" class="cancel-button" onclick="showAssignPanel('role')">← Back</button>
             </form>
         </div>
-
-        <!-- Step 3: Role Management Form -->
-        <div id="assignStep3_RoleManagement" style="display: none;">
-            <h3>Manage & Create Roles</h3>
-            <div id="roleManagementContent"></div>
-            <button type="button" class="cancel-button" onclick="showAssignRoleOptions()">Back</button>
-        </div>
-
-        <!-- Step 3: Create Project Form -->
-        <div id="assignStep3_CreateProject" style="display: none;">
+    
+        <!-- Create Project Panel -->
+        <div id="createProjectContainer" style="display: none;">
             <h3>Create New Project</h3>
             <form id="createProjectForm">
                 <label for="project-name">Project Name:</label>
                 <input type="text" id="project-name" placeholder="Enter project name" required>
                 <label for="project-description">Project Description:</label>
                 <textarea id="project-description" placeholder="Describe the project" rows="3"></textarea>
-
+    
                 <h4>Project Tasks:</h4>
-                <div id="project-tasks-list"></div>
+                <div id="project-tasks-list">
+                    </div>
                 <button type="button" onclick="addProjectTask()">Add Task to Project</button>
                 <br>
                 <button type="button" onclick="submitProject()">Create Project with Tasks</button>
-                <button type="button" class="cancel-button" onclick="showAssignTaskOptions()">Back</button>
+                <button type="button" class="cancel-button" onclick="showAssignPanel('task')">← Back</button>
             </form>
         </div>
 
-        <!-- Step 3: Assign Existing Task Form -->
-        <div id="assignStep3_AssignExistingTask" style="display: none;">
+        <!-- Assign Existing Task Panel -->
+        <div id="assignExistingTaskContainer" style="display: none;">
             <h3>Assign Existing Task</h3>
             <form id="assignExistingTaskForm">
                 <label for="select-existing-task">Select Task:</label>
-                <select id="select-existing-task" required></select>
+                <select id="select-existing-task" required>
+                    </select>
                 <br>
                 <label for="assign-task-to-type">Assign To:</label>
                 <select id="assign-task-to-type" onchange="toggleAssignToSelection()">
@@ -215,14 +219,15 @@
                         {% endfor %}
                     </select>
                 </div>
-
+    
                 <div id="assign-task-role-selection" style="display: none;">
                     <label for="assign-task-to-role">Select Role:</label>
-                    <select id="assign-task-to-role"></select>
+                    <select id="assign-task-to-role">
+                        </select>
                 </div>
                 <br>
                 <button type="button" onclick="submitAssignExistingTask()">Assign Task</button>
-                <button type="button" class="cancel-button" onclick="showAssignTaskOptions()">Back</button>
+                <button type="button" class="cancel-button" onclick="showAssignPanel('task')">← Back</button>
             </form>
         </div>
     </div>
@@ -318,65 +323,82 @@
         }
     }
 
+    // --- Assign Modal Functions ---
+    // A single function to manage which panel is visible within the main assign modal
+    function showAssignPanel(panelName) {
+        document.getElementById('assignOptionsContainer').style.display = 'none';
+        document.getElementById('assignRoleOptionsContainer').style.display = 'none';
+        document.getElementById('assignTaskOptionsContainer').style.display = 'none';
+        document.getElementById('assignExistingRoleContainer').style.display = 'none';
+        document.getElementById('createProjectContainer').style.display = 'none';
+        document.getElementById('assignExistingTaskContainer').style.display = 'none';
+        document.getElementById('roleManagementContainer').style.display = 'none';
 
-    // --- Refactored Assign Modal Functions ---
-    
-    // A single function to hide all steps and forms within the main modal
-    function hideAllAssignSteps() {
-        document.getElementById('assignStep1_Options').style.display = 'none';
-        document.getElementById('assignStep2_RoleOptions').style.display = 'none';
-        document.getElementById('assignStep2_TaskOptions').style.display = 'none';
-        document.getElementById('assignStep3_AssignExistingRole').style.display = 'none';
-        document.getElementById('assignStep3_RoleManagement').style.display = 'none';
-        document.getElementById('assignStep3_CreateProject').style.display = 'none';
-        document.getElementById('assignStep3_AssignExistingTask').style.display = 'none';
+        switch(panelName) {
+            case 'main':
+                document.getElementById('assignOptionsContainer').style.display = 'block';
+                break;
+            case 'role':
+                document.getElementById('assignRoleOptionsContainer').style.display = 'block';
+                break;
+            case 'task':
+                document.getElementById('assignTaskOptionsContainer').style.display = 'block';
+                break;
+            case 'assignRole':
+                document.getElementById('assignExistingRoleContainer').style.display = 'block';
+                break;
+            case 'createProject':
+                document.getElementById('createProjectContainer').style.display = 'block';
+                break;
+            case 'assignTask':
+                document.getElementById('assignExistingTaskContainer').style.display = 'block';
+                break;
+            case 'manageRoles':
+                document.getElementById('roleManagementContainer').style.display = 'block';
+                break;
+            default:
+                document.getElementById('assignOptionsContainer').style.display = 'block';
+                break;
+        }
     }
 
-    // Main function to open the modal and show the first step
-    function openAssignMainModal() {
-        document.getElementById('assignMainModal').style.display = 'block';
-        showAssignOptions();
-    }
-
-    function closeAssignMainModal() {
-        document.getElementById('assignMainModal').style.display = 'none';
-        hideAllAssignSteps();
-    }
-
-    function showAssignOptions() {
-        hideAllAssignSteps();
-        document.getElementById('assignStep1_Options').style.display = 'block';
-    }
-
-    function showAssignRoleOptions() {
-        hideAllAssignSteps();
-        document.getElementById('assignStep2_RoleOptions').style.display = 'block';
-    }
-    
-    function showAssignTaskOptions() {
-        hideAllAssignSteps();
-        document.getElementById('assignStep2_TaskOptions').style.display = 'block';
-    }
-
-    // --- Assign Existing Role Modal Functions ---
-    function showAssignExistingRoleModal() {
-        hideAllAssignSteps();
+    function openAssignModal() {
+        // Fetch roles once when the main assign modal is opened
         fetch(`/get_group_members_with_roles/${groupId}`)
             .then(res => res.json())
             .then(data => {
                 if (data.success && Array.isArray(data.available_custom_roles)) {
                     availableCustomRoles = data.available_custom_roles;
-                    populateRoleSelection(availableCustomRoles);
-                    document.getElementById('assignStep3_AssignExistingRole').style.display = 'block';
                 } else {
-                    alert('Failed to load custom roles: ' + (data.message || 'Unknown error'));
-                    console.error('Error loading custom roles:', data);
+                    console.error('Failed to load custom roles on modal open:', data.message);
                 }
             })
-            .catch(err => {
-                console.error('Error fetching custom roles:', err);
-                alert('Error fetching custom roles.');
-            });
+            .catch(err => console.error('Error fetching custom roles on modal open:', err));
+
+        document.getElementById('assignModal').style.display = 'block';
+        showAssignPanel('main');
+    }
+
+    function closeAssignModal() {
+        document.getElementById('assignModal').style.display = 'none';
+        // Reset any forms here if needed
+        document.getElementById('assignExistingRoleForm').reset();
+        document.getElementById('createProjectForm').reset();
+        document.getElementById('assignExistingTaskForm').reset();
+    }
+
+    function openApproveRequests() {
+        document.getElementById('approveRequestsContainer').style.display = 'block';
+    }
+
+    function closeApproveRequests() {
+        document.getElementById('approveRequestsContainer').style.display = 'none';
+    }
+
+    // --- Assign Existing Role Modal Functions ---
+    function openAssignExistingRoleModal() {
+        populateRoleSelection(availableCustomRoles);
+        showAssignPanel('assignRole');
     }
 
     function populateRoleSelection(roles) {
@@ -422,7 +444,7 @@
         .then(data => {
             if (data.success) {
                 alert(data.message);
-                showAssignRoleOptions(); // Go back to role options
+                showAssignPanel('role'); // Go back to role options
                 location.reload();
             } else {
                 alert('Failed to assign role: ' + data.message);
@@ -435,9 +457,7 @@
     }
 
     // --- Role Management Functions ---
-    function showRoleManagement() {
-        hideAllAssignSteps();
-
+    function openRoleManagement() {
         fetch(`/get_group_members_with_roles/${groupId}`)
             .then(res => res.json())
             .then(data => {
@@ -490,7 +510,7 @@
                     `;
 
                     content.innerHTML = html;
-                    document.getElementById('assignStep3_RoleManagement').style.display = 'block';
+                    showAssignPanel('manageRoles');
                 } else {
                     content.innerHTML = 'Error loading group members or roles.';
                     console.error('Error from server:', data.message);
@@ -518,7 +538,7 @@
         .then(data => {
             if (data.success) {
                 alert(data.message);
-                showRoleManagement(); // Refresh the modal to show the new role
+                openRoleManagement(); // Refresh the modal to show the new role
             } else {
                 alert('Failed to create role: ' + data.message);
             }
@@ -536,11 +556,13 @@
             return;
         }
 
-        if (!confirm(`Are you sure you want to remove the role "${roleToDelete}"? This action cannot be undone.`)) {
+        // Use a custom modal instead of a native confirm box
+        const userConfirmation = confirm(`Are you sure you want to remove the role "${roleToDelete}"? This action cannot be undone.`);
+        if (!userConfirmation) {
             return;
         }
 
-        fetch(`/delete_role/${groupId}`, {
+        fetch(`/delete_role/${groupId}`, { // You'll need to implement this Flask route
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ role_name: roleToDelete })
@@ -549,7 +571,7 @@
         .then(data => {
             if (data.success) {
                 alert(data.message);
-                showRoleManagement(); // Refresh the modal to show updated roles
+                openRoleManagement(); // Refresh the modal to show updated roles
             } else {
                 alert('Failed to remove role: ' + data.message);
             }
@@ -592,7 +614,7 @@
         .then(data => {
             if (data.success) {
                 alert('Roles updated successfully!');
-                showAssignRoleOptions();
+                showAssignPanel('role');
                 location.reload(); 
             } else {
                 alert('Failed to update roles: ' + data.message);
@@ -605,14 +627,13 @@
     }
 
 
-    // --- Create Project Modal Functions ---
-    function showCreateProjectModal() {
-        hideAllAssignSteps();
+    // --- NEW: Create Project Modal Functions ---
+    function openCreateProjectModal() {
+        showAssignPanel('createProject');
         document.getElementById('createProjectForm').reset();
         document.getElementById('project-tasks-list').innerHTML = ''; // Clear previous tasks
         projectTasks = []; // Reset the array
         projectIdCounter = 0; // Reset counter for new project
-        document.getElementById('assignStep3_CreateProject').style.display = 'block';
     }
 
     function addProjectTask() {
@@ -784,7 +805,7 @@
         .then(data => {
             if (data.success) {
                 alert(data.message);
-                showAssignTaskOptions();
+                showAssignPanel('task');
                 location.reload();
             } else {
                 alert('Failed to create project: ' + data.message);
@@ -796,16 +817,12 @@
         });
     }
 
-    // --- Assign Existing Task Modal Functions ---
-    function showAssignExistingTaskModal() {
-        hideAllAssignSteps();
-
-        // Fetch all existing tasks and custom roles
+    // --- NEW: Assign Existing Task Modal Functions ---
+    function openAssignExistingTaskModal() {
         Promise.all([
             fetch(`/get_all_tasks/${groupId}`).then(res => res.json()), // New Flask route needed
-            fetch(`/get_group_members_with_roles/${groupId}`).then(res => res.json())
         ])
-        .then(([tasksData, rolesData]) => {
+        .then(([tasksData]) => {
             if (tasksData.success && Array.isArray(tasksData.tasks)) {
                 existingTasks = tasksData.tasks;
                 populateExistingTasks(existingTasks);
@@ -813,16 +830,8 @@
                 alert('Failed to load existing tasks: ' + (tasksData.message || 'Unknown error'));
                 console.error('Error loading existing tasks:', tasksData);
             }
-
-            if (rolesData.success && Array.isArray(rolesData.available_custom_roles)) {
-                availableCustomRoles = rolesData.available_custom_roles;
-                populateAssignExistingTaskRoles(availableCustomRoles);
-            } else {
-                alert('Failed to load custom roles for assignment: ' + (rolesData.message || 'Unknown error'));
-                console.error('Error loading custom roles:', rolesData);
-            }
-
-            document.getElementById('assignStep3_AssignExistingTask').style.display = 'block';
+            populateAssignExistingTaskRoles(availableCustomRoles);
+            showAssignPanel('assignTask');
             toggleAssignToSelection(); // Set initial visibility for assignee type
         })
         .catch(err => {
@@ -897,7 +906,7 @@
             assigned_to: assignedTo
         };
 
-        fetch(`/assign_existing_task/${groupId}`, {
+        fetch(`/assign_existing_task/${groupId}`, { // New Flask route needed
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(assignmentData)
@@ -906,7 +915,7 @@
         .then(data => {
             if (data.success) {
                 alert(data.message);
-                showAssignTaskOptions();
+                showAssignPanel('task');
                 location.reload();
             } else {
                 alert('Failed to assign task: ' + data.message);
@@ -916,14 +925,6 @@
             console.error('Error assigning existing task:', err);
             alert('Error assigning existing task.');
         });
-    }
-
-    function openApproveRequests() {
-        document.getElementById('approveRequestsContainer').style.display = 'block';
-    }
-
-    function closeApproveRequests() {
-        document.getElementById('approveRequestsContainer').style.display = 'none';
     }
 
     // Voice call functions (No change)
