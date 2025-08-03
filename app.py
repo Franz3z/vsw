@@ -832,26 +832,30 @@ def update_roles(group_id):
                 member_ref.child('role').set(updates['primary_role'])
                 user_group_ref.child('role').set(updates['primary_role'])
 
-            # Handle custom roles: The client-side sends all selected as 'to_assign' and all unselected as 'to_unassign'
-            # This logic will effectively overwrite the custom roles with the new selection.
-            if 'custom_roles_to_assign' in updates:
-                # Get current custom roles to avoid deleting others if not in 'to_unassign'
-                current_member_custom_roles = member_ref.child('roles').get() or {}
-                current_user_custom_roles = user_group_ref.child('roles').get() or {}
+            # Handle custom roles:
+            # Safely get the lists, defaulting to empty list if not present
+            custom_roles_to_unassign = updates.get('custom_roles_to_unassign', [])
+            custom_roles_to_assign = updates.get('custom_roles_to_assign', [])
 
-                # Clear only custom roles (leave primary 'role' key untouched)
-                for role_name in updates['custom_roles_to_unassign']:
-                    if role_name in current_member_custom_roles:
-                        del current_member_custom_roles[role_name]
-                    if role_name in current_user_custom_roles:
-                        del current_user_custom_roles[role_name]
-                
-                for role_name in updates['custom_roles_to_assign']:
-                    current_member_custom_roles[role_name] = True
-                    current_user_custom_roles[role_name] = True
-                
-                member_ref.child('roles').set(current_member_custom_roles)
-                user_group_ref.child('roles').set(current_user_custom_roles)
+            # Get current custom roles from Firebase
+            current_member_custom_roles = member_ref.child('roles').get() or {}
+            current_user_custom_roles = user_group_ref.child('roles').get() or {}
+
+            # Clear roles that are to be unassigned
+            for role_name in custom_roles_to_unassign:
+                if role_name in current_member_custom_roles:
+                    del current_member_custom_roles[role_name]
+                if role_name in current_user_custom_roles:
+                    del current_user_custom_roles[role_name]
+            
+            # Add roles that are to be assigned
+            for role_name in custom_roles_to_assign:
+                current_member_custom_roles[role_name] = True
+                current_user_custom_roles[role_name] = True
+            
+            # Update Firebase with the modified custom roles
+            member_ref.child('roles').set(current_member_custom_roles)
+            user_group_ref.child('roles').set(current_user_custom_roles)
         
         return jsonify({'success': True, 'message': 'Roles updated successfully.'})
 
