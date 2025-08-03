@@ -771,14 +771,28 @@ def clear_notification(notification_id):
 def get_group_members_with_roles(group_id):
     try:
         group_members_ref = db.reference(f'groups/{group_id}/members')
-        members_data = group_members_ref.get() or {}
+        members_data_raw = group_members_ref.get() or {} # Renamed to raw for clarity
 
-        # Prepare a list of members with their primary role ('admin' or 'member')
-        # And also include any custom roles they might have
         members_list = []
-        for username, data in members_data.items():
-            primary_role = data.get('role', 'member') # Default to member if not set
-            custom_roles = data.get('roles', {}) # This holds the dictionary of custom roles
+        if not isinstance(members_data_raw, dict): # Add this check
+            logging.error(f"members_data_raw for group {group_id} is not a dictionary. Type: {type(members_data_raw)}, Value: {members_data_raw}")
+            members_data_raw = {} # Default to empty dict to prevent further errors
+
+        for username, member_info in members_data_raw.items(): # Use member_info instead of data for consistency
+            primary_role = 'member'
+            custom_roles = {}
+
+            if isinstance(member_info, dict):
+                primary_role = member_info.get('role', 'member') # Default to 'member'
+                custom_roles = member_info.get('roles', {}) # This holds the dictionary of custom roles
+            elif isinstance(member_info, str): # Handle case where member data is just a string role
+                primary_role = member_info
+                custom_roles = {member_info: True} # Assume the string is also a custom role
+                logging.warning(f"Member data for {username} in group {group_id} is string. Converting.")
+            else:
+                logging.error(f"Unexpected member data type for {username} in group {group_id}: {type(member_info)} - {member_info}. Skipping.")
+                continue
+
 
             members_list.append({
                 'username': username,
