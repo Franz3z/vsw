@@ -553,26 +553,27 @@ def create_project_with_tasks(group_id):
         traceback.print_exc()
         return jsonify({'success': False, 'message': f'Error creating project: {str(e)}'}), 500
 
-# NEW: Endpoint to get all existing tasks for assignment dropdown
 @app.route('/get_all_tasks/<group_id>', methods=['GET'])
 def get_all_tasks(group_id):
     try:
         tasks_ref = db.reference(f'groups/{group_id}/tasks')
         tasks_data = tasks_ref.get() or {}
         
+        # Filter out tasks that are marked as completed
         all_tasks = []
         for task_id, task_info in tasks_data.items():
-            all_tasks.append({
-                'task_id': task_id,
-                'task_name': task_info.get('task_name', 'Unnamed Task'),
-                'description': task_info.get('description', ''),
-                'assigned_to': task_info.get('assigned_to', 'N/A'),
-                'priority': task_info.get('priority', 'Low'),
-                'completed': task_info.get('completed', False),
-                'assigned_type': task_info.get('assigned_type', 'user'),
-                'week_category': task_info.get('week_category', ''),
-                'deadline': task_info.get('deadline', '')
-            })
+            if not task_info.get('completed', False): # Only include tasks not marked as completed
+                all_tasks.append({
+                    'task_id': task_id,
+                    'task_name': task_info.get('task_name', 'Unnamed Task'),
+                    'description': task_info.get('description', ''),
+                    'assigned_to': task_info.get('assigned_to', 'N/A'),
+                    'priority': task_info.get('priority', 'Low'),
+                    'completed': task_info.get('completed', False),
+                    'assigned_type': task_info.get('assigned_type', 'user'),
+                    'week_category': task_info.get('week_category', ''),
+                    'deadline': task_info.get('deadline', '')
+                })
         
         return jsonify({'success': True, 'tasks': all_tasks})
     except Exception as e:
@@ -580,7 +581,6 @@ def get_all_tasks(group_id):
         traceback.print_exc()
         return jsonify({'success': False, 'message': f'Error fetching tasks: {str(e)}'}), 500
 
-# NEW: Endpoint to assign an existing task
 @app.route('/assign_existing_task/<group_id>', methods=['POST'])
 def assign_existing_task(group_id):
     try:
@@ -607,6 +607,47 @@ def assign_existing_task(group_id):
             'assigned_to': assigned_to,
             'completed': False # Re-open task if it was completed and re-assigned
         })
+
+        # Notification logic for re-assignment
+        task_name = current_task_data.get('task_name', 'Unnamed Task')
+        if assigned_to_type == 'everyone':
+            members_data = db.reference(f'groups/{group_id}/members').get() or {}
+            for member_username in members_data.keys():
+                db.reference(f'users/{member_username}/notifications').push().set({
+                    'message': f'Task "{task_name}" has been reassigned to everyone in group {group_id}.',
+                    'group_id': group_id,
+                    'task_id': task_id,
+                    'timestamp': datetime.now().isoformat(),
+                    'read': False
+                })
+        elif assigned_to_type == 'user':
+            db.reference(f'users/{assigned_to}/notifications').push().set({
+                'message': f'Task "{task_name}" has been reassigned to you in group {group_id}.',
+                'group_id': group_id,
+                'task_id': task_id,
+                'timestamp': datetime.now().isoformat(),
+                'read': False
+            })
+        elif assigned_to_type == 'role':
+            members_data = db.reference(f'groups/{group_id}/members').get() or {}
+            for member_username, member_info in members_data.items():
+                user_custom_roles = member_info.get('roles', {})
+                if assigned_to in user_custom_roles:
+                    db.reference(f'users/{member_username}/notifications').push().set({
+                        'message': f'Task "{task_name}" has been reassigned to your role "{assigned_to}" in group {group_id}.',
+                        'group_id': group_id,
+                        'task_id': task_id,
+                        'timestamp': datetime.now().isoformat(),
+                        'read': False
+                    })
+
+        return jsonify({'success': True, 'message': f'Task "{task_name}" reassigned successfully!'})
+
+    except Exception as e:
+        logging.error(f"Error assigning existing task for group {group_id}: {e}")
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'Error assigning existing task: {str(e)}'}), 500
+
 
         # Notification logic for re-assignment
         task_name = current_task_data.get('task_name', 'Unnamed Task')
