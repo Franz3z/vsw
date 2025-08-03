@@ -509,6 +509,20 @@
                     <button type="button" onclick="createNewRole()">Create Role</button>
                     `;
 
+                    // Section for deleting custom roles
+                    html += `
+                    <hr>
+                    <h4>Remove Custom Role</h4>
+                    <select id="roleToDelete">
+                        <option value="">-- Select Role to Remove --</option>
+                        ${data.available_custom_roles.map(role => `
+                            <option value="${role}">${role}</option>
+                        `).join('')}
+                    </select>
+                    <button type="button" onclick="deleteCustomRole()">Remove Role</button>
+                    `;
+
+
                     content.innerHTML = html;
                     document.getElementById('roleManagementContainer').style.display = 'block';
                 } else {
@@ -548,6 +562,39 @@
             alert('Error creating role.');
         });
     }
+
+    // NEW FUNCTION: Delete Custom Role
+    function deleteCustomRole() {
+        const roleToDelete = document.getElementById('roleToDelete').value;
+        if (!roleToDelete) {
+            alert('Please select a role to remove.');
+            return;
+        }
+
+        if (!confirm(`Are you sure you want to remove the role "${roleToDelete}"? This action cannot be undone.`)) {
+            return;
+        }
+
+        fetch(`/delete_role/${groupId}`, { // You'll need to implement this Flask route
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ role_name: roleToDelete })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                openRoleManagement(); // Refresh the modal to show updated roles
+            } else {
+                alert('Failed to remove role: ' + data.message);
+            }
+        })
+        .catch(err => {
+            console.error('Error removing role:', err);
+            alert('Error removing role.');
+        });
+    }
+
 
     function closeRoleManagement() {
         document.getElementById('roleManagementContainer').style.display = 'none';
