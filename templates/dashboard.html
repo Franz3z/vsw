@@ -26,8 +26,10 @@
         </div>
 
         <!-- Profile Section -->
-    <div id="profile" class="feature-section">
+<div id="profile" class="feature-section">
         <h2>Your Profile</h2>
+        <p><strong>Username:</strong> {{ username }}</p>
+        <p><strong>Credentials:</strong> Student/Administrator based on groups</p>
         <p>Here are the groups you've joined:</p>
         <ul class="group-list">
             {% for group_id, group_info in groups.items() %}
