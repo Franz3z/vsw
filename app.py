@@ -214,7 +214,18 @@ def mainadmin(username, group_id):
 
     members_ref = group_ref.child('members')
     members_data = members_ref.get() or {}
+    members_data_raw = group_ref.child('members').get() or {}
+    members = []
     members = [{'username': m} for m in members_data.keys() if m != username]
+
+    for member_username, member_info in members_data_raw.items():
+        primary_role = member_info.get('role', 'member')
+        custom_roles = member_info.get('roles', {})
+        members.append({
+            'username': member_username,
+            'primary_role': primary_role,
+            'custom_roles': list(custom_roles.keys())
+        })
 
     pending_ref = group_ref.child('pending_requests')
     pending_requests_data = pending_ref.get() or {}
@@ -270,7 +281,8 @@ def mainadmin(username, group_id):
         pending_tasks=pending_tasks,
         completed_tasks=completed_tasks,
         messages=messages,
-        group_roles=roles_data
+        group_roles=roles_data,
+        available_custom_roles=available_custom_roles
     )
 
 @app.route('/create_role/<group_id>', methods=['POST'])
