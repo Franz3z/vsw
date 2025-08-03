@@ -256,29 +256,62 @@ def mainadmin(username, group_id):
     tasks_data = tasks_ref.get() or {}
     logging.debug(f"Tasks data: {tasks_data}")
 
-    pending_tasks = []
+    tasks_this_week = []
+    tasks_next_week = []
     completed_tasks = []
+    
+    today = datetime.now()
+    # Calculate the start of "this week" (e.g., Sunday) and "next week"
+    # Assuming week starts on Monday for calculation purposes
+    start_of_this_week = today - timedelta(days=today.weekday()) # Monday
+    start_of_next_week = start_of_this_week + timedelta(weeks=1)
+
 
     for task_id, task in tasks_data.items():
         task_info = {
             'task_id': task_id,
-            'task_name': task.get('task_name', ''),
+            'task_name': task.get('task_name', 'No Name'),
             'description': task.get('description', ''),
-            'assigned_to': task.get('assigned_to', ''),
-            'priority': task.get('priority', ''),
+            'assigned_to': task.get('assigned_to', 'N/A'),
+            'priority': task.get('priority', 'Low'),
             'progress_reports': task.get('progress_reports', {}),
             'assigned_type': task.get('assigned_type', 'user'),
             'deadline': task.get('deadline', '')
         }
-        if task_info['progress_reports']:
+        
+        # Determine if task is completed
+        if task.get('completed', False): # Use the 'completed' flag now
             completed_tasks.append(task_info)
         else:
-            pending_tasks.append(task_info)
-    logging.debug(f"Pending tasks: {pending_tasks}")
+            # Categorize pending tasks by deadline
+            if task_info['deadline']:
+                try:
+                    deadline_dt = datetime.strptime(task_info['deadline'], "%Y-%m-%d")
+                    
+                    if start_of_this_week <= deadline_dt < start_of_next_week + timedelta(weeks=1):
+                         tasks_this_week.append(task_info)
+                    elif start_of_next_week <= deadline_dt < start_of_next_week + timedelta(weeks=2):
+                        tasks_next_week.append(task_info)
+                except ValueError:
+                    logging.warning(f"Invalid deadline format for task {task_id}: {task_info['deadline']}")
+                    # If deadline is invalid or not set, it won't fall into week categories
+            # If no deadline or invalid, it won't be in specific weekly categories,
+            # but you might want a general 'upcoming tasks' or 'backlog' section.
+            # For this example, if it doesn't fit a week, it's just not shown in week categories.
+    
+    # Sort tasks within categories (e.g., by priority)
+    priority_order = {'high': 1, 'medium': 2, 'low': 3}
+    tasks_this_week.sort(key=lambda x: priority_order.get(x.get('priority', 'Low').lower(), 4))
+    tasks_next_week.sort(key=lambda x: priority_order.get(x.get('priority', 'Low').lower(), 4))
+    completed_tasks.sort(key=lambda x: x.get('task_name', '')) # Example sort
+
+
+    logging.debug(f"Tasks This Week: {tasks_this_week}")
+    logging.debug(f"Tasks Next Week: {tasks_next_week}")
     logging.debug(f"Completed tasks: {completed_tasks}")
 
+
     # --- Get ALL Available Custom Roles for the Group ---
-    # THIS IS THE CORRECTED PATH AND VARIABLE NAME
     custom_roles_ref = db.reference(f'groups/{group_id}/custom_roles') # Use custom_roles consistently
     all_available_custom_roles_data = custom_roles_ref.get() or {}
     available_custom_roles_list = list(all_available_custom_roles_data.keys())
@@ -316,82 +349,124 @@ def mainadmin(username, group_id):
         group_id=group_id,
         members=members,
         pending_requests=pending_requests,
-        pending_tasks=pending_tasks,
+        tasks_this_week=tasks_this_week, # Pass this data
+        tasks_next_week=tasks_next_week, # Pass this data
         completed_tasks=completed_tasks,
         messages=messages,
-        # Pass the correctly named variable to the template
         available_custom_roles=available_custom_roles_list # Use the new name here
     )
+
 @app.route('/create_role/<group_id>', methods=['POST'])
 def create_role(group_id):
-    role_name = request.json['role_name']
-    ref = db.reference(f'groups/{group_id}/roles')
-    ref.child(role_name).set(True)  # Store role as key
-    
-    return jsonify({
-        'success': True,
-        'message': f'Role "{role_name}" created successfully!'
-    })
+    try:
+        data = request.get_json()
+        if not data or 'role_name' not in data:
+            return jsonify({'success': False, 'message': 'Role name is required.'}), 400
+            
+        role_name = data['role_name'].strip()
+        if not role_name:
+            return jsonify({'success': False, 'message': 'Role name cannot be empty.'}), 400
+
+        # Use 'custom_roles' for clarity, consistent with frontend and mainadmin route
+        ref = db.reference(f'groups/{group_id}/custom_roles') 
+        
+        # Check if role already exists
+        if ref.child(role_name).get():
+            return jsonify({'success': False, 'message': f'Role "{role_name}" already exists.'}), 409 # 409 Conflict
+        
+        ref.child(role_name).set(True)  # Store role as key with a boolean value
+
+        return jsonify({
+            'success': True,
+            'message': f'Role "{role_name}" created successfully!'
+        }), 201 # 201 Created
+
+    except Exception as e:
+        logging.error(f"Error creating role for group {group_id}: {e}")
+        traceback.print_exc() # Print full traceback to console
+        return jsonify({'success': False, 'message': f'Error creating role: {str(e)}'}), 500
+
 
 @app.route('/assign_role/<group_id>', methods=['POST'])
 def assign_role(group_id):
-    username = request.json['username']
-    role_name = request.json['role_name']
-    
-    ref = db.reference(f'groups/{group_id}/members/{username}/roles')
-    current_roles = ref.get() or {}
-    current_roles[role_name] = True
-    
+    # This endpoint is kept for a potential direct assign_role call,
+    # but the frontend's 'saveRoles' function directly updates member roles.
+    # If not used directly, it can be removed.
+    # If used, ensure `request.json` contains 'username' and 'role_name'
+    return jsonify({'success': False, 'message': 'This endpoint is not fully implemented for direct use in the current flow.'}), 400
+
+
+@app.route('/create_assign_task/<group_id>', methods=['POST']) # Renamed endpoint
+def create_assign_task(group_id):
     try:
-        ref.set(current_roles)
-        # Also update the user's group role reference
-        user_group_ref = db.reference(f'users/{username}/groups/{group_id}/roles')
-        user_group_ref.set(current_roles)
-        return jsonify({'success': True})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        # Expecting JSON data from the frontend
+        data = request.get_json() 
+        if not data:
+            return jsonify({'success': False, 'message': 'No data provided'}), 400
 
-@app.route('/assign_task/<group_id>', methods=['POST'])
-def assign_task(group_id):
-    task_name = request.form['task_name']
-    task_description = request.form['task_description']
-    assigned_to = request.form['assigned_to']
-    priority = request.form['priority']
-    deadline = request.form.get('deadline', '')
-    assigned_type = request.form.get('assigned_type', 'user')  # Default to user
+        task_name = data.get('task_name')
+        task_description = data.get('description', '')
+        assigned_to = data.get('assigned_to')
+        priority = data.get('priority')
+        assigned_type = data.get('assigned_type', 'user') # 'user' or 'everyone'
 
-    task_data = {
-        'task_name': task_name,
-        'description': task_description,
-        'assigned_to': assigned_to,
-        'priority': priority,
-        'deadline': deadline,
-        'completed': False,
-        'progress_reports': {},
-        'assigned_type': assigned_type  # Added field
-    }
+        # Basic validation
+        if not task_name or not assigned_to or not priority:
+            return jsonify({'success': False, 'message': 'Task name, assigned to, and priority are required.'}), 400
 
-    db.reference(f'groups/{group_id}/tasks').push(task_data)
-    
-    # Create notification for role assignments
-    if assigned_type == 'role':
-        role_ref = db.reference(f'groups/{group_id}/members')
-        members = role_ref.get() or {}
-        for member, data in members.items():
-            if data.get('roles', {}).get(assigned_to):
-                # Send notification to relevant member
-                notifications_ref = db.reference(f'users/{member}/notifications').push()
+        task_data = {
+            'task_name': task_name,
+            'description': task_description,
+            'assigned_to': assigned_to,
+            'priority': priority,
+            'completed': False, # Default to false for new tasks
+            'progress_reports': {},
+            'assigned_type': assigned_type
+        }
+        
+        # Add deadline if present in the request
+        deadline = data.get('deadline')
+        if deadline:
+            task_data['deadline'] = deadline
+
+        db.reference(f'groups/{group_id}/tasks').push(task_data)
+        
+        # --- Notification Logic (Remains the same as your original) ---
+        if assigned_type == 'everyone':
+            # Notify all members of the group
+            members_ref = db.reference(f'groups/{group_id}/members').get() or {}
+            for member_username in members_ref.keys():
+                notifications_ref = db.reference(f'users/{member_username}/notifications').push()
                 notifications_ref.set({
-                    'message': f'New task assigned to your role: {task_name}',
+                    'message': f'New group task "{task_name}" assigned to everyone in group {group_id}.',
                     'group_id': group_id,
+                    'task_id': task_data['task_id'], # Pass task_id for direct link if desired
                     'timestamp': datetime.now().isoformat(),
                     'read': False
                 })
+        elif assigned_type == 'username': # Specific user assignment
+            notifications_ref = db.reference(f'users/{assigned_to}/notifications').push()
+            notifications_ref.set({
+                'message': f'New task "{task_name}" assigned to you in group {group_id}.',
+                'group_id': group_id,
+                'task_id': task_data['task_id'],
+                'timestamp': datetime.now().isoformat(),
+                'read': False
+            })
+        
+        # Note: Your original code had 'assigned_type == 'role'' for notifications.
+        # If you intend to assign tasks specifically to a *role* and notify all users with that role,
+        # you'll need to expand this logic. For now, it handles 'user' and 'everyone'.
 
-    return jsonify({
-        'success': True,
-        'message': 'Task assigned successfully!'
-    })
+        return jsonify({
+            'success': True,
+            'message': 'Task assigned successfully!'
+        }), 201 # 201 Created
+
+    except Exception as e:
+        logging.error(f"Error assigning task for group {group_id}: {e}")
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'Error assigning task: {str(e)}'}), 500
 
 
 def get_tasks_by_week(tasks):
@@ -425,9 +500,11 @@ def get_tasks_by_week(tasks):
 @app.route('/main/<username>/<group_id>')
 def main(username, group_id):
     # Get group roles to check role assignments
-    group_ref = db.reference(f'groups/{group_id}/roles')
+    group_ref = db.reference(f'groups/{group_id}/custom_roles') # Use custom_roles consistent with mainadmin
     roles_data = group_ref.get() or {}
-    user_roles = db.reference(f'users/{username}/groups/{group_id}/roles').get() or {}
+    
+    user_roles_data = db.reference(f'users/{username}/groups/{group_id}/roles').get() or {}
+    user_custom_roles = list(user_roles_data.keys()) # Get list of custom roles for the user
 
     # Get all tasks
     tasks_ref = db.reference(f'groups/{group_id}/tasks').get() or {}
@@ -441,10 +518,20 @@ def main(username, group_id):
         # Add assigned_type if missing for backward compatibility
         if 'assigned_type' not in task_info:
             task_info['assigned_type'] = 'user'
+            
+        # Determine if the task is assigned to the current user, or to a role the user possesses,
+        # or to 'everyone'.
+        is_assigned_to_user = (task_info['assigned_type'] == 'username' and task_info.get('assigned_to') == username)
+        is_assigned_to_everyone = (task_info['assigned_type'] == 'everyone' and task_info.get('assigned_to') == 'everyone')
         
-        # Include tasks assigned to user directly or to role
-        if (task_info['assigned_type'] == 'user' and task_info.get('assigned_to') == username) or \
-           (task_info['assigned_type'] == 'role' and task_info.get('assigned_to') in user_roles and user_roles[task_info['assigned_to']]):
+        # Check if the task is assigned to a role that the user has
+        is_assigned_to_user_role = False
+        if task_info['assigned_type'] == 'role':
+            assigned_role = task_info.get('assigned_to')
+            if assigned_role in user_custom_roles: # Check if the user's custom roles include the assigned role
+                is_assigned_to_user_role = True
+
+        if is_assigned_to_user or is_assigned_to_everyone or is_assigned_to_user_role:
             if task_info.get('completed'):
                 completed_tasks.append(task_info)
             else:
@@ -492,7 +579,7 @@ def main(username, group_id):
         tasks_this_week=tasks_this_week,
         messages=messages,
         notifications=unread_notifications,
-        user_roles=list(user_roles.keys())
+        user_roles=list(user_custom_roles) # Pass the list of user's custom roles
     )
 
 @app.route('/approve_request/<group_id>/<username>', methods=['POST'])
@@ -568,7 +655,7 @@ def send_message(group_id):
     if not text or not sender:
         return jsonify({'success': False, 'error': 'Missing data'}), 400
 
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    timestamp = datetime.now().isoformat() # Changed to ISO format for easier sorting
     message = {
         'sender': sender,
         'text': text,
@@ -581,19 +668,32 @@ def send_message(group_id):
     return jsonify({'success': True})
 
 
-@app.route('/get_messages/<group_id>/chat')
+@app.route('/get_messages/<group_id>', methods=['GET']) # Removed /chat from URL path
 def get_messages(group_id):
     try:
         messages_ref = db.reference(f'groups/{group_id}/chat')
         messages = messages_ref.get() or {}
         
         message_list = []
-        for key, msg in messages.items():
+        # Sort messages by timestamp before sending
+        sorted_messages = sorted(messages.items(), key=lambda item: item[1].get('timestamp', ''))
+
+        for key, msg in sorted_messages:
             if isinstance(msg, dict):
+                # Ensure timestamp is in correct format for client-side display
+                timestamp_str = msg.get('timestamp', '')
+                try:
+                    # Attempt to parse as ISO format if it matches
+                    dt_object = datetime.fromisoformat(timestamp_str)
+                    formatted_timestamp = dt_object.strftime('%b %d, %I:%M %p')
+                except ValueError:
+                    # Fallback if not ISO, or use as is
+                    formatted_timestamp = timestamp_str
+
                 message_list.append({
                     'sender': msg.get('sender', ''),
-                    'text': msg.get('text', ''),
-                    'timestamp': msg.get('timestamp', '')
+                    'message': msg.get('text', ''),
+                    'timestamp': formatted_timestamp
                 })
             else:
                 logging.warning(f"Skipping malformed message in group {group_id} with key {key}: {msg}")
@@ -609,7 +709,7 @@ def get_messages(group_id):
 def clear_notification(notification_id):
     if 'username' not in session:
         return jsonify({'error': 'Not logged in'}), 401
-    
+        
     try:
         ref = db.reference(f'users/{session["username"]}/notifications/{notification_id}')
         ref.delete()
@@ -633,12 +733,14 @@ def get_group_members_with_roles(group_id):
 
             members_list.append({
                 'username': username,
-                'role': primary_role, # This is the main 'admin' or 'member' role
+                'primary_role': primary_role, # This is the main 'admin' or 'member' role
                 'custom_roles': list(custom_roles.keys()) # List of custom role names (e.g., ['editor', 'viewer'])
             })
-        
+            
         # Also fetch all available custom roles for the dropdowns
-        available_roles_ref = db.reference(f'groups/{group_id}/roles')
+        # IMPORTANT: Ensure this path matches where you store available roles.
+        # It's currently `/groups/{group_id}/custom_roles` based on `create_role` change.
+        available_roles_ref = db.reference(f'groups/{group_id}/custom_roles')
         available_roles_data = available_roles_ref.get() or {}
         available_custom_roles = list(available_roles_data.keys())
 
@@ -669,23 +771,34 @@ def update_roles(group_id):
                 member_ref.child('role').set(updates['primary_role'])
                 user_group_ref.child('role').set(updates['primary_role'])
 
+            # Handle custom roles: The client-side sends all selected as 'to_assign' and all unselected as 'to_unassign'
+            # This logic will effectively overwrite the custom roles with the new selection.
             if 'custom_roles_to_assign' in updates:
-                # Assign custom roles
-                for role_name in updates['custom_roles_to_assign']:
-                    member_ref.child(f'roles/{role_name}').set(True)
-                    user_group_ref.child(f'roles/{role_name}').set(True)
-            
-            if 'custom_roles_to_unassign' in updates:
-                # Unassign custom roles
+                # Get current custom roles to avoid deleting others if not in 'to_unassign'
+                current_member_custom_roles = member_ref.child('roles').get() or {}
+                current_user_custom_roles = user_group_ref.child('roles').get() or {}
+
+                # Clear only custom roles (leave primary 'role' key untouched)
                 for role_name in updates['custom_roles_to_unassign']:
-                    member_ref.child(f'roles/{role_name}').delete()
-                    user_group_ref.child(f'roles/{role_name}').delete()
+                    if role_name in current_member_custom_roles:
+                        del current_member_custom_roles[role_name]
+                    if role_name in current_user_custom_roles:
+                        del current_user_custom_roles[role_name]
+                
+                for role_name in updates['custom_roles_to_assign']:
+                    current_member_custom_roles[role_name] = True
+                    current_user_custom_roles[role_name] = True
+                
+                member_ref.child('roles').set(current_member_custom_roles)
+                user_group_ref.child('roles').set(current_user_custom_roles)
         
         return jsonify({'success': True, 'message': 'Roles updated successfully.'})
 
     except Exception as e:
         logging.error(f"Error updating roles for group {group_id}: {e}")
+        traceback.print_exc() # Print full traceback
         return jsonify({'success': False, 'message': 'Error updating roles.'}), 500
+
 @app.errorhandler(Exception)
 def handle_exception(e):
     print("UNCAUGHT EXCEPTION:", e, file=sys.stderr)
