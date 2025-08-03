@@ -130,17 +130,16 @@
         <h3>Assign Action</h3>
         <p>Please choose an action:</p>
         <button onclick="openAssignRoleOptions()">Assign Role</button>
-        <button onclick="openCreateAssignTaskModal()">Create/Assign Task</button>
-        <button onclick="closeAssignOptions()">Cancel</button>
+        <button onclick="openAssignTaskOptions()">Assign Task</button> <button onclick="closeAssignOptions()">Cancel</button>
     </div>
 
     <div class="floating-container" id="assignRoleOptionsContainer" style="display: none;">
         <h3>Role Assignment Options</h3>
         <p>What role action do you want to perform?</p>
-        <button onclick="openRoleManagement()">Manage & Create Roles</button> <button onclick="openAssignExistingRoleModal()">Assign Existing Role to Members</button>
+        <button onclick="openRoleManagement()">Manage & Create Roles</button>
+        <button onclick="openAssignExistingRoleModal()">Assign Existing Role to Members</button>
         <button onclick="closeAssignRoleOptions()">Cancel</button>
     </div>
-
 
     <div class="floating-container" id="assignExistingRoleContainer" style="display: none;">
         <h3>Assign Existing Role</h3>
@@ -161,36 +160,66 @@
         </form>
     </div>
 
+    <div class="floating-container" id="assignTaskOptionsContainer" style="display: none;">
+        <h3>Task Assignment Options</h3>
+        <p>Do you want to create a new project with tasks, or assign an existing task?</p>
+        <button onclick="openCreateProjectModal()">Create Project</button>
+        <button onclick="openAssignExistingTaskModal()">Assign Existing Task</button>
+        <button type="button" class="cancel-button" onclick="closeAssignTaskOptions()">Cancel</button>
+    </div>
 
-    <div class="floating-container" id="assignTaskContainer" style="display: none;">
-        <h3>Assign Task</h3>
-        <form id="assignTaskForm">
-            <input type="text" id="task-name" placeholder="Task Name" required>
-            <textarea id="task-description" placeholder="Task Description" rows="3"></textarea>
+    <div class="floating-container" id="createProjectContainer" style="display: none;">
+        <h3>Create New Project</h3>
+        <form id="createProjectForm">
+            <label for="project-name">Project Name:</label>
+            <input type="text" id="project-name" placeholder="Enter project name" required>
+            <label for="project-description">Project Description:</label>
+            <textarea id="project-description" placeholder="Describe the project" rows="3"></textarea>
+
+            <h4>Project Tasks:</h4>
+            <div id="project-tasks-list">
+                </div>
+            <button type="button" onclick="addProjectTask()">Add Task to Project</button>
+            <br>
+            <button type="button" onclick="submitProject()">Create Project with Tasks</button>
+            <button type="button" class="cancel-button" onclick="closeCreateProjectModal()">Cancel</button>
+        </form>
+    </div>
+
+    <div class="floating-container" id="assignExistingTaskContainer" style="display: none;">
+        <h3>Assign Existing Task</h3>
+        <form id="assignExistingTaskForm">
+            <label for="select-existing-task">Select Task:</label>
+            <select id="select-existing-task" required>
+                </select>
+            <br>
+            <label for="assign-task-to-type">Assign To:</label>
+            <select id="assign-task-to-type" onchange="toggleAssignToSelection()">
+                <option value="user">User</option>
+                <option value="role">Role</option>
+                <option value="everyone">Everyone</option>
+            </select>
             
-            <select id="assign-type" required>
-                <option value="username">Assign to User</option>
-                <option value="everyone">Assign to Everyone</option>
-            </select>
-
-            <select id="priority" required>
-                <option value="High">High Priority</option>
-                <option value="Medium">Medium Priority</option>
-                <option value="Low">Low Priority</option>
-            </select>
-
-            <div id="user-selection">
-                <select id="assigned-to" required>
+            <div id="assign-task-user-selection">
+                <label for="assign-task-to-user">Select User:</label>
+                <select id="assign-task-to-user">
                     {% for member in members %}
                     <option value="{{ member.username }}">{{ member.username }}</option>
                     {% endfor %}
                 </select>
             </div>
+
+            <div id="assign-task-role-selection" style="display: none;">
+                <label for="assign-task-to-role">Select Role:</label>
+                <select id="assign-task-to-role">
+                    </select>
+            </div>
             <br>
-            <button type="button" id="assignTaskButton">Assign Task</button>
-            <button type="button" class="cancel-button" onclick="closeAssignTask()">Cancel</button>
+            <button type="button" onclick="submitAssignExistingTask()">Assign Task</button>
+            <button type="button" class="cancel-button" onclick="closeAssignExistingTaskModal()">Cancel</button>
         </form>
     </div>
+
 
     <div id="whiteboardModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center;">
         <div style="background:white; border-radius:8px; padding:20px; width:80%; max-width:800px; max-height:90vh; overflow:auto;">
@@ -204,7 +233,7 @@
             </div>
         </div>
     </div>
-
+    
 <script>
     // Admin credentials and API configuration
     const username = "{{ username }}";
@@ -216,17 +245,19 @@
     let localTrack = null;
 
     let availableCustomRoles = []; // To store custom roles fetched from the server
+    let projectIdCounter = 0; // To uniquely identify tasks added to a project form
+
+    // --- Global Data Holders ---
+    let projectTasks = []; // Array to hold tasks for the current project being created
+    let existingTasks = []; // Array to hold tasks fetched for 'Assign Existing Task'
 
     // Initialize admin interface
     function initAdminInterface() {
         fetchMessages();
-        initTaskAssignment();
         initCollapsibleSections();
         
         // Setup all event listeners
         document.getElementById('whiteboardToggleBtn').addEventListener('click', openWhiteboard);
-        document.getElementById('assignTaskButton').addEventListener('click', submitTask);
-        document.getElementById('assign-type').addEventListener('change', toggleUserSelection);
         document.getElementById('taskPanelToggle').addEventListener('click', toggleTaskPanel);
         document.getElementById('joinBtn').addEventListener('click', joinVoiceCall);
         document.getElementById('leaveBtn').addEventListener('click', leaveVoiceCall);
@@ -238,19 +269,6 @@
             el.classList.remove('collapsed');
             el.nextElementSibling.style.display = 'block';
         });
-    }
-
-    function toggleUserSelection() {
-        const assignType = document.getElementById('assign-type');
-        const userSelection = document.getElementById('user-selection');
-        userSelection.style.display = assignType.value === 'username' ? 'block' : 'none';
-    }
-
-    function initTaskAssignment() {
-        const assignType = document.getElementById('assign-type');
-        if (assignType) {
-            toggleUserSelection();
-        }
     }
 
     // Message handling (No change)
@@ -293,7 +311,7 @@
         }
     }
 
-    // --- Assign Options Modal Functions ---
+    // --- Main Assign Options Modal Functions ---
     function openAssignOptions() {
         document.getElementById('assignOptionsContainer').style.display = 'block';
     }
@@ -316,7 +334,6 @@
     function openAssignExistingRoleModal() {
         closeAssignRoleOptions(); // Close the role options modal
 
-        // Fetch available custom roles and populate the dropdown
         fetch(`/get_group_members_with_roles/${groupId}`)
             .then(res => res.json())
             .then(data => {
@@ -370,7 +387,7 @@
         const updates = {};
         selectedUsers.forEach(user => {
             updates[user] = {
-                custom_roles_to_assign: [selectedRole] // Only send the role to be assigned
+                custom_roles_to_assign: [selectedRole]
             };
         });
 
@@ -384,7 +401,7 @@
             if (data.success) {
                 alert(data.message);
                 closeAssignExistingRoleModal();
-                location.reload(); // Refresh to reflect role changes
+                location.reload();
             } else {
                 alert('Failed to assign role: ' + data.message);
             }
@@ -395,79 +412,7 @@
         });
     }
 
-    // --- Create/Assign Task Modal Functions ---
-    function openCreateAssignTaskModal() {
-        closeAssignOptions();
-        document.getElementById('assignTaskForm').reset();
-        document.getElementById('assign-type').value = 'username';
-        toggleUserSelection();
-        document.getElementById('assignTaskContainer').style.display = 'block';
-    }
-
-    function closeAssignTask() {
-        document.getElementById('assignTaskContainer').style.display = 'none';
-        document.getElementById('assignTaskForm').reset();
-    }
-
-    function submitTask() {
-        const title = document.getElementById('task-name').value.trim();
-        const description = document.getElementById('task-description').value.trim();
-        const assignType = document.getElementById('assign-type').value;
-        const priority = document.getElementById('priority').value;
-        let assignedTo = '';
-        
-        if (!title) {
-            alert('Please enter a task name.');
-            return;
-        }
-        if (!priority) {
-            alert('Please select a priority.');
-            return;
-        }
-
-        if (assignType === 'username') {
-            assignedTo = document.getElementById('assigned-to').value.trim();
-            if (!assignedTo) {
-                alert('Please select a user to assign the task to.');
-                return;
-            }
-        } else if (assignType === 'everyone') {
-            assignedTo = 'everyone';
-        } else {
-            alert('Invalid assignment type selected.');
-            return;
-        }
-
-        const taskData = {
-            task_name: title,
-            description: description,
-            assigned_type: assignType,
-            assigned_to: assignedTo,
-            priority: priority
-        };
-
-        fetch(`/create_assign_task/${groupId}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(taskData)
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                alert(data.message);
-                closeAssignTask();
-                location.reload();
-            } else {
-                alert('Failed to assign task: ' + data.message);
-            }
-        })
-        .catch(err => {
-            console.error('Error assigning task:', err);
-            alert("Error assigning task. Please check the console for details.");
-        });
-    }
-
-    // Role management (Now only accessed through the Assign Role options)
+    // --- Role Management Functions ---
     function openRoleManagement() {
         closeAssignRoleOptions(); // Close the role options modal first
 
@@ -519,9 +464,8 @@
                             <option value="${role}">${role}</option>
                         `).join('')}
                     </select>
-                    <button type="button" onclick="deleteCustomRole()">Remove Role</button>
+                    <button type="button" class="cancel-button" onclick="deleteCustomRole()">Remove Role</button>
                     `;
-
 
                     content.innerHTML = html;
                     document.getElementById('roleManagementContainer').style.display = 'block';
@@ -563,7 +507,6 @@
         });
     }
 
-    // NEW FUNCTION: Delete Custom Role
     function deleteCustomRole() {
         const roleToDelete = document.getElementById('roleToDelete').value;
         if (!roleToDelete) {
@@ -594,7 +537,6 @@
             alert('Error removing role.');
         });
     }
-
 
     function closeRoleManagement() {
         document.getElementById('roleManagementContainer').style.display = 'none';
@@ -644,6 +586,347 @@
             alert('Failed to update roles');
         });
     }
+
+
+    // --- NEW: Assign Task Options Modal Functions ---
+    function openAssignTaskOptions() {
+        closeAssignOptions(); // Close the main assign options modal
+        document.getElementById('assignTaskOptionsContainer').style.display = 'block';
+    }
+
+    function closeAssignTaskOptions() {
+        document.getElementById('assignTaskOptionsContainer').style.display = 'none';
+        openAssignOptions(); // Go back to the main assign options
+    }
+
+    // --- NEW: Create Project Modal Functions ---
+    function openCreateProjectModal() {
+        closeAssignTaskOptions(); // Close task options
+        document.getElementById('createProjectContainer').style.display = 'block';
+        document.getElementById('createProjectForm').reset();
+        document.getElementById('project-tasks-list').innerHTML = ''; // Clear previous tasks
+        projectTasks = []; // Reset the array
+        projectIdCounter = 0; // Reset counter for new project
+    }
+
+    function closeCreateProjectModal() {
+        document.getElementById('createProjectContainer').style.display = 'none';
+        document.getElementById('createProjectForm').reset();
+        document.getElementById('project-tasks-list').innerHTML = '';
+        projectTasks = [];
+        projectIdCounter = 0;
+        openAssignTaskOptions(); // Go back to task options
+    }
+
+    function addProjectTask() {
+        const tasksList = document.getElementById('project-tasks-list');
+        const taskId = `task-${projectIdCounter++}`;
+
+        const taskEntryDiv = document.createElement('div');
+        taskEntryDiv.className = 'task-entry';
+        taskEntryDiv.id = taskId;
+        taskEntryDiv.innerHTML = `
+            <h5>Task #${projectIdCounter}</h5>
+            <label for="${taskId}-name">Task Name:</label>
+            <input type="text" id="${taskId}-name" placeholder="Task Name" required>
+            
+            <label for="${taskId}-description">Description:</label>
+            <textarea id="${taskId}-description" placeholder="Task Description" rows="2"></textarea>
+            
+            <label for="${taskId}-week">Assign to Week:</label>
+            <select id="${taskId}-week">
+                <option value="this_week">This Week</option>
+                <option value="next_week">Next Week</option>
+                <option value="week_2">Week 2</option>
+                <option value="week_3">Week 3</option>
+                <option value="week_4">Week 4</option>
+                </select>
+            
+            <label for="${taskId}-priority">Priority:</label>
+            <select id="${taskId}-priority">
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
+            </select>
+            
+            <label for="${taskId}-assignee-type">Assign To:</label>
+            <select id="${taskId}-assignee-type" onchange="toggleProjectTaskAssignee('${taskId}')">
+                <option value="user">Specific User</option>
+                <option value="role">Role</option>
+                <option value="everyone">Everyone in Group</option>
+            </select>
+
+            <div id="${taskId}-user-select-div">
+                <label for="${taskId}-assignee-user">Select User:</label>
+                <select id="${taskId}-assignee-user">
+                    {% for member in members %}
+                    <option value="{{ member.username }}">{{ member.username }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div id="${taskId}-role-select-div" style="display:none;">
+                <label for="${taskId}-assignee-role">Select Role:</label>
+                <select id="${taskId}-assignee-role"></select>
+            </div>
+
+            <button type="button" class="cancel-button" onclick="removeProjectTask('${taskId}')">Remove Task</button>
+        `;
+        tasksList.appendChild(taskEntryDiv);
+
+        // Populate roles for the newly added task's role select
+        populateProjectTaskRoles(taskId);
+        // Ensure initial state of assignee selection is correct
+        toggleProjectTaskAssignee(taskId);
+    }
+
+    function populateProjectTaskRoles(taskId) {
+        const selectRole = document.getElementById(`${taskId}-assignee-role`);
+        selectRole.innerHTML = ''; // Clear existing options
+        if (availableCustomRoles && availableCustomRoles.length > 0) {
+            availableCustomRoles.forEach(role => {
+                const option = document.createElement('option');
+                option.value = role;
+                option.textContent = role;
+                selectRole.appendChild(option);
+            });
+        } else {
+            selectRole.innerHTML = '<option value="">No custom roles available</option>';
+        }
+    }
+
+    function toggleProjectTaskAssignee(taskId) {
+        const assigneeType = document.getElementById(`${taskId}-assignee-type`).value;
+        document.getElementById(`${taskId}-user-select-div`).style.display = (assigneeType === 'user') ? 'block' : 'none';
+        document.getElementById(`${taskId}-role-select-div`).style.display = (assigneeType === 'role') ? 'block' : 'none';
+    }
+
+    function removeProjectTask(taskId) {
+        const taskElement = document.getElementById(taskId);
+        if (taskElement) {
+            taskElement.remove();
+        }
+    }
+
+    function submitProject() {
+        const projectName = document.getElementById('project-name').value.trim();
+        const projectDescription = document.getElementById('project-description').value.trim();
+        
+        if (!projectName) {
+            alert('Please enter a project name.');
+            return;
+        }
+
+        const projectTasksData = [];
+        const taskEntries = document.querySelectorAll('#project-tasks-list .task-entry');
+
+        if (taskEntries.length === 0) {
+            alert('Please add at least one task to the project.');
+            return;
+        }
+
+        let allTasksValid = true;
+        taskEntries.forEach(taskEntry => {
+            const taskId = taskEntry.id;
+            const taskName = document.getElementById(`${taskId}-name`).value.trim();
+            const taskDescription = document.getElementById(`${taskId}-description`).value.trim();
+            const taskWeek = document.getElementById(`${taskId}-week`).value;
+            const taskPriority = document.getElementById(`${taskId}-priority`).value;
+            const assigneeType = document.getElementById(`${taskId}-assignee-type`).value;
+            
+            let assignedTo = '';
+            if (assigneeType === 'user') {
+                assignedTo = document.getElementById(`${taskId}-assignee-user`).value;
+                if (!assignedTo) {
+                    alert(`Please select a user for task "${taskName}".`);
+                    allTasksValid = false;
+                    return;
+                }
+            } else if (assigneeType === 'role') {
+                assignedTo = document.getElementById(`${taskId}-assignee-role`).value;
+                 if (!assignedTo) {
+                    alert(`Please select a role for task "${taskName}".`);
+                    allTasksValid = false;
+                    return;
+                }
+            } else if (assigneeType === 'everyone') {
+                assignedTo = 'everyone';
+            }
+
+            if (!taskName) {
+                alert(`Task name cannot be empty for a task in project "${projectName}".`);
+                allTasksValid = false;
+                return;
+            }
+
+            projectTasksData.push({
+                task_name: taskName,
+                description: taskDescription,
+                assigned_to_type: assigneeType, // new field to indicate if it's user/role/everyone
+                assigned_to: assignedTo,
+                priority: taskPriority,
+                week_category: taskWeek // this_week, next_week, week_2, etc.
+            });
+        });
+
+        if (!allTasksValid) {
+            return; // Stop submission if any task is invalid
+        }
+
+        const projectData = {
+            project_name: projectName,
+            project_description: projectDescription,
+            tasks: projectTasksData
+        };
+
+        fetch(`/create_project_with_tasks/${groupId}`, { // New Flask route needed
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(projectData)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                closeCreateProjectModal();
+                location.reload();
+            } else {
+                alert('Failed to create project: ' + data.message);
+            }
+        })
+        .catch(err => {
+            console.error('Error creating project:', err);
+            alert("Error creating project. Please check the console for details.");
+        });
+    }
+
+    // --- NEW: Assign Existing Task Modal Functions ---
+    function openAssignExistingTaskModal() {
+        closeAssignTaskOptions(); // Close task options
+
+        // Fetch all existing tasks and custom roles
+        Promise.all([
+            fetch(`/get_all_tasks/${groupId}`).then(res => res.json()), // New Flask route needed
+            fetch(`/get_group_members_with_roles/${groupId}`).then(res => res.json())
+        ])
+        .then(([tasksData, rolesData]) => {
+            if (tasksData.success && Array.isArray(tasksData.tasks)) {
+                existingTasks = tasksData.tasks;
+                populateExistingTasks(existingTasks);
+            } else {
+                alert('Failed to load existing tasks: ' + (tasksData.message || 'Unknown error'));
+                console.error('Error loading existing tasks:', tasksData);
+            }
+
+            if (rolesData.success && Array.isArray(rolesData.available_custom_roles)) {
+                availableCustomRoles = rolesData.available_custom_roles;
+                populateAssignExistingTaskRoles(availableCustomRoles);
+            } else {
+                alert('Failed to load custom roles for assignment: ' + (rolesData.message || 'Unknown error'));
+                console.error('Error loading custom roles:', rolesData);
+            }
+
+            document.getElementById('assignExistingTaskContainer').style.display = 'block';
+            toggleAssignToSelection(); // Set initial visibility for assignee type
+        })
+        .catch(err => {
+            console.error('Error fetching data for existing task assignment:', err);
+            alert('Error loading data for task assignment.');
+        });
+    }
+
+    function populateExistingTasks(tasks) {
+        const selectTask = document.getElementById('select-existing-task');
+        selectTask.innerHTML = '<option value="">-- Select an Existing Task --</option>';
+        if (tasks && tasks.length > 0) {
+            tasks.forEach(task => {
+                const option = document.createElement('option');
+                option.value = task.task_id; // Assuming tasks have a unique ID
+                option.textContent = task.task_name;
+                selectTask.appendChild(option);
+            });
+        }
+    }
+
+    function populateAssignExistingTaskRoles(roles) {
+        const selectRole = document.getElementById('assign-task-to-role');
+        selectRole.innerHTML = '';
+        if (roles && roles.length > 0) {
+            roles.forEach(role => {
+                const option = document.createElement('option');
+                option.value = role;
+                option.textContent = role;
+                selectRole.appendChild(option);
+            });
+        } else {
+            selectRole.innerHTML = '<option value="">No custom roles available</option>';
+        }
+    }
+
+    function toggleAssignToSelection() {
+        const assignToType = document.getElementById('assign-task-to-type').value;
+        document.getElementById('assign-task-user-selection').style.display = (assignToType === 'user') ? 'block' : 'none';
+        document.getElementById('assign-task-role-selection').style.display = (assignToType === 'role') ? 'block' : 'none';
+    }
+
+    function closeAssignExistingTaskModal() {
+        document.getElementById('assignExistingTaskContainer').style.display = 'none';
+        document.getElementById('assignExistingTaskForm').reset();
+        openAssignTaskOptions(); // Go back to task options
+    }
+
+    function submitAssignExistingTask() {
+        const taskId = document.getElementById('select-existing-task').value;
+        const assignToType = document.getElementById('assign-task-to-type').value;
+        let assignedTo = '';
+
+        if (!taskId) {
+            alert('Please select an existing task.');
+            return;
+        }
+
+        if (assignToType === 'user') {
+            assignedTo = document.getElementById('assign-task-to-user').value;
+            if (!assignedTo) {
+                alert('Please select a user to assign the task to.');
+                return;
+            }
+        } else if (assignToType === 'role') {
+            assignedTo = document.getElementById('assign-task-to-role').value;
+            if (!assignedTo) {
+                alert('Please select a role to assign the task to.');
+                return;
+            }
+        } else if (assignToType === 'everyone') {
+            assignedTo = 'everyone';
+        }
+
+        const assignmentData = {
+            task_id: taskId,
+            assigned_to_type: assignToType,
+            assigned_to: assignedTo
+        };
+
+        fetch(`/assign_existing_task/${groupId}`, { // New Flask route needed
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(assignmentData)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                closeAssignExistingTaskModal();
+                location.reload();
+            } else {
+                alert('Failed to assign task: ' + data.message);
+            }
+        })
+        .catch(err => {
+            console.error('Error assigning existing task:', err);
+            alert('Error assigning existing task.');
+        });
+    }
+
 
     // Voice call functions (No change)
     function joinVoiceCall() {
