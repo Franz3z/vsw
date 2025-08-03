@@ -210,29 +210,59 @@ def group_redirect(username, group_id):
 
 @app.route('/mainadmin/<username>/<group_id>')
 def mainadmin(username, group_id):
+    logging.debug(f"Accessing mainadmin for user: {username}, group: {group_id}")
     group_ref = db.reference(f'groups/{group_id}')
 
-    members_ref = group_ref.child('members')
-    members_data = members_ref.get() or {}
+    # --- Fetch Members Data ---
     members_data_raw = group_ref.child('members').get() or {}
+    logging.debug(f"Raw members data from Firebase: {members_data_raw}")
+
     members = []
-    members = [{'username': m} for m in members_data.keys() if m != username]
+    if not isinstance(members_data_raw, dict):
+        logging.error(f"members_data_raw is not a dictionary! Type: {type(members_data_raw)}, Value: {members_data_raw}")
+        # Depending on desired behavior, you might want to return an error,
+        # or proceed with an empty members list, or attempt a very basic parse.
+        # For now, we'll log and treat it as empty for processing purposes.
+        members_data_raw = {} # Ensure it's a dict for the loop below
 
     for member_username, member_info in members_data_raw.items():
-        primary_role = member_info.get('role', 'member')
-        custom_roles = member_info.get('roles', {})
+        logging.debug(f"Processing member: {member_username}, Info: {member_info}")
+
+        primary_role = 'member' # Default primary role
+        custom_roles = {}      # Default custom roles
+
+        if isinstance(member_info, dict):
+            # New structure: member_info is a dictionary
+            primary_role = member_info.get('role', 'member')
+            custom_roles = member_info.get('roles', {})
+        elif isinstance(member_info, str):
+            # Old structure: member_info is just a role string (e.g., "admin" or "member")
+            primary_role = member_info
+            # For custom roles, if it was just a string, we can make it a custom role too
+            custom_roles = {member_info: True}
+            logging.warning(f"Detected old member data structure for {member_username}. Converting: {member_info}")
+        else:
+            # Handle unexpected types (e.g., None, list)
+            logging.error(f"Unexpected member data type for {member_username}: {type(member_info)} - {member_info}. Skipping.")
+            continue # Skip this malformed entry
+
         members.append({
             'username': member_username,
             'primary_role': primary_role,
-            'custom_roles': list(custom_roles.keys())
+            'custom_roles': list(custom_roles.keys()) # Convert dict keys to a list of role names
         })
+    logging.debug(f"Processed members list for template: {members}")
 
+    # --- Fetch Pending Requests ---
     pending_ref = group_ref.child('pending_requests')
     pending_requests_data = pending_ref.get() or {}
     pending_requests = list(pending_requests_data.keys())
+    logging.debug(f"Pending requests: {pending_requests}")
 
+    # --- Fetch Tasks Data ---
     tasks_ref = group_ref.child('tasks')
     tasks_data = tasks_ref.get() or {}
+    logging.debug(f"Tasks data: {tasks_data}")
 
     pending_tasks = []
     completed_tasks = []
@@ -245,46 +275,67 @@ def mainadmin(username, group_id):
             'assigned_to': task.get('assigned_to', ''),
             'priority': task.get('priority', ''),
             'progress_reports': task.get('progress_reports', {}),
-            'assigned_type': task.get('assigned_type', 'user'),  # Add assigned_type
+            'assigned_type': task.get('assigned_type', 'user'),
             'deadline': task.get('deadline', '')
         }
         if task_info['progress_reports']:
             completed_tasks.append(task_info)
         else:
             pending_tasks.append(task_info)
+    logging.debug(f"Pending tasks: {pending_tasks}")
+    logging.debug(f"Completed tasks: {completed_tasks}")
 
-    # Get custom roles
-    roles_ref = db.reference(f'groups/{group_id}/roles')
-    roles_data = roles_ref.get() or {}
+    # --- Get Custom Roles (Corrected path based on previous suggestions) ---
+    # Assuming custom roles are stored directly under 'groups/{group_id}/custom_roles'
+    all_custom_roles_ref = db.reference(f'groups/{group_id}/custom_roles')
+    all_custom_roles_data = all_custom_roles_ref.get() or {}
+    # Make sure this variable name matches what's expected by the template
+    available_custom_roles = list(all_custom_roles_data.keys())
+    logging.debug(f"Available custom roles: {available_custom_roles}")
 
-    # Get member roles (replaced with actual implementation)
+
+    # --- Get Chat Messages ---
     chat_ref = db.reference(f'groups/{group_id}/chat')
     chat_data = chat_ref.get() or {}
+    logging.debug(f"Chat data: {chat_data}")
 
     messages = []
-    for _, msg in sorted(chat_data.items(), key=lambda x: x[1].get('timestamp', '')):
-        if isinstance(msg, dict):
-            messages.append({
-                'sender': msg.get('sender'),
-                'message': msg.get('text'), 
-                'timestamp': datetime.fromisoformat(msg['timestamp']).strftime('%b %d, %I:%M %p')
-            })
-        else:
-            logging.warning(f"Skipping malformed message in mainadmin for group {group_id}: {msg}")
+    # Sort messages by timestamp, handling potential missing timestamps or non-dict messages
+    sorted_chat_items = sorted(
+        (item for item in chat_data.values() if isinstance(item, dict) and item.get('timestamp')),
+        key=lambda x: x['timestamp']
+    )
+
+    for msg in sorted_chat_items:
+        try:
+            timestamp_dt = datetime.fromisoformat(msg['timestamp'])
+            formatted_timestamp = timestamp_dt.strftime('%b %d, %I:%M %p')
+        except ValueError:
+            # Fallback for malformed timestamps
+            formatted_timestamp = msg['timestamp'] # Use original if parsing fails
+            logging.warning(f"Malformed timestamp in chat message for group {group_id}: {msg.get('timestamp')}")
+
+        messages.append({
+            'sender': msg.get('sender', 'Unknown'),
+            'message': msg.get('text', ''),
+            'timestamp': formatted_timestamp
+        })
+    logging.debug(f"Processed chat messages: {messages}")
 
     return render_template(
         'mainadmin.html',
         username=username,
         group_id=group_id,
-        members=members,
+        members=members, # This now has the correct, complete member info
         pending_requests=pending_requests,
         pending_tasks=pending_tasks,
         completed_tasks=completed_tasks,
         messages=messages,
-        group_roles=roles_data,
-        available_custom_roles=available_custom_roles
+        group_roles=roles_data, # This variable name ('roles_data') is a bit confusing
+                               # It's actually the 'custom_roles' data from Firebase
+                               # Consider renaming for clarity in future if it becomes an issue.
+        available_custom_roles=available_custom_roles # Make sure this is passed
     )
-
 @app.route('/create_role/<group_id>', methods=['POST'])
 def create_role(group_id):
     role_name = request.json['role_name']
