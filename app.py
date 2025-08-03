@@ -148,18 +148,23 @@ def create_group_handler(username):
         'group_name': group_name,
         'admin': username,
         'members': {
-            username: 'admin'
+            username: {
+                'role': 'admin', # Explicitly set primary role
+                'roles': {'admin': True} # This is for custom roles, 'admin' can be a default custom role
+            }
         },
-        'roles': {}  # Initialize roles dictionary
+        'custom_roles': {} # Renamed 'roles' to 'custom_roles' for clarity in Firebase structure
     })
 
     db.reference(f'users/{username}/groups/{group_id}').set({
         'group_name': group_name,
-        'role': 'admin'
+        'role': 'admin',
+        'roles': {'admin': True} # Also store custom roles in user's group data
     })
 
     flash(f'Group \"{group_name}\" created successfully! You are the admin.')
     return redirect(url_for('dashboard', username=username))
+
 
 @app.route('/join_group_handler/<username>', methods=['POST'])
 def join_group_handler(username):
@@ -449,8 +454,8 @@ def approve_request(group_id, username):
 
     if pending_ref.child(username).get():
         members_ref.child(username).set({
-            'role': 'member',
-            'roles': {'member': True}
+            'role': 'member', # Set primary role
+            'roles': {'member': True} # Assign 'member' as a default custom role
         })
 
         pending_ref.child(username).delete()
@@ -459,11 +464,15 @@ def approve_request(group_id, username):
         group_data = group_ref.get()
         user_group_ref.set({
             'group_name': group_data.get('group_name', ''),
-            'role': 'member',
-            'roles': {'member': True}
+            'role': 'member', # Set primary role for user's group view
+            'roles': {'member': True} # Assign 'member' as a default custom role for user's group view
         })
+        flash(f'{username} has been approved to join the group.')
+    else:
+        flash(f'No pending request from {username}.')
 
     return redirect(url_for('mainadmin', username=session.get('username'), group_id=group_id))
+
 
 @app.route('/submit_progress/<username>/<group_id>/<task_id>', methods=['POST'])
 def submit_progress(username, group_id, task_id):
