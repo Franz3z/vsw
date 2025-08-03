@@ -560,6 +560,41 @@ def clear_notification(notification_id):
         logging.error(f"Error deleting notification: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/get_group_members_with_roles/<group_id>')
+def get_group_members_with_roles(group_id):
+    try:
+        group_members_ref = db.reference(f'groups/{group_id}/members')
+        members_data = group_members_ref.get() or {}
+
+        # Prepare a list of members with their primary role ('admin' or 'member')
+        # And also include any custom roles they might have
+        members_list = []
+        for username, data in members_data.items():
+            primary_role = data.get('role', 'member') # Default to member if not set
+            custom_roles = data.get('roles', {}) # This holds the dictionary of custom roles
+
+            members_list.append({
+                'username': username,
+                'role': primary_role, # This is the main 'admin' or 'member' role
+                'custom_roles': list(custom_roles.keys()) # List of custom role names (e.g., ['editor', 'viewer'])
+            })
+        
+        # Also fetch all available custom roles for the dropdowns
+        available_roles_ref = db.reference(f'groups/{group_id}/roles')
+        available_roles_data = available_roles_ref.get() or {}
+        available_custom_roles = list(available_roles_data.keys())
+
+
+        return jsonify({
+            'success': True,
+            'members': members_list,
+            'available_custom_roles': available_custom_roles
+        })
+
+    except Exception as e:
+        logging.error(f"Error fetching group members with roles for group {group_id}: {e}")
+        return jsonify({'success': False, 'message': 'Error fetching members.'}), 500
+
 @app.errorhandler(Exception)
 def handle_exception(e):
     print("UNCAUGHT EXCEPTION:", e, file=sys.stderr)
