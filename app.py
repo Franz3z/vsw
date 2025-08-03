@@ -416,7 +416,7 @@ def delete_role(group_id):
         
         for username, member_info in members_data.items():
             if 'roles' in member_info and role_name in member_info['roles']:
-                db.reference(f'groups/{group_id}/members/{username}/roles/{role_name').delete()
+                db.reference(f'groups/{group_id}/members/{username}/roles/{role_name}').delete()
             
             # Also update the user's personal group entry
             user_group_roles_ref = db.reference(f'users/{username}/groups/{group_id}/roles')
