@@ -595,6 +595,39 @@ def get_group_members_with_roles(group_id):
         logging.error(f"Error fetching group members with roles for group {group_id}: {e}")
         return jsonify({'success': False, 'message': 'Error fetching members.'}), 500
 
+@app.route('/update_roles/<group_id>', methods=['POST'])
+def update_roles(group_id):
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'message': 'No data provided'}), 400
+
+        for username, updates in data.items():
+            member_ref = db.reference(f'groups/{group_id}/members/{username}')
+            user_group_ref = db.reference(f'users/{username}/groups/{group_id}')
+
+            if 'primary_role' in updates:
+                # Update the primary role (admin/member)
+                member_ref.child('role').set(updates['primary_role'])
+                user_group_ref.child('role').set(updates['primary_role'])
+
+            if 'custom_roles_to_assign' in updates:
+                # Assign custom roles
+                for role_name in updates['custom_roles_to_assign']:
+                    member_ref.child(f'roles/{role_name}').set(True)
+                    user_group_ref.child(f'roles/{role_name}').set(True)
+            
+            if 'custom_roles_to_unassign' in updates:
+                # Unassign custom roles
+                for role_name in updates['custom_roles_to_unassign']:
+                    member_ref.child(f'roles/{role_name}').delete()
+                    user_group_ref.child(f'roles/{role_name}').delete()
+        
+        return jsonify({'success': True, 'message': 'Roles updated successfully.'})
+
+    except Exception as e:
+        logging.error(f"Error updating roles for group {group_id}: {e}")
+        return jsonify({'success': False, 'message': 'Error updating roles.'}), 500
 @app.errorhandler(Exception)
 def handle_exception(e):
     print("UNCAUGHT EXCEPTION:", e, file=sys.stderr)
