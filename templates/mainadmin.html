@@ -212,110 +212,217 @@
         </div>
     </div>
 
-    <script>
-        // Admin credentials and API configuration
-        const username = "{{ username }}";
-        const groupId = "{{ group_id }}";
-        const APP_ID = "8f0029e7fd2047339fe6822ab5b59abd";
-        const CHANNEL = "{{ group_id }}";
-        const UID = Math.floor(Math.random() * 10000);
-        let client = null;
-        let localTrack = null;
+<script>
+    // Admin credentials and API configuration
+    const username = "{{ username }}";
+    const groupId = "{{ group_id }}";
+    const APP_ID = "8f0029e7fd2047339fe6822ab5b59abd";
+    const CHANNEL = "{{ group_id }}";
+    const UID = Math.floor(Math.random() * 10000);
+    let client = null;
+    let localTrack = null;
 
-        // Initialize admin interface
-        function initAdminInterface() {
-            fetchMessages();
-            initTaskAssignment();
-            initCollapsibleSections();
-            
-            // Setup all event listeners
-            document.getElementById('whiteboardToggleBtn').addEventListener('click', openWhiteboard);
-            document.getElementById('assignTaskButton').addEventListener('click', assignTask);
-            document.getElementById('assign-type').addEventListener('change', toggleUserSelection);
-            document.getElementById('taskPanelToggle').addEventListener('click', toggleTaskPanel);
-            document.getElementById('joinBtn').addEventListener('click', joinVoiceCall);
-            document.getElementById('leaveBtn').addEventListener('click', leaveVoiceCall);
+    // --- Global Variables (Essential: ensure these are set by Jinja in your HTML) ---
+    let selectedUserForAssignment = null; // Stores the username if 'Assign' button was user-specific
+    let availableCustomRoles = []; // To store custom roles fetched from the server
+
+    // Initialize admin interface
+    function initAdminInterface() {
+        fetchMessages();
+        initTaskAssignment(); // This function now primarily handles the assign-type dropdown logic
+        initCollapsibleSections();
+        
+        // Setup all event listeners
+        document.getElementById('whiteboardToggleBtn').addEventListener('click', openWhiteboard);
+        document.getElementById('assignTaskButton').addEventListener('click', submitTask);
+        document.getElementById('assign-type').addEventListener('change', toggleUserSelection);
+        document.getElementById('taskPanelToggle').addEventListener('click', toggleTaskPanel);
+        document.getElementById('joinBtn').addEventListener('click', joinVoiceCall);
+        document.getElementById('leaveBtn').addEventListener('click', leaveVoiceCall);
+    }
+
+    function initCollapsibleSections() {
+        document.querySelectorAll('.collapsible').forEach(el => {
+            el.addEventListener('click', () => toggleCollapsible(el));
+            el.classList.remove('collapsed');
+            el.nextElementSibling.style.display = 'block';
+        });
+    }
+
+    function toggleUserSelection() {
+        const assignType = document.getElementById('assign-type');
+        const userSelection = document.getElementById('user-selection');
+        userSelection.style.display = assignType.value === 'username' ? 'block' : 'none';
+    }
+
+    function initTaskAssignment() {
+        const assignType = document.getElementById('assign-type');
+        if (assignType) {
+            toggleUserSelection();
         }
+    }
 
-        function initCollapsibleSections() {
-            document.querySelectorAll('.collapsible').forEach(el => {
-                el.addEventListener('click', () => toggleCollapsible(el));
-                el.classList.remove('collapsed');
-                el.nextElementSibling.style.display = 'block';
-            });
+    // Message handling (No change)
+    function fetchMessages() {
+        console.log("Fetching messages...");
+        fetch(`/get_messages/${groupId}`)
+            .then(response => response.json())
+            .then(data => {
+                const messagesContainer = document.getElementById('messagesContainer');
+                messagesContainer.innerHTML = '';
+                data.messages.forEach(msg => {
+                    const msgElement = document.createElement('p');
+                    msgElement.textContent = `${msg.timestamp} - ${msg.sender}: ${msg.message}`;
+                    messagesContainer.appendChild(msgElement);
+                });
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            })
+            .catch(error => console.error('Error fetching messages:', error));
+    }
+
+    function sendMessage() {
+        const messageInput = document.getElementById('messageInput');
+        const message = messageInput.value.trim();
+        if (message) {
+            fetch(`/send_message/${groupId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sender: username, message: message })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    messageInput.value = '';
+                    fetchMessages();
+                } else {
+                    alert('Failed to send message: ' + data.message);
+                }
+            })
+            .catch(error => console.error('Error sending message:', error));
         }
+    }
 
-        function initTaskAssignment() {
-            const assignType = document.getElementById('assign-type');
-            const userSelection = document.getElementById('user-selection');
-            
-            assignType.addEventListener('change', function() {
-                userSelection.style.display = this.value === 'username' ? 'block' : 'none';
-            });
-        }
-
-        // Message handling
-        function fetchMessages() {
-            // Same as in main.html
-        }
-
-        function sendMessage() {
-            // Same as in main.html
-        }
-
-        // Task assignment
-        function openAssignOptions() {
+    // --- NEW: Assign Options Modal Functions ---
+    function openAssignOptions() {
         document.getElementById('assignOptionsContainer').style.display = 'block';
     }
 
-    // Closes the initial "Assign Action" choices modal
     function closeAssignOptions() {
         document.getElementById('assignOptionsContainer').style.display = 'none';
     }
 
-    // --- Assign Role Modal Functions (from previous steps) ---
-
-    // Opens the "Assign Role" modal, fetches data, and populates the form
-    function openAssignRoleModal() {
-        closeAssignOptions(); // Close the options modal
-
-        // For this context, we assume assigning a role means managing roles for any user.
-        // We won't pre-select a user based on `selectedUserForAssignment` here,
-        // as the "Manage Roles" modal handles all users.
-        openRoleManagement(); // Directs to the existing "Manage Roles" functionality
+    // --- NEW: Assign Role Options Modal Functions ---
+    function openAssignRoleOptions() {
+        closeAssignOptions(); // Close the first options modal
+        document.getElementById('assignRoleOptionsContainer').style.display = 'block';
     }
 
-    // Closes the "Assign Role" modal (if you had a separate one, this would close it)
-    function closeAssignRoleModal() {
-        // Since openAssignRoleModal now just calls openRoleManagement, this might not be strictly needed
-        // unless you introduce a dedicated "Assign Role" modal different from "Manage Roles".
-        // For now, it could close the 'roleManagementContainer' if called from a place that opened it.
-        document.getElementById('assignRoleContainer').style.display = 'none';
+    function closeAssignRoleOptions() {
+        document.getElementById('assignRoleOptionsContainer').style.display = 'none';
     }
+
+    // --- NEW: Assign Existing Role Modal Functions ---
+    function openAssignExistingRoleModal() {
+        closeAssignRoleOptions(); // Close the role options modal
+
+        // Fetch available custom roles and populate the dropdown
+        fetch(`/get_group_members_with_roles/${groupId}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && Array.isArray(data.available_custom_roles)) {
+                    availableCustomRoles = data.available_custom_roles; // Store for later use if needed
+                    populateRoleSelection(availableCustomRoles);
+                    document.getElementById('assignExistingRoleContainer').style.display = 'block';
+                } else {
+                    alert('Failed to load custom roles: ' + (data.message || 'Unknown error'));
+                    console.error('Error loading custom roles:', data);
+                }
+            })
+            .catch(err => {
+                console.error('Error fetching custom roles:', err);
+                alert('Error fetching custom roles.');
+            });
+    }
+
+    function populateRoleSelection(roles) {
+        const selectRole = document.getElementById('select-role-to-assign');
+        selectRole.innerHTML = '<option value="">-- Select a Role --</option>'; // Default option
+        if (roles && roles.length > 0) {
+            roles.forEach(role => {
+                const option = document.createElement('option');
+                option.value = role;
+                option.textContent = role;
+                selectRole.appendChild(option);
+            });
+        }
+    }
+
+    function closeAssignExistingRoleModal() {
+        document.getElementById('assignExistingRoleContainer').style.display = 'none';
+        document.getElementById('assignExistingRoleForm').reset();
+    }
+
+    function submitAssignExistingRole() {
+        const selectedRole = document.getElementById('select-role-to-assign').value;
+        const selectedUsersElement = document.getElementById('select-users-for-role');
+        const selectedUsers = Array.from(selectedUsersElement.selectedOptions).map(option => option.value);
+
+        if (!selectedRole) {
+            alert('Please select a role.');
+            return;
+        }
+        if (selectedUsers.length === 0) {
+            alert('Please select at least one user.');
+            return;
+        }
+
+        const updates = {};
+        selectedUsers.forEach(user => {
+            // For each selected user, we want to add the chosen custom role
+            // We set 'primary_role' to null or current primary, and 'custom_roles_to_assign' to include the new role
+            // The backend needs to know which roles to add and which to remove.
+            // For simplicity, this will send just the role to be assigned.
+            updates[user] = {
+                custom_roles_to_assign: [selectedRole] // Only send the role to be assigned
+            };
+        });
+
+        fetch(`/update_roles/${groupId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updates)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                closeAssignExistingRoleModal();
+                location.reload(); // Refresh to reflect role changes
+            } else {
+                alert('Failed to assign role: ' + data.message);
+            }
+        })
+        .catch(err => {
+            console.error('Error assigning role:', err);
+            alert('Error assigning role.');
+        });
+    }
+
 
     // --- Create/Assign Task Modal Functions ---
-
-    // Renamed from `openAssignTask` to be more specific to task creation/assignment
     function openCreateAssignTaskModal() {
-        closeAssignOptions(); // Close the options modal
-
-        // Reset the form in case it was previously used
+        closeAssignOptions();
         document.getElementById('assignTaskForm').reset();
-        
-        // Ensure the correct initial state for user selection
-        document.getElementById('assign-type').value = 'username'; // Default to assigning to a user
-        toggleUserSelection(); // Update visibility based on default
-        
+        document.getElementById('assign-type').value = 'username';
+        toggleUserSelection();
         document.getElementById('assignTaskContainer').style.display = 'block';
     }
 
-    // No change, closes the task assignment modal
     function closeAssignTask() {
         document.getElementById('assignTaskContainer').style.display = 'none';
-        document.getElementById('assignTaskForm').reset(); // Clear form fields
+        document.getElementById('assignTaskForm').reset();
     }
 
-    // Renamed `assignTask` to `submitTask` for clarity as it submits the form
     function submitTask() {
         const title = document.getElementById('task-name').value.trim();
         const description = document.getElementById('task-description').value.trim();
@@ -323,7 +430,6 @@
         const priority = document.getElementById('priority').value;
         let assignedTo = '';
         
-        // Basic client-side validation
         if (!title) {
             alert('Please enter a task name.');
             return;
@@ -340,13 +446,13 @@
                 return;
             }
         } else if (assignType === 'everyone') {
-            assignedTo = 'everyone'; // This will be handled by your Flask backend
+            assignedTo = 'everyone';
         } else {
             alert('Invalid assignment type selected.');
             return;
         }
 
-        const taskData = { // Data prepared as a JavaScript object to be sent as JSON
+        const taskData = {
             task_name: title,
             description: description,
             assigned_type: assignType,
@@ -354,207 +460,240 @@
             priority: priority
         };
 
-        fetch(`/create_assign_task/${groupId}`, { // This endpoint expects JSON
+        fetch(`/create_assign_task/${groupId}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' }, // Tell the server we're sending JSON
-            body: JSON.stringify(taskData) // Convert JS object to JSON string
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(taskData)
         })
-        .then(res => res.json()) // Expect JSON response from server
+        .then(res => res.json())
         .then(data => {
-            if (data.success) { // Check the 'success' flag in the JSON response
+            if (data.success) {
                 alert(data.message);
                 closeAssignTask();
-                location.reload(); // Refresh the page to show the newly added task
+                location.reload();
             } else {
                 alert('Failed to assign task: ' + data.message);
             }
         })
         .catch(err => {
-            console.error('Error assigning task:', err); // Log full error for debugging
+            console.error('Error assigning task:', err);
             alert("Error assigning task. Please check the console for details.");
         });
     }
 
-        // Role management
-function openRoleManagement() {
-    fetch(`/get_group_members_with_roles/${groupId}`) // NEW ENDPOINT
+    // Role management (Existing functions, `openRoleManagement` is now accessed via `openAssignRoleOptions` -> "Manage & Create Roles")
+    function openRoleManagement() {
+        closeAssignRoleOptions(); // Close the role options modal
+
+        fetch(`/get_group_members_with_roles/${groupId}`)
+            .then(res => res.json())
+            .then(data => {
+                const content = document.getElementById('roleManagementContent');
+                if (data.success && Array.isArray(data.members)) {
+                    let html = '<form id="roleForm">';
+                    data.members.forEach(user => {
+                        html += `
+                        <div>
+                            <strong>${user.username}:</strong>
+                            <select name="primary_role_${user.username}" data-username="${user.username}" onchange="updatePrimaryRole('${user.username}', this.value)">
+                                <option value="admin" ${user.primary_role === 'admin' ? 'selected' : ''}>Admin</option>
+                                <option value="member" ${user.primary_role === 'member' ? 'selected' : ''}>Member</option>
+                            </select>
+                        </div>
+                        `;
+                        html += `
+                        <div style="margin-left: 20px;">
+                            Custom Roles:
+                            <select multiple name="custom_roles_${user.username}" data-username="${user.username}" class="custom-role-select">
+                                ${data.available_custom_roles.map(role => `
+                                    <option value="${role}" ${user.custom_roles.includes(role) ? 'selected' : ''}>${role}</option>
+                                `).join('')}
+                            </select>
+                        </div>
+                        `;
+                    });
+                    
+                    html += '<button type="button" onclick="saveRoles()">Save Roles</button>';
+                    html += '</form>';
+
+                    html += `
+                    <hr>
+                    <h4>Create New Custom Role</h4>
+                    <input type="text" id="newRoleName" placeholder="New Role Name">
+                    <button type="button" onclick="createNewRole()">Create Role</button>
+                    `;
+
+                    content.innerHTML = html;
+                    document.getElementById('roleManagementContainer').style.display = 'block';
+                } else {
+                    content.innerHTML = 'Error loading group members or roles.';
+                    console.error('Error from server:', data.message);
+                }
+            })
+            .catch(err => {
+                console.error('Error fetching group members:', err);
+                document.getElementById('roleManagementContent').innerHTML = 'Error loading group members.';
+            });
+    }
+
+    function createNewRole() {
+        const newRoleName = document.getElementById('newRoleName').value.trim();
+        if (!newRoleName) {
+            alert('Please enter a role name.');
+            return;
+        }
+
+        fetch(`/create_role/${groupId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ role_name: newRoleName })
+        })
         .then(res => res.json())
         .then(data => {
-            const content = document.getElementById('roleManagementContent');
-            if (data.success && Array.isArray(data.members)) {
-                let html = '<form id="roleForm">';
-                data.members.forEach(user => {
-                    // Display current primary role and allow changing it
-                    html += `
-                    <div>
-                        <strong>${user.username}:</strong>
-                        <select name="primary_role_${user.username}" data-username="${user.username}" onchange="updatePrimaryRole('${user.username}', this.value)">
-                            <option value="admin" ${user.primary_role === 'admin' ? 'selected' : ''}>Admin</option>
-                            <option value="member" ${user.primary_role === 'member' ? 'selected' : ''}>Member</option>
-                        </select>
-                    </div>
-                    `;
-                    // Add section for custom roles
-                    html += `
-                    <div style="margin-left: 20px;">
-                        Custom Roles:
-                        <select multiple name="custom_roles_${user.username}" data-username="${user.username}" class="custom-role-select">
-                            ${data.available_custom_roles.map(role => `
-                                <option value="${role}" ${user.custom_roles.includes(role) ? 'selected' : ''}>${role}</option>
-                            `).join('')}
-                        </select>
-                    </div>
-                    `;
-                });
-                
-                html += '<button type="button" onclick="saveRoles()">Save Roles</button>';
-                html += '</form>';
-
-                // Add section to create new custom roles
-                html += `
-                <hr>
-                <h4>Create New Custom Role</h4>
-                <input type="text" id="newRoleName" placeholder="New Role Name">
-                <button type="button" onclick="createNewRole()">Create Role</button>
-                `;
-
-                content.innerHTML = html;
-                document.getElementById('roleManagementContainer').style.display = 'block';
+            if (data.success) {
+                alert(data.message);
+                openRoleManagement(); // Refresh the modal to show the new role
             } else {
-                content.innerHTML = 'Error loading group members or roles.';
-                console.error('Error from server:', data.message);
+                alert('Failed to create role: ' + data.message);
             }
         })
         .catch(err => {
-            console.error('Error fetching group members:', err);
-            document.getElementById('roleManagementContent').innerHTML = 'Error loading group members.';
+            console.error('Error creating role:', err);
+            alert('Error creating role.');
         });
-}
-
-function createNewRole() {
-    const newRoleName = document.getElementById('newRoleName').value.trim();
-    if (!newRoleName) {
-        alert('Please enter a role name.');
-        return;
     }
 
-    fetch(`/create_role/${groupId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role_name: newRoleName })
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            alert(data.message);
-            openRoleManagement(); // Refresh the modal to show the new role
-        } else {
-            alert('Failed to create role: ' + data.message);
-        }
-    })
-    .catch(err => {
-        console.error('Error creating role:', err);
-        alert('Error creating role.');
-    });
-}
-
-
     function closeRoleManagement() {
-            document.getElementById('roleManagementContainer').style.display = 'none';
-        }
+        document.getElementById('roleManagementContainer').style.display = 'none';
+    }
 
-function saveRoles() {
-    const primaryRoleSelects = document.querySelectorAll('#roleForm select[name^="primary_role_"]');
-    const customRoleSelects = document.querySelectorAll('#roleForm select[name^="custom_roles_"]');
-    
-    const updates = {}; // Object to hold all updates
-
-    // Process primary role changes
-    primaryRoleSelects.forEach(select => {
-        const username = select.dataset.username;
-        if (!updates[username]) updates[username] = {};
-        updates[username]['primary_role'] = select.value;
-    });
-
-    // Process custom role changes
-    customRoleSelects.forEach(select => {
-        const username = select.dataset.username;
-        if (!updates[username]) updates[username] = {};
+    function saveRoles() {
+        const primaryRoleSelects = document.querySelectorAll('#roleForm select[name^="primary_role_"]');
+        const customRoleSelects = document.querySelectorAll('#roleForm select[name^="custom_roles_"]');
         
-        const selectedOptions = Array.from(select.selectedOptions).map(option => option.value);
-        const allOptions = Array.from(select.options).map(option => option.value);
+        const updates = {};
 
-        const customRolesToAssign = selectedOptions.filter(role => !userHasRoleInitially(username, role)); // You'll need to store initial roles or refetch
-        const customRolesToUnassign = allOptions.filter(role => !selectedOptions.includes(role) && userHasRoleInitially(username, role)); // Logic for what to remove
+        primaryRoleSelects.forEach(select => {
+            const username = select.dataset.username;
+            if (!updates[username]) updates[username] = {};
+            updates[username]['primary_role'] = select.value;
+        });
 
-        // For simplicity in this example, we'll just send the full list and overwrite.
-        // A more robust solution might track original state.
-        updates[username]['custom_roles_to_assign'] = selectedOptions; // Send all selected for simplicity in this example
-        updates[username]['custom_roles_to_unassign'] = allOptions.filter(role => !selectedOptions.includes(role)); // Send all unselected for simplicity
-
-        // NOTE: The backend `update_roles` expects separate lists for 'to_assign' and 'to_unassign'.
-        // This client-side code sends all selected as 'to_assign' and all unselected as 'to_unassign'.
-        // The backend should correctly handle setting/deleting based on this.
-    });
-
-    fetch(`/update_roles/${groupId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates)
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            alert('Roles updated successfully!');
-            closeRoleManagement();
-            // Optionally, refresh mainadmin page to reflect changes
-            location.reload(); 
-        } else {
-            alert('Failed to update roles: ' + data.message);
-        }
-    })
-    .catch(err => {
-        console.error('Error:', err);
-        alert('Failed to update roles');
-    });
-}
-        // Voice call functions (same as in main.html)
-        function joinVoiceCall() {
-            // Same as in main.html
-        }
-
-        function leaveVoiceCall() {
-            // Same as in main.html
-        }
-
-        // UI functions
-        function openWhiteboard() {
-            const modal = document.getElementById('whiteboardModal');
-            modal.style.display = 'flex';
+        customRoleSelects.forEach(select => {
+            const username = select.dataset.username;
+            if (!updates[username]) updates[username] = {};
             
-            // Initialize the whiteboard when the modal is shown
-            if (typeof initializeWhiteboard === 'function') {
-                initializeWhiteboard();
+            const selectedOptions = Array.from(select.selectedOptions).map(option => option.value);
+            const allOptions = Array.from(select.options).map(option => option.value);
+
+            // Fetch current roles of the user to determine what to add/remove accurately
+            // This would typically involve making another fetch request or storing initial state
+            // For simplicity here, we assume a complete overwrite is acceptable if this is the only role management tool.
+            // A more robust solution would require storing initial state from the `openRoleManagement` fetch.
+            updates[username]['custom_roles_to_assign'] = selectedOptions;
+            updates[username]['custom_roles_to_unassign'] = allOptions.filter(role => !selectedOptions.includes(role));
+        });
+
+        fetch(`/update_roles/${groupId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updates)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                alert('Roles updated successfully!');
+                closeRoleManagement();
+                location.reload(); 
             } else {
-                console.error("initializeWhiteboard function not found");
+                alert('Failed to update roles: ' + data.message);
             }
-        }
+        })
+        .catch(err => {
+            console.error('Error:', err);
+            alert('Failed to update roles');
+        });
+    }
 
-        function closeWhiteboard() {
-            // Same as in main.html
-        }
+    // Voice call functions (No change)
+    function joinVoiceCall() {
+        console.log("Joining voice call...");
+        if (!client) {
+            client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
+            client.join(APP_ID, CHANNEL, UID, async uid => {
+                localTrack = await AgoraRTC.createMicrophoneAudioTrack();
+                await client.publish(localTrack);
+                document.getElementById('joinBtn').disabled = true;
+                document.getElementById('leaveBtn').disabled = false;
+                console.log("Joined call as " + uid);
+            }, err => {
+                console.error("Join failed: ", err);
+            });
 
-        function toggleTaskPanel() {
-            // Same as in main.html
-        }
+            client.on("user-published", async (user, mediaType) => {
+                await client.subscribe(user, mediaType);
+                if (mediaType === "audio") {
+                    user.audioTrack.play();
+                }
+            });
 
-        function toggleCollapsible(element) {
-            // Same as in main.html
+            client.on("user-unpublished", user => {
+                console.log("User unpublished: ", user.uid);
+            });
         }
+    }
 
-        // Set up the admin interface when page loads
-        window.onload = initAdminInterface;
-        setInterval(fetchMessages, 5000);  // Refresh messages every 5 seconds
-    </script>
+    function leaveVoiceCall() {
+        console.log("Leaving voice call...");
+        if (localTrack) {
+            localTrack.close();
+            localTrack = null;
+        }
+        if (client) {
+            client.leave(() => {
+                document.getElementById('joinBtn').disabled = false;
+                document.getElementById('leaveBtn').disabled = true;
+                console.log("Left call.");
+            }, err => {
+                console.error("Leave failed: ", err);
+            });
+            client = null;
+        }
+    }
+
+    // UI functions (No change)
+    function openWhiteboard() {
+        const modal = document.getElementById('whiteboardModal');
+        modal.style.display = 'flex';
+        
+        if (typeof initializeWhiteboard === 'function') {
+            initializeWhiteboard();
+        } else {
+            console.error("initializeWhiteboard function not found");
+        }
+    }
+
+    function closeWhiteboard() {
+        document.getElementById('whiteboardModal').style.display = 'none';
+    }
+
+    function toggleTaskPanel() {
+        const panel = document.getElementById('taskPanel');
+        panel.classList.toggle('collapsed');
+    }
+
+    function toggleCollapsible(element) {
+        element.classList.toggle('collapsed');
+        const content = element.nextElementSibling;
+        if (content.style.display === "block") {
+            content.style.display = "none";
+        } else {
+            content.style.display = "block";
+        }
+    }
+
+    window.onload = initAdminInterface;
+    setInterval(fetchMessages, 5000);
+</script>
 </body>
 </html>
