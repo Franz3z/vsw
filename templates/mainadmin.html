@@ -13,12 +13,10 @@
 </head>
 <body>
     <div class="container">
-        <!-- LEFT PANEL: Navigation & Controls -->
         <div class="left-panel">
             <div class="buttons">
                 <button onclick="openAssignOptions()">Assign</button>
                 <button onclick="openApproveRequests()">Pending Requests</button>
-                <button onclick="openRoleManagement()">Manage Roles</button>
                 <a href="{{ url_for('dashboard', username=username) }}" class="styled-button">←</a>
             </div>
 
@@ -41,13 +39,11 @@
             </div>
         </div>
         
-        <!-- RIGHT PANEL: Persistent Task Panel -->
         <div class="right-panel" id="taskPanel">
             <button class="panel-toggle" id="taskPanelToggle">≡</button>
             <div class="task-panel-content">
                 <h3>Group Tasks</h3>
                 
-                <!-- DONE SECTION -->
                 <div class="task-section">
                     <div class="collapsible">✅ Done</div>
                     <ul id="done-tasks">
@@ -66,7 +62,6 @@
                     </ul>
                 </div>
 
-                <!-- TO BE DONE THIS WEEK -->
                 <div class="task-section">
                     <div class="collapsible">🎯 To Be Done This Week</div>
                     <ul id="this-week-tasks">
@@ -88,7 +83,6 @@
                     </ul>
                 </div>
 
-                <!-- TASKS NEXT WEEK -->
                 <div class="task-section">
                     <div class="collapsible">🗓️ Tasks Next Week</div>
                     <ul id="next-week-tasks">
@@ -110,7 +104,6 @@
         </div>
     </div>
 
-    <!-- Admin Modals -->
     <div class="floating-container" id="approveRequestsContainer" style="display: none;">
         <h3>Pending Join Requests</h3>
         <ul id="pending-requests-list">
@@ -127,23 +120,25 @@
     </div>
 
     <div class="floating-container" id="roleManagementContainer" style="display: none;">
-        <h3>Manage Roles</h3>
+        <h3>Manage & Create Roles</h3>
         <div id="roleManagementContent">
         </div>
         <button onclick="closeRoleManagement()">Close</button>
     </div>
 
-<div class="floating-container" id="assignOptionsContainer" style="display: none;">
+    <div class="floating-container" id="assignOptionsContainer" style="display: none;">
         <h3>Assign Action</h3>
         <p>Please choose an action:</p>
-        <button onclick="openAssignRoleOptions()">Assign Role</button> <button onclick="openCreateAssignTaskModal()">Create/Assign Task</button>
+        <button onclick="openAssignRoleOptions()">Assign Role</button>
+        <button onclick="openCreateAssignTaskModal()">Create/Assign Task</button>
         <button onclick="closeAssignOptions()">Cancel</button>
     </div>
 
     <div class="floating-container" id="assignRoleOptionsContainer" style="display: none;">
         <h3>Role Assignment Options</h3>
-        <p>Do you want to create a new role or assign an existing role?</p>
-        <button onclick="openRoleManagement()">Manage & Create Roles</button> <button onclick="openAssignExistingRoleModal()">Assign Existing Role</button> <button onclick="closeAssignRoleOptions()">Cancel</button>
+        <p>What role action do you want to perform?</p>
+        <button onclick="openRoleManagement()">Manage & Create Roles</button> <button onclick="openAssignExistingRoleModal()">Assign Existing Role to Members</button>
+        <button onclick="closeAssignRoleOptions()">Cancel</button>
     </div>
 
 
@@ -197,8 +192,6 @@
         </form>
     </div>
 
-
-    <!-- Whiteboard Modal -->
     <div id="whiteboardModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center;">
         <div style="background:white; border-radius:8px; padding:20px; width:80%; max-width:800px; max-height:90vh; overflow:auto;">
             <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -222,14 +215,12 @@
     let client = null;
     let localTrack = null;
 
-    // --- Global Variables (Essential: ensure these are set by Jinja in your HTML) ---
-    let selectedUserForAssignment = null; // Stores the username if 'Assign' button was user-specific
     let availableCustomRoles = []; // To store custom roles fetched from the server
 
     // Initialize admin interface
     function initAdminInterface() {
         fetchMessages();
-        initTaskAssignment(); // This function now primarily handles the assign-type dropdown logic
+        initTaskAssignment();
         initCollapsibleSections();
         
         // Setup all event listeners
@@ -302,7 +293,7 @@
         }
     }
 
-    // --- NEW: Assign Options Modal Functions ---
+    // --- Assign Options Modal Functions ---
     function openAssignOptions() {
         document.getElementById('assignOptionsContainer').style.display = 'block';
     }
@@ -311,7 +302,7 @@
         document.getElementById('assignOptionsContainer').style.display = 'none';
     }
 
-    // --- NEW: Assign Role Options Modal Functions ---
+    // --- Assign Role Options Modal Functions ---
     function openAssignRoleOptions() {
         closeAssignOptions(); // Close the first options modal
         document.getElementById('assignRoleOptionsContainer').style.display = 'block';
@@ -321,7 +312,7 @@
         document.getElementById('assignRoleOptionsContainer').style.display = 'none';
     }
 
-    // --- NEW: Assign Existing Role Modal Functions ---
+    // --- Assign Existing Role Modal Functions ---
     function openAssignExistingRoleModal() {
         closeAssignRoleOptions(); // Close the role options modal
 
@@ -330,7 +321,7 @@
             .then(res => res.json())
             .then(data => {
                 if (data.success && Array.isArray(data.available_custom_roles)) {
-                    availableCustomRoles = data.available_custom_roles; // Store for later use if needed
+                    availableCustomRoles = data.available_custom_roles;
                     populateRoleSelection(availableCustomRoles);
                     document.getElementById('assignExistingRoleContainer').style.display = 'block';
                 } else {
@@ -378,10 +369,6 @@
 
         const updates = {};
         selectedUsers.forEach(user => {
-            // For each selected user, we want to add the chosen custom role
-            // We set 'primary_role' to null or current primary, and 'custom_roles_to_assign' to include the new role
-            // The backend needs to know which roles to add and which to remove.
-            // For simplicity, this will send just the role to be assigned.
             updates[user] = {
                 custom_roles_to_assign: [selectedRole] // Only send the role to be assigned
             };
@@ -407,7 +394,6 @@
             alert('Error assigning role.');
         });
     }
-
 
     // --- Create/Assign Task Modal Functions ---
     function openCreateAssignTaskModal() {
@@ -481,9 +467,9 @@
         });
     }
 
-    // Role management (Existing functions, `openRoleManagement` is now accessed via `openAssignRoleOptions` -> "Manage & Create Roles")
+    // Role management (Now only accessed through the Assign Role options)
     function openRoleManagement() {
-        closeAssignRoleOptions(); // Close the role options modal
+        closeAssignRoleOptions(); // Close the role options modal first
 
         fetch(`/get_group_members_with_roles/${groupId}`)
             .then(res => res.json())
@@ -495,7 +481,7 @@
                         html += `
                         <div>
                             <strong>${user.username}:</strong>
-                            <select name="primary_role_${user.username}" data-username="${user.username}" onchange="updatePrimaryRole('${user.username}', this.value)">
+                            <select name="primary_role_${user.username}" data-username="${user.username}">
                                 <option value="admin" ${user.primary_role === 'admin' ? 'selected' : ''}>Admin</option>
                                 <option value="member" ${user.primary_role === 'member' ? 'selected' : ''}>Member</option>
                             </select>
@@ -565,6 +551,7 @@
 
     function closeRoleManagement() {
         document.getElementById('roleManagementContainer').style.display = 'none';
+        openAssignRoleOptions(); // Return to the role options menu
     }
 
     function saveRoles() {
@@ -586,10 +573,6 @@
             const selectedOptions = Array.from(select.selectedOptions).map(option => option.value);
             const allOptions = Array.from(select.options).map(option => option.value);
 
-            // Fetch current roles of the user to determine what to add/remove accurately
-            // This would typically involve making another fetch request or storing initial state
-            // For simplicity here, we assume a complete overwrite is acceptable if this is the only role management tool.
-            // A more robust solution would require storing initial state from the `openRoleManagement` fetch.
             updates[username]['custom_roles_to_assign'] = selectedOptions;
             updates[username]['custom_roles_to_unassign'] = allOptions.filter(role => !selectedOptions.includes(role));
         });
