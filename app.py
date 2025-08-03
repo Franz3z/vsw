@@ -608,41 +608,6 @@ def assign_existing_task(group_id):
             'completed': False # Re-open task if it was completed and re-assigned
         })
 
-        # Notification logic for re-assignment
-        task_name = current_task_data.get('task_name', 'Unnamed Task')
-        if assigned_to_type == 'everyone':
-            members_data = db.reference(f'groups/{group_id}/members').get() or {}
-            for member_username in members_data.keys():
-                db.reference(f'users/{member_username}/notifications').push().set({
-                    'message': f'Task "{task_name}" has been reassigned to everyone in group {group_id}.',
-                    'group_id': group_id,
-                    'task_id': task_id,
-                    'timestamp': datetime.now().isoformat(),
-                    'read': False
-                })
-        elif assigned_to_type == 'user':
-            db.reference(f'users/{assigned_to}/notifications').push().set({
-                'message': f'Task "{task_name}" has been reassigned to you in group {group_id}.',
-                'group_id': group_id,
-                'task_id': task_id,
-                'timestamp': datetime.now().isoformat(),
-                'read': False
-            })
-        elif assigned_to_type == 'role':
-            members_data = db.reference(f'groups/{group_id}/members').get() or {}
-            for member_username, member_info in members_data.items():
-                user_custom_roles = member_info.get('roles', {})
-                if assigned_to in user_custom_roles:
-                    db.reference(f'users/{member_username}/notifications').push().set({
-                        'message': f'Task "{task_name}" has been reassigned to your role "{assigned_to}" in group {group_id}.',
-                        'group_id': group_id,
-                        'task_id': task_id,
-                        'timestamp': datetime.now().isoformat(),
-                        'read': False
-                    })
-
-        return jsonify({'success': True, 'message': f'Task "{task_name}" reassigned successfully!'})
-
     except Exception as e:
         logging.error(f"Error assigning existing task for group {group_id}: {e}")
         traceback.print_exc()
@@ -688,12 +653,6 @@ def assign_existing_task(group_id):
         logging.error(f"Error assigning existing task for group {group_id}: {e}")
         traceback.print_exc()
         return jsonify({'success': False, 'message': f'Error assigning existing task: {str(e)}'}), 500
-
-# Old create_assign_task is now deprecated.
-# @app.route('/create_assign_task/<group_id>', methods=['POST'])
-# def create_assign_task_deprecated(group_id):
-#     return jsonify({'success': False, 'message': 'This endpoint has been deprecated. Please use /create_project_with_tasks or /assign_existing_task.'}), 400
-
 
 @app.route('/submit_progress/<username>/<group_id>/<task_id>', methods=['POST'])
 def submit_progress(username, group_id, task_id):
