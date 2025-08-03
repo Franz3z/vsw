@@ -835,3 +835,150 @@ body {
             padding: 5px;
             cursor: pointer;
         }
+
+.floating-container button {
+    padding: 10px 15px;
+    margin: 5px; /* Adds spacing between buttons */
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: background-color 0.3s ease;
+    width: auto; /* Allow buttons to size naturally within flex/grid or just content */
+    display: inline-block; /* Ensures margin works as expected and aligns well */
+}
+
+/* Primary action buttons within modals */
+.floating-container button:not(.cancel-button) {
+    background-color: #007bff; /* Blue, consistent with existing buttons */
+    color: white;
+}
+
+.floating-container button:not(.cancel-button):hover {
+    background-color: #0056b3; /* Darker blue on hover */
+}
+
+/* Cancel/Remove buttons within modals */
+.floating-container .cancel-button {
+    background-color: #dc3545; /* Red, consistent with existing cancel/remove */
+    color: white;
+}
+
+.floating-container .cancel-button:hover {
+    background-color: #c82333; /* Darker red on hover */
+}
+
+/* Form elements within floating containers */
+.floating-container form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px; /* Consistent spacing between form elements */
+}
+
+.floating-container label {
+    font-size: 1rem;
+    color: #333;
+    margin-bottom: 5px; /* Space between label and input */
+    display: block; /* Ensures label takes its own line */
+    font-weight: 500; /* Slightly bolder for readability */
+}
+
+.floating-container input[type="text"],
+.floating-container textarea,
+.floating-container select {
+    padding: 10px;
+    border: 1px solid #ddd; /* Light grey border */
+    border-radius: 5px; /* Rounded corners */
+    font-size: 1em;
+    width: calc(100% - 22px); /* Full width minus padding and border */
+    background-color: #fefefe; /* Light background */
+    box-sizing: border-box; /* Include padding/border in width */
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.floating-container input[type="text"]:focus,
+.floating-container textarea:focus,
+.floating-container select:focus {
+    border-color: #007bff; /* Blue border on focus */
+    box-shadow: 0 0 5px rgba(0, 123, 255, 0.5); /* Soft blue shadow on focus */
+    outline: none; /* Remove default outline */
+}
+
+.floating-container select[multiple] {
+    min-height: 100px; /* Taller for multi-selects */
+}
+
+/* Specific styling for dynamically added task entries within the Create Project modal */
+.task-entry {
+    border: 1px solid #e0e0e0; /* Consistent light grey border */
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 8px; /* Slightly more rounded corners */
+    background-color: #f9f9f9; /* Off-white background for task cards */
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); /* Soft, subtle shadow */
+    display: flex;
+    flex-direction: column;
+    gap: 10px; /* Space between elements inside a task entry */
+}
+
+.task-entry h5 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #333;
+    font-size: 1.1em;
+    border-bottom: 1px dashed #eee; /* Light dashed line below task title */
+    padding-bottom: 8px;
+}
+
+.task-entry button {
+    margin-top: 10px; /* Space above buttons within a task entry */
+    width: auto; /* Allow buttons to take natural width */
+    align-self: flex-end; /* Push button to the right */
+}
+
+/* Styles for general headings within floating containers */
+.floating-container h3,
+.floating-container h4 {
+    margin-top: 0;
+    color: #333;
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 1.8em; /* Slightly larger for main headings */
+}
+
+.floating-container h4 {
+    font-size: 1.4em; /* Smaller for sub-headings like "Create New Role" */
+    margin-top: 25px;
+    margin-bottom: 15px;
+}
+
+/* Horizontal rule consistency */
+.floating-container hr {
+    border: 0;
+    height: 1px;
+    background-image: linear-gradient(to right, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0));
+    margin: 25px 0; /* Space above and below HR */
+}
+
+/* Adjustments for the main buttons that open these modals */
+.buttons button {
+    /* Existing styles for the buttons in the left panel */
+    margin-bottom: 10px;
+    background-color: #007bff;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em; /* Ensure consistent font size */
+}
+
+.buttons button:hover {
+    background-color: #0056b3; /* Darker blue on hover */
+}
+
+/* Specific styling for the options inside Assign Task Options modal */
+#assignTaskOptionsContainer button {
+    width: 100%; /* Make buttons full width */
+    margin-bottom: 10px; /* Spacing between options */
+}
