@@ -128,7 +128,8 @@
 
     <div class="floating-container" id="roleManagementContainer" style="display: none;">
         <h3>Manage Roles</h3>
-        <div id="roleManagementContent"></div>
+        <div id="roleManagementContent">
+        </div>
         <button onclick="closeRoleManagement()">Close</button>
     </div>
 
@@ -273,74 +274,148 @@
         }
 
         // Role management
-        function openRoleManagement() {
-            fetch(`/get_group_members/${groupId}`)
-                .then(res => res.json())
-                .then(members => {
-                    const content = document.getElementById('roleManagementContent');
-                    
-                    if (Array.isArray(members)) {
-                        let html = '<form id="roleForm">';
-                        
-                        members.forEach(user => {
-                            html += `
-                            <div>
-                                ${user.username}:
-                                <select name="role_${user.username}">
-                                    <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
-                                    <option value="member" ${user.role === 'member' ? 'selected' : ''}>Member</option>
-                                </select>
-                            </div>
-                            `;
-                        });
-                        
-                        html += '<button type="button" onclick="saveRoles()">Save Roles</button></form>';
-                        content.innerHTML = html;
-                    } else {
-                        content.innerHTML = 'Error loading group members';
-                    }
-                    
-                    document.getElementById('roleManagementContainer').style.display = 'block';
-                })
-                .catch(err => {
-                    console.error('Error fetching group members:', err);
-                    document.getElementById('roleManagementContent').innerHTML = 'Error loading group members';
+function openRoleManagement() {
+    fetch(`/get_group_members_with_roles/${groupId}`) // NEW ENDPOINT
+        .then(res => res.json())
+        .then(data => {
+            const content = document.getElementById('roleManagementContent');
+            if (data.success && Array.isArray(data.members)) {
+                let html = '<form id="roleForm">';
+                data.members.forEach(user => {
+                    // Display current primary role and allow changing it
+                    html += `
+                    <div>
+                        <strong>${user.username}:</strong>
+                        <select name="primary_role_${user.username}" data-username="${user.username}" onchange="updatePrimaryRole('${user.username}', this.value)">
+                            <option value="admin" ${user.primary_role === 'admin' ? 'selected' : ''}>Admin</option>
+                            <option value="member" ${user.primary_role === 'member' ? 'selected' : ''}>Member</option>
+                        </select>
+                    </div>
+                    `;
+                    // Add section for custom roles
+                    html += `
+                    <div style="margin-left: 20px;">
+                        Custom Roles:
+                        <select multiple name="custom_roles_${user.username}" data-username="${user.username}" class="custom-role-select">
+                            ${data.available_custom_roles.map(role => `
+                                <option value="${role}" ${user.custom_roles.includes(role) ? 'selected' : ''}>${role}</option>
+                            `).join('')}
+                        </select>
+                    </div>
+                    `;
                 });
-        }
+                
+                html += '<button type="button" onclick="saveRoles()">Save Roles</button>';
+                html += '</form>';
 
-        function closeRoleManagement() {
+                // Add section to create new custom roles
+                html += `
+                <hr>
+                <h4>Create New Custom Role</h4>
+                <input type="text" id="newRoleName" placeholder="New Role Name">
+                <button type="button" onclick="createNewRole()">Create Role</button>
+                `;
+
+                content.innerHTML = html;
+                document.getElementById('roleManagementContainer').style.display = 'block';
+            } else {
+                content.innerHTML = 'Error loading group members or roles.';
+                console.error('Error from server:', data.message);
+            }
+        })
+        .catch(err => {
+            console.error('Error fetching group members:', err);
+            document.getElementById('roleManagementContent').innerHTML = 'Error loading group members.';
+        });
+}
+
+function createNewRole() {
+    const newRoleName = document.getElementById('newRoleName').value.trim();
+    if (!newRoleName) {
+        alert('Please enter a role name.');
+        return;
+    }
+
+    fetch(`/create_role/${groupId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role_name: newRoleName })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            openRoleManagement(); // Refresh the modal to show the new role
+        } else {
+            alert('Failed to create role: ' + data.message);
+        }
+    })
+    .catch(err => {
+        console.error('Error creating role:', err);
+        alert('Error creating role.');
+    });
+}
+
+
+    function closeRoleManagement() {
             document.getElementById('roleManagementContainer').style.display = 'none';
         }
 
-        function saveRoles() {
-            const selects = document.querySelectorAll('#roleForm select');
-            const roles = {};
-            
-            selects.forEach(select => {
-                const username = select.name.replace('role_', '');
-                roles[username] = select.value;
-            });
-            
-            fetch(`/update_roles/${groupId}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(roles)
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    alert('Roles updated successfully!');
-                    closeRoleManagement();
-                } else {
-                    alert('Failed to update roles: ' + data.message);
-                }
-            })
-            .catch(err => {
-                console.error('Error:', err);
-                alert('Failed to update roles');
-            });
-        }
+function saveRoles() {
+    const primaryRoleSelects = document.querySelectorAll('#roleForm select[name^="primary_role_"]');
+    const customRoleSelects = document.querySelectorAll('#roleForm select[name^="custom_roles_"]');
+    
+    const updates = {}; // Object to hold all updates
 
+    // Process primary role changes
+    primaryRoleSelects.forEach(select => {
+        const username = select.dataset.username;
+        if (!updates[username]) updates[username] = {};
+        updates[username]['primary_role'] = select.value;
+    });
+
+    // Process custom role changes
+    customRoleSelects.forEach(select => {
+        const username = select.dataset.username;
+        if (!updates[username]) updates[username] = {};
+        
+        const selectedOptions = Array.from(select.selectedOptions).map(option => option.value);
+        const allOptions = Array.from(select.options).map(option => option.value);
+
+        const customRolesToAssign = selectedOptions.filter(role => !userHasRoleInitially(username, role)); // You'll need to store initial roles or refetch
+        const customRolesToUnassign = allOptions.filter(role => !selectedOptions.includes(role) && userHasRoleInitially(username, role)); // Logic for what to remove
+
+        // For simplicity in this example, we'll just send the full list and overwrite.
+        // A more robust solution might track original state.
+        updates[username]['custom_roles_to_assign'] = selectedOptions; // Send all selected for simplicity in this example
+        updates[username]['custom_roles_to_unassign'] = allOptions.filter(role => !selectedOptions.includes(role)); // Send all unselected for simplicity
+
+        // NOTE: The backend `update_roles` expects separate lists for 'to_assign' and 'to_unassign'.
+        // This client-side code sends all selected as 'to_assign' and all unselected as 'to_unassign'.
+        // The backend should correctly handle setting/deleting based on this.
+    });
+
+    fetch(`/update_roles/${groupId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert('Roles updated successfully!');
+            closeRoleManagement();
+            // Optionally, refresh mainadmin page to reflect changes
+            location.reload(); 
+        } else {
+            alert('Failed to update roles: ' + data.message);
+        }
+    })
+    .catch(err => {
+        console.error('Error:', err);
+        alert('Failed to update roles');
+    });
+}
         // Voice call functions (same as in main.html)
         function joinVoiceCall() {
             // Same as in main.html
