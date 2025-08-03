@@ -220,36 +220,28 @@ def mainadmin(username, group_id):
     members = []
     if not isinstance(members_data_raw, dict):
         logging.error(f"members_data_raw is not a dictionary! Type: {type(members_data_raw)}, Value: {members_data_raw}")
-        # Depending on desired behavior, you might want to return an error,
-        # or proceed with an empty members list, or attempt a very basic parse.
-        # For now, we'll log and treat it as empty for processing purposes.
-        members_data_raw = {} # Ensure it's a dict for the loop below
+        members_data_raw = {}
 
     for member_username, member_info in members_data_raw.items():
         logging.debug(f"Processing member: {member_username}, Info: {member_info}")
-
-        primary_role = 'member' # Default primary role
-        custom_roles = {}      # Default custom roles
+        primary_role = 'member'
+        custom_roles = {}
 
         if isinstance(member_info, dict):
-            # New structure: member_info is a dictionary
             primary_role = member_info.get('role', 'member')
             custom_roles = member_info.get('roles', {})
         elif isinstance(member_info, str):
-            # Old structure: member_info is just a role string (e.g., "admin" or "member")
             primary_role = member_info
-            # For custom roles, if it was just a string, we can make it a custom role too
             custom_roles = {member_info: True}
             logging.warning(f"Detected old member data structure for {member_username}. Converting: {member_info}")
         else:
-            # Handle unexpected types (e.g., None, list)
             logging.error(f"Unexpected member data type for {member_username}: {type(member_info)} - {member_info}. Skipping.")
-            continue # Skip this malformed entry
+            continue
 
         members.append({
             'username': member_username,
             'primary_role': primary_role,
-            'custom_roles': list(custom_roles.keys()) # Convert dict keys to a list of role names
+            'custom_roles': list(custom_roles.keys())
         })
     logging.debug(f"Processed members list for template: {members}")
 
@@ -285,14 +277,12 @@ def mainadmin(username, group_id):
     logging.debug(f"Pending tasks: {pending_tasks}")
     logging.debug(f"Completed tasks: {completed_tasks}")
 
-    # --- Get Custom Roles (Corrected path based on previous suggestions) ---
-    # Assuming custom roles are stored directly under 'groups/{group_id}/custom_roles'
-    all_custom_roles_ref = db.reference(f'groups/{group_id}/custom_roles')
-    all_custom_roles_data = all_custom_roles_ref.get() or {}
-    # Make sure this variable name matches what's expected by the template
-    available_custom_roles = list(all_custom_roles_data.keys())
-    logging.debug(f"Available custom roles: {available_custom_roles}")
-
+    # --- Get ALL Available Custom Roles for the Group ---
+    # THIS IS THE CORRECTED PATH AND VARIABLE NAME
+    custom_roles_ref = db.reference(f'groups/{group_id}/custom_roles') # Use custom_roles consistently
+    all_available_custom_roles_data = custom_roles_ref.get() or {}
+    available_custom_roles_list = list(all_available_custom_roles_data.keys())
+    logging.debug(f"Available custom roles list: {available_custom_roles_list}")
 
     # --- Get Chat Messages ---
     chat_ref = db.reference(f'groups/{group_id}/chat')
@@ -300,7 +290,6 @@ def mainadmin(username, group_id):
     logging.debug(f"Chat data: {chat_data}")
 
     messages = []
-    # Sort messages by timestamp, handling potential missing timestamps or non-dict messages
     sorted_chat_items = sorted(
         (item for item in chat_data.values() if isinstance(item, dict) and item.get('timestamp')),
         key=lambda x: x['timestamp']
@@ -311,8 +300,7 @@ def mainadmin(username, group_id):
             timestamp_dt = datetime.fromisoformat(msg['timestamp'])
             formatted_timestamp = timestamp_dt.strftime('%b %d, %I:%M %p')
         except ValueError:
-            # Fallback for malformed timestamps
-            formatted_timestamp = msg['timestamp'] # Use original if parsing fails
+            formatted_timestamp = msg['timestamp']
             logging.warning(f"Malformed timestamp in chat message for group {group_id}: {msg.get('timestamp')}")
 
         messages.append({
@@ -326,15 +314,13 @@ def mainadmin(username, group_id):
         'mainadmin.html',
         username=username,
         group_id=group_id,
-        members=members, # This now has the correct, complete member info
+        members=members,
         pending_requests=pending_requests,
         pending_tasks=pending_tasks,
         completed_tasks=completed_tasks,
         messages=messages,
-        group_roles=roles_data, # This variable name ('roles_data') is a bit confusing
-                               # It's actually the 'custom_roles' data from Firebase
-                               # Consider renaming for clarity in future if it becomes an issue.
-        available_custom_roles=available_custom_roles # Make sure this is passed
+        # Pass the correctly named variable to the template
+        available_custom_roles=available_custom_roles_list # Use the new name here
     )
 @app.route('/create_role/<group_id>', methods=['POST'])
 def create_role(group_id):
