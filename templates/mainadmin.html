@@ -133,20 +133,37 @@
         <button onclick="closeRoleManagement()">Close</button>
     </div>
 
+<div class="floating-container" id="assignOptionsContainer" style="display: none;">
+        <h3>Assign Action</h3>
+        <p>Please choose an action:</p>
+        <button onclick="openAssignRoleModal()">Assign Role</button>
+        <button onclick="openCreateAssignTaskModal()">Create/Assign Task</button>
+        <button onclick="closeAssignOptions()">Cancel</button>
+    </div>
+<div class="floating-container" id="assignRoleContainer" style="display: none;">
+        <h3>Assign Role</h3>
+        <div id="assignRoleContent">
+            </div>
+        <button onclick="closeAssignRoleModal()">Close</button>
+    </div>
+
     <div class="floating-container" id="assignTaskContainer" style="display: none;">
         <h3>Assign Task</h3>
         <form id="assignTaskForm">
             <input type="text" id="task-name" placeholder="Task Name" required>
             <textarea id="task-description" placeholder="Task Description" rows="3"></textarea>
+            
             <select id="assign-type" required>
                 <option value="username">Assign to User</option>
                 <option value="everyone">Assign to Everyone</option>
             </select>
+
             <select id="priority" required>
                 <option value="High">High Priority</option>
                 <option value="Medium">Medium Priority</option>
                 <option value="Low">Low Priority</option>
             </select>
+
             <div id="user-selection">
                 <select id="assigned-to" required>
                     {% for member in members %}
@@ -159,6 +176,7 @@
             <button type="button" class="cancel-button" onclick="closeAssignTask()">Cancel</button>
         </form>
     </div>
+
 
     <!-- Whiteboard Modal -->
     <div id="whiteboardModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center;">
@@ -226,52 +244,116 @@
         }
 
         // Task assignment
-        function openAssignTask() {
-            document.getElementById('assignTaskContainer').style.display = 'block';
+        function openAssignOptions() {
+        document.getElementById('assignOptionsContainer').style.display = 'block';
+    }
+
+    // Closes the initial "Assign Action" choices modal
+    function closeAssignOptions() {
+        document.getElementById('assignOptionsContainer').style.display = 'none';
+    }
+
+    // --- Assign Role Modal Functions (from previous steps) ---
+
+    // Opens the "Assign Role" modal, fetches data, and populates the form
+    function openAssignRoleModal() {
+        closeAssignOptions(); // Close the options modal
+
+        // For this context, we assume assigning a role means managing roles for any user.
+        // We won't pre-select a user based on `selectedUserForAssignment` here,
+        // as the "Manage Roles" modal handles all users.
+        openRoleManagement(); // Directs to the existing "Manage Roles" functionality
+    }
+
+    // Closes the "Assign Role" modal (if you had a separate one, this would close it)
+    function closeAssignRoleModal() {
+        // Since openAssignRoleModal now just calls openRoleManagement, this might not be strictly needed
+        // unless you introduce a dedicated "Assign Role" modal different from "Manage Roles".
+        // For now, it could close the 'roleManagementContainer' if called from a place that opened it.
+        document.getElementById('assignRoleContainer').style.display = 'none';
+    }
+
+    // --- Create/Assign Task Modal Functions ---
+
+    // Renamed from `openAssignTask` to be more specific to task creation/assignment
+    function openCreateAssignTaskModal() {
+        closeAssignOptions(); // Close the options modal
+
+        // Reset the form in case it was previously used
+        document.getElementById('assignTaskForm').reset();
+        
+        // Ensure the correct initial state for user selection
+        document.getElementById('assign-type').value = 'username'; // Default to assigning to a user
+        toggleUserSelection(); // Update visibility based on default
+        
+        document.getElementById('assignTaskContainer').style.display = 'block';
+    }
+
+    // No change, closes the task assignment modal
+    function closeAssignTask() {
+        document.getElementById('assignTaskContainer').style.display = 'none';
+        document.getElementById('assignTaskForm').reset(); // Clear form fields
+    }
+
+    // Renamed `assignTask` to `submitTask` for clarity as it submits the form
+    function submitTask() {
+        const title = document.getElementById('task-name').value.trim();
+        const description = document.getElementById('task-description').value.trim();
+        const assignType = document.getElementById('assign-type').value;
+        const priority = document.getElementById('priority').value;
+        let assignedTo = '';
+        
+        // Basic client-side validation
+        if (!title) {
+            alert('Please enter a task name.');
+            return;
+        }
+        if (!priority) {
+            alert('Please select a priority.');
+            return;
         }
 
-        function closeAssignTask() {
-            document.getElementById('assignTaskContainer').style.display = 'none';
-        }
-
-        function assignTask() {
-            const title = document.getElementById('task-name').value.trim();
-            const description = document.getElementById('task-description').value.trim();
-            const assignType = document.getElementById('assign-type').value;
-            const priority = document.getElementById('priority').value;
-            let assignedTo = '';
-            
-            if (assignType === 'username') {
-                assignedTo = document.getElementById('assigned-to').value.trim();
-            } else if (assignType === 'everyone') {
-                assignedTo = 'everyone';
+        if (assignType === 'username') {
+            assignedTo = document.getElementById('assigned-to').value.trim();
+            if (!assignedTo) {
+                alert('Please select a user to assign the task to.');
+                return;
             }
-            
-            if (title && priority) {
-                fetch(`/assign_task/${groupId}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: new URLSearchParams({
-                        'task_name': title,
-                        'task_description': description,
-                        'assigned_to': assignedTo,
-                        'priority': priority,
-                        'assigned_type': assignType
-                    })
-                })
-                .then(res => res.text())
-                .then(data => {
-                    alert(data);
-                    location.reload();
-                })
-                .catch(err => {
-                    console.error(err);
-                    alert("Error assigning task.");
-                });
+        } else if (assignType === 'everyone') {
+            assignedTo = 'everyone'; // This will be handled by your Flask backend
+        } else {
+            alert('Invalid assignment type selected.');
+            return;
+        }
+
+        const taskData = { // Data prepared as a JavaScript object to be sent as JSON
+            task_name: title,
+            description: description,
+            assigned_type: assignType,
+            assigned_to: assignedTo,
+            priority: priority
+        };
+
+        fetch(`/create_assign_task/${groupId}`, { // This endpoint expects JSON
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }, // Tell the server we're sending JSON
+            body: JSON.stringify(taskData) // Convert JS object to JSON string
+        })
+        .then(res => res.json()) // Expect JSON response from server
+        .then(data => {
+            if (data.success) { // Check the 'success' flag in the JSON response
+                alert(data.message);
+                closeAssignTask();
+                location.reload(); // Refresh the page to show the newly added task
             } else {
-                alert('Please fill all required fields.');
+                alert('Failed to assign task: ' + data.message);
             }
-        }
+        })
+        .catch(err => {
+            console.error('Error assigning task:', err); // Log full error for debugging
+            alert("Error assigning task. Please check the console for details.");
+        });
+    }
 
         // Role management
 function openRoleManagement() {
