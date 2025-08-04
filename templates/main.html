@@ -242,7 +242,7 @@
     function fetchTasks() {
         console.log("Fetching tasks...");
         // You'll need a Flask endpoint that returns task data for the current user/group
-        fetch(`/get_tasks_for_user/${groupId}/${username}`) // Assuming such an endpoint exists
+        fetch(`/get_all_tasks/${groupId}/${username}`) // Assuming such an endpoint exists
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
