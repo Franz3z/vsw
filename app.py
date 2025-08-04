@@ -195,6 +195,94 @@ def join_group_handler(username):
     flash(f'Join request sent to "{group_data["group_name"]}". Please wait for admin approval.')
     return redirect(url_for('dashboard', username=username))
 
+@app.route('/approve_request/<group_id>/<pending_username>', methods=['POST'])
+def approve_request_handler(group_id, pending_username):
+    """
+    Handles the approval of a pending request to join a group.
+
+    Args:
+        group_id (str): The ID of the group.
+        pending_username (str): The username of the user to be approved.
+    
+    Returns:
+        A JSON response indicating success or failure.
+    """
+    try:
+        # Get references to the database locations
+        group_ref = db.reference(f'groups/{group_id}')
+        user_ref = db.reference(f'users/{pending_username}')
+
+        # Retrieve group and user data
+        group_data = group_ref.get()
+        user_data = user_ref.get()
+
+        if not group_data or not user_data:
+            # Handle cases where the group or user does not exist
+            logging.warning(f"Attempted to approve request for non-existent group {group_id} or user {pending_username}")
+            return jsonify({'success': False, 'message': 'Group or user not found.'}), 404
+
+        # Check if the user is in the pending requests list
+        pending_requests = group_data.get('pending_requests', {})
+        if pending_username not in pending_requests:
+            logging.warning(f"User {pending_username} is not in the pending requests for group {group_id}.")
+            return jsonify({'success': False, 'message': 'User is not a pending member.'}), 400
+
+        # Move the user from pending requests to members with a default role of 'member'
+        members_ref = group_ref.child('members')
+        members_ref.child(pending_username).set({'username': pending_username, 'is_admin': False, 'role': 'member', 'roles': {'member': True}})
+        
+        # Remove the user from the pending requests list
+        pending_requests_ref = group_ref.child('pending_requests')
+        pending_requests_ref.child(pending_username).delete()
+
+        # Add the group to the user's list of groups
+        user_groups_ref = user_ref.child('groups')
+        user_groups_ref.child(group_id).set({'group_id': group_id, 'is_admin': False, 'role': 'member', 'roles': {'member': True}})
+
+        logging.info(f"Successfully approved user {pending_username} for group {group_id}.")
+        return jsonify({'success': True, 'message': 'User approved and added to group.'})
+
+    except Exception as e:
+        # Log a detailed error message and return a 500
+        logging.error(f"Error approving user {pending_username} for group {group_id}: {e}")
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': 'An internal server error occurred.'}), 500
+
+@app.route('/deny_request/<group_id>/<pending_username>', methods=['POST'])
+def deny_request_handler(group_id, pending_username):
+    """
+    Handles the denial of a pending request to join a group.
+
+    Args:
+        group_id (str): The ID of the group.
+        pending_username (str): The username of the user to be denied.
+    
+    Returns:
+        A JSON response indicating success or failure.
+    """
+    try:
+        # Get references to the database locations
+        group_ref = db.reference(f'groups/{group_id}')
+        
+        # Check if the user is in the pending requests list
+        pending_requests_ref = group_ref.child('pending_requests')
+        pending_requests = pending_requests_ref.get() or {}
+        if pending_username not in pending_requests:
+            logging.warning(f"User {pending_username} is not in the pending requests for group {group_id}.")
+            return jsonify({'success': False, 'message': 'User is not a pending member.'}), 400
+
+        # Remove the user from the pending requests list
+        pending_requests_ref.child(pending_username).delete()
+
+        logging.info(f"Successfully denied user {pending_username} for group {group_id}.")
+        return jsonify({'success': True, 'message': 'User request denied.'})
+
+    except Exception as e:
+        # Log a detailed error message and return a 500
+        logging.error(f"Error denying user {pending_username} for group {group_id}: {e}")
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': 'An internal server error occurred.'}), 500
+
 @app.route('/group_redirect/<username>/<group_id>')
 def group_redirect(username, group_id):
     user_group = db.reference(f'users/{username}/groups/{group_id}').get()
