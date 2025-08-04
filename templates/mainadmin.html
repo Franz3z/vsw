@@ -376,6 +376,81 @@
         {% endif %}
     </div>
 </div>
+
+<script>
+    const progressModal = document.getElementById('progressModal');
+    const taskSelector = document.getElementById('taskSelector');
+    const progressForm = document.getElementById('progressForm');
+
+    // Function to open the progress modal and populate tasks
+    // This function is now called 'submitModal' as per user request
+    function submitModal() {
+        // Clear previous options
+        taskSelector.innerHTML = '<option value="">--Please choose a task--</option>';
+
+        // Populate the dropdown with tasks using the globally available currentTasks
+        if (typeof currentTasks !== 'undefined' && currentTasks) {
+            for (const taskId in currentTasks) {
+                if (currentTasks.hasOwnProperty(taskId)) {
+                    const task = currentTasks[taskId];
+                    const option = document.createElement('option');
+                    option.value = taskId;
+                    option.textContent = task.task_name;
+                    taskSelector.appendChild(option);
+                }
+            }
+        }
+        
+        progressModal.style.display = 'block';
+    }
+
+    function closeProgressModal() {
+        progressModal.style.display = 'none';
+        progressForm.reset(); 
+        taskSelector.value = ''; // Reset dropdown
+    }
+
+    progressForm.addEventListener('submit', async function(event) {
+        event.preventDefault();
+
+        const selectedTaskId = taskSelector.value;
+        if (!selectedTaskId) {
+            alert('Please select a task.');
+            return;
+        }
+
+        const formData = new FormData(progressForm);
+
+        // Use the globally available currentUsername and currentGroupId
+        try {
+            const response = await fetch(`/submit_progress/${currentUsername}/${currentGroupId}/${selectedTaskId}`, {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.text();
+
+            if (response.ok) {
+                alert(result);
+                closeProgressModal();
+                location.reload(); 
+            } else {
+                alert('Error submitting progress: ' + result);
+            }
+        }
+        catch (error) {
+            console.error('Fetch error:', error);
+            alert('An error occurred while submitting progress.');
+        }
+    });
+
+    // Close modal when clicking outside of it
+    window.onclick = function(event) {
+        if (event.target == progressModal) {
+            closeProgressModal();
+        }
+    }
+</script>
             
     <div id="assignModal" class="modal-backdrop" style="display: none;">
         <div class="modal-content">
