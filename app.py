@@ -782,9 +782,6 @@ def submit_progress(username, group_id, task_id):
             file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(file_path)
 
-            # NOTE: For a production app, you would want to use a more persistent storage
-            # solution like Firebase Storage or AWS S3 and save the URL here, not the local path.
-            # This implementation is for a simple demonstration.
             progress_data['file_path'] = file_path
             progress_data['file_name'] = filename
         except Exception as e:
@@ -818,7 +815,12 @@ def submit_progress(username, group_id, task_id):
 
 @app.route('/get_messages/<group_id>')
 def get_messages(group_id):
-        try:
+    """
+    Fetches all messages for a given group ID.
+    The database reference is wrapped in a try-except block to prevent a 500 error.
+    """
+    try:
+        # Corrected indentation for the code block inside the 'try' statement
         chat_ref = db.reference(f'groups/{group_id}/chat')
         chat_data = chat_ref.get() or {}
 
@@ -839,6 +841,10 @@ def get_messages(group_id):
 
 @app.route('/send_message/<group_id>', methods=['POST'])
 def send_message(group_id):
+    """
+    Sends a new message to a group. It now correctly expects a JSON payload.
+    """
+    # Get JSON data instead of form data
     data = request.get_json()
     if not data:
         return jsonify({'success': False, 'message': 'Invalid JSON payload'}), 400
