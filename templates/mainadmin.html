@@ -115,7 +115,7 @@
                 {% for username in pending_requests %}
                 <li>
                     {{ username }}
-                    <form action="{{ url_for('approve_request', group_id=group_id, username=username) }}" method="post" style="display: inline;">
+                    <form action="{{ url_for('approve_request_handler', group_id=group_id, username=username) }}" method="post" style="display: inline;">
                         <button type="submit">Approve</button>
                     </form>
                 </li>
