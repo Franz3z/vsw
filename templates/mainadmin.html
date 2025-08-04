@@ -1021,14 +1021,6 @@ function saveRoles() {
         }
     }
 
-function openApproveRequests() {
-        document.getElementById('approveRequestsContainer').style.display = 'flex';
-    }
-
-function closeApproveRequests() {
-        document.getElementById('approveRequestsContainer').style.display = 'none';
-    }
-
 async function openApproveRequests() {  
         if (!groupId) {
             alert('Group ID is missing. Cannot fetch pending requests.');
