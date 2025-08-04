@@ -327,69 +327,49 @@
         }
     </script>
 
-<div class="task-panel" id="taskPanel">
-    <h2>All Group Tasks in {{ group_id }}</h2>
-    <button onclick="submitModal()">Submit</button>
-    <div id="tasks-container">
-        {% if tasks %}
-            {% for task in tasks %}
-            <div class="task-card">
-                <h3>{{ task.task_name }}</h3>
-                <p><strong>Description:</strong> {{ task.description }}</p>
-                <p><strong>Assigned To:</strong> 
-                    {% if task.assigned_type == 'user' %}
-                        {{ task.assigned_to }}
-                    {% elif task.assigned_type == 'role' %}
-                        Role: {{ task.assigned_to }}
-                    {% elif task.assigned_type == 'everyone' %}
-                        Everyone
-                    {% endif %}
-                </p>
-                <p><strong>Priority:</strong> {{ task.priority }}</p>
-                <p><strong>Deadline:</strong> {{ task.deadline }}</p>
-                <p><strong>Week Category:</strong> {{ task.week_category }}</p>
-                <p><strong>Completed:</strong> {{ 'Yes' if task.completed else 'No' }}</p>
-
-                <div class="task-details-section">
-                    <h4>Progress Reports:</h4>
-                    {% if task.progress_reports %}
-                        <ul>
-                        {% for report_id, report in task.progress_reports.items() %}
-                            <li>
-                                <strong>{{ report.reported_by }}</strong> on {{ report.timestamp }}: {{ report.progress }}
-                                {% if report.file_name %}
-                                    <a href="{{ url_for('download_file', filename=report.file_name) }}" target="_blank">Download File: {{ report.file_name }}</a>
-                                {% endif %}
-                            </li>
-                        {% endfor %}
-                        </ul>
-                    {% else %}
-                        <p>No progress reports yet.</p>
-                    {% endif %}
-
-                    <button onclick="openEditTaskModal('{{ task.task_id }}')">Edit Task</button>
-                </div>
-            </div>
-            {% endfor %}
-        {% else %}
-            <p>No tasks created in this group.</p>
-        {% endif %}
+<div id="progressModal" class="modal">
+    <div class="modal-content">
+        <span class="close-button" onclick="closeProgressModal()">&times;</span>
+        <h2>Submit Progress</h2>
+        <form id="progressForm" enctype="multipart/form-data">
+            <label for="taskSelector">Select Task:</label>
+            <select id="taskSelector" name="task_id" required>
+                <option value="">--Please choose a task--</option>
+                </select>
+            
+            <label for="progressText">Progress Report:</label>
+            <textarea id="progressText" name="progress" rows="4" placeholder="Enter your progress update here..."></textarea>
+            
+            <label for="progressFile">Upload File (Optional):</label>
+            <input type="file" id="progressFile" name="file">
+            
+            <label>
+                <input type="checkbox" id="markCompleted" name="mark_completed" value="true"> Mark as Completed
+            </label>
+            
+            <button type="submit">Submit</button>
+        </form>
     </div>
 </div>
 
 <script>
-    const progressModal = document.getElementById('progressModal');
-    const taskSelector = document.getElementById('taskSelector');
-    const progressForm = document.getElementById('progressForm');
-
     // Function to open the progress modal and populate tasks
-    // This function is now called 'submitModal' as per user request
     function submitModal() {
+        const progressModal = document.getElementById('progressModal');
+        const taskSelector = document.getElementById('taskSelector');
+
+        // Add null checks to prevent errors if elements aren't found for some reason
+        if (!progressModal || !taskSelector) {
+            console.error("Error: Modal or task selector elements not found. Cannot open modal.");
+            return;
+        }
+
         // Clear previous options
         taskSelector.innerHTML = '<option value="">--Please choose a task--</option>';
 
         // Populate the dropdown with tasks using the globally available currentTasks
         if (typeof currentTasks !== 'undefined' && currentTasks) {
+            // currentTasks is expected to be an object where keys are task_ids
             for (const taskId in currentTasks) {
                 if (currentTasks.hasOwnProperty(taskId)) {
                     const task = currentTasks[taskId];
@@ -405,51 +385,68 @@
     }
 
     function closeProgressModal() {
-        progressModal.style.display = 'none';
-        progressForm.reset(); 
-        taskSelector.value = ''; // Reset dropdown
+        const progressModal = document.getElementById('progressModal');
+        const progressForm = document.getElementById('progressForm');
+        const taskSelector = document.getElementById('taskSelector');
+
+        if (progressModal) progressModal.style.display = 'none';
+        if (progressForm) progressForm.reset(); 
+        if (taskSelector) taskSelector.value = ''; // Reset dropdown selection
     }
 
-    progressForm.addEventListener('submit', async function(event) {
-        event.preventDefault();
+    // Use DOMContentLoaded to ensure the form and modal elements are available
+    document.addEventListener('DOMContentLoaded', () => {
+        const progressForm = document.getElementById('progressForm');
+        
+        if (progressForm) {
+            progressForm.addEventListener('submit', async function(event) {
+                event.preventDefault();
 
-        const selectedTaskId = taskSelector.value;
-        if (!selectedTaskId) {
-            alert('Please select a task.');
-            return;
-        }
+                const taskSelector = document.getElementById('taskSelector');
+                const selectedTaskId = taskSelector ? taskSelector.value : null;
 
-        const formData = new FormData(progressForm);
+                if (!selectedTaskId) {
+                    alert('Please select a task.');
+                    return;
+                }
 
-        // Use the globally available currentUsername and currentGroupId
-        try {
-            const response = await fetch(`/submit_progress/${currentUsername}/${currentGroupId}/${selectedTaskId}`, {
-                method: 'POST',
-                body: formData
+                const formData = new FormData(progressForm);
+
+                // Use the globally available currentUsername and currentGroupId
+                try {
+                    const response = await fetch(`/submit_progress/${currentUsername}/${currentGroupId}/${selectedTaskId}`, {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const result = await response.text(); // Backend returns plain text
+
+                    if (response.ok) {
+                        alert(result);
+                        closeProgressModal();
+                        location.reload(); // Reload to show updated progress
+                    } else {
+                        alert('Error submitting progress: ' + result);
+                    }
+                }
+                catch (error) {
+                    console.error('Fetch error:', error);
+                    alert('An error occurred while submitting progress.');
+                }
             });
-
-            const result = await response.text();
-
-            if (response.ok) {
-                alert(result);
-                closeProgressModal();
-                location.reload(); 
-            } else {
-                alert('Error submitting progress: ' + result);
-            }
         }
-        catch (error) {
-            console.error('Fetch error:', error);
-            alert('An error occurred while submitting progress.');
+
+        // Close modal when clicking outside of it
+        const progressModal = document.getElementById('progressModal');
+        if (progressModal) {
+            window.onclick = function(event) {
+                if (event.target == progressModal) {
+                    closeProgressModal();
+                }
+            }
         }
     });
 
-    // Close modal when clicking outside of it
-    window.onclick = function(event) {
-        if (event.target == progressModal) {
-            closeProgressModal();
-        }
-    }
 </script>
             
     <div id="assignModal" class="modal-backdrop" style="display: none;">
