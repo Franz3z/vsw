@@ -14,7 +14,7 @@
                 <a href="{{ url_for('dashboard', username=username) }}" class="styled-button">←</a>
                 <button onclick="openAssignModal()">Assign</button>
                 <button onclick="openApproveRequests()">Pending Requests</button>
-                <button onclick="submitModal()">Submit</button>
+                <button onclick="openSubmitModal()">Submit</button>
             </div>
 
             
@@ -327,58 +327,138 @@
         }
     </script>
 
-<div id="progressModal" class="modal-backdrop">
+<div id="submitModalContainer" class="modal-container" style="display:none;">
     <div class="modal-content">
-        <button class="modal-close-btn" onclick="closeProgressModal()">&times;</button>
-        <h2>Submit Progress</h2>
-        <form id="progressForm" enctype="multipart/form-data">
-            <label for="taskSelector">Select Task:</label>
-            <select id="taskSelector" name="task_id" required>
-                <option value="">--Please choose a task--</option>
-                </select>
-            
-            <label for="progressText">Progress Report:</label>
-            <textarea id="progressText" name="progress" rows="4" placeholder="Enter your progress update here..."></textarea>
-            
-            <label for="progressFile">Upload File (Optional):</label>
-            <input type="file" id="progressFile" name="file">
-            
-            <label>
-                <input type="checkbox" id="markCompleted" name="mark_completed" value="true"> Mark as Completed
-            </label>
-            
-            <button type="submit">Submit</button>
-            </form>
+        <h3 class="modal-header">Submit a Task for Approval</h3>
+        <div class="modal-body">
+            <p>Please select a task from the list below to submit it for approval.</p>
+            <div id="tasksForSubmissionList" class="task-selection-list">
+                <!-- This list will be populated by JavaScript -->
+                <p>No tasks available for submission.</p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button onclick="closeSubmitModal()" class="cancel-button">Close</button>
+        </div>
     </div>
 </div>
 
 <script>
-    // Assuming you have a button for a specific task, for example:
-    // <button onclick="submitTask('task_id_12345')">Submit Task</button>
+    // Function to fetch tasks from the new API endpoint
+    function fetchAndRenderTasks() {
+        fetch(`/get_tasks/${groupId}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Fetched task data:', data);
+                renderTasks('tasksThisWeek', data.tasks_this_week);
+                renderTasks('tasksNextWeek', data.tasks_next_week);
+                renderTasks('completedTasks', data.completed_tasks);
+            })
+            .catch(error => {
+                console.error('Error fetching tasks:', error);
+            });
+    }
+    
+    // Helper function to render a list of tasks into a container
+    function renderTasks(containerId, tasks) {
+        const container = document.getElementById(containerId);
+        container.innerHTML = ''; // Clear existing content
 
-    function submitModal(task_id) {
-        const groupId = "{{ group_id }}"; // Get the group ID from the template context
+        if (tasks.length === 0) {
+            container.innerHTML = `<p>No tasks available.</p>`;
+            return;
+        }
 
-        // Make sure to use a POST method as defined in the Python route
-        fetch(`/submit_task_for_approval/${groupId}/${taskId}`, {
+        tasks.forEach(task => {
+            const taskElement = document.createElement('div');
+            taskElement.className = 'task-card';
+            taskElement.innerHTML = `
+                <h4>${task.task_name}</h4>
+                <p>${task.description}</p>
+                <p><strong>Assigned to:</strong> ${task.assigned_to}</p>
+                <p><strong>Priority:</strong> <span class="priority-${task.priority.toLowerCase()}">${task.priority}</span></p>
+                <p><strong>Deadline:</strong> ${task.deadline || 'N/A'}</p>
+            `;
+            container.appendChild(taskElement);
+        });
+    }
+    
+    // Function to open the submit task modal
+    function openSubmitModal() {
+        const modal = document.getElementById('submitModalContainer');
+        modal.style.display = 'flex';
+        
+        // Fetch tasks again to ensure the list is up-to-date
+        fetch(`/get_tasks/${groupId}`)
+            .then(response => response.json())
+            .then(data => {
+                const tasksList = document.getElementById('tasksForSubmissionList');
+                tasksList.innerHTML = ''; // Clear previous list
+                
+                const uncompletedTasks = data.tasks_this_week.concat(data.tasks_next_week);
+                if (uncompletedTasks.length === 0) {
+                    tasksList.innerHTML = `<p>No tasks to submit.</p>`;
+                    return;
+                }
+
+                uncompletedTasks.forEach(task => {
+                    const taskItem = document.createElement('div');
+                    taskItem.className = 'submit-task-item';
+                    taskItem.innerHTML = `
+                        <span>${task.task_name}</span>
+                        <button onclick="submitTaskFromModal('${task.task_id}')">Submit</button>
+                    `;
+                    tasksList.appendChild(taskItem);
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching tasks for modal:', error);
+                alert('Could not load tasks for submission.');
+            });
+    }
+    
+    // Function to close the submit task modal
+    function closeSubmitModal() {
+        const modal = document.getElementById('submitModalContainer');
+        modal.style.display = 'none';
+    }
+
+    // Function to submit a specific task from inside the modal
+    function submitTaskFromModal(taskId) {
+        console.log(`Submitting task with ID: ${taskId} for approval...`);
+        const url = `/submit_task_for_approval/${groupId}/${taskId}`;
+        
+        fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Server responded with status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 console.log('Task submitted successfully:', data.message);
-                // You can add logic here to update the UI, e.g.,
-                // change the button text or move the task to a different list.
+                alert('Task submitted for approval!');
+                closeSubmitModal();
+                fetchAndRenderTasks(); 
             } else {
                 console.error('Failed to submit task:', data.message);
-                // Handle the error, maybe show an alert to the user.
+                alert('Failed to submit task: ' + data.message);
             }
         })
         .catch(error => {
             console.error('Error during fetch:', error);
+            alert('An error occurred while submitting the task.');
         });
     }
 </script>
