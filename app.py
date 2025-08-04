@@ -813,52 +813,34 @@ def submit_progress(username, group_id, task_id):
     
     return 'Progress report submitted successfully!', 200
 
-@app.route('/get_messages/<group_id>')
+@app.route('/messages/<group_id>')
 def get_messages(group_id):
-    try:
-        # Corrected indentation for the code block inside the 'try' statement
-        chat_ref = db.reference(f'groups/{group_id}/chat')
-        chat_data = chat_ref.get() or {}
+    chat_ref = db.reference(f'groups/{group_id}/chat')
+    chat_data = chat_ref.get() or {}
 
-        messages = []
-        # The data is a dictionary, so we iterate through items.
-        for message_id, message_data in chat_data.items():
-            if isinstance(message_data, dict):
-                messages.append({
-                    'sender': message_data.get('sender', 'Unknown'),
-                    'message': message_data.get('text', ''),
-                    'timestamp': message_data.get('timestamp', '')
-                })
-        # Return a JSON object with a 'messages' key for better structure on the client.
-        return jsonify({'messages': messages})
-    except Exception as e:
-        print(f"Error fetching messages: {e}")
-        return jsonify({'error': 'Failed to fetch messages'}), 500
+    messages = []
+    for message_id, message_data in chat_data.items():
+        if isinstance(message_data, dict):
+            messages.append({
+                'sender': message_data.get('sender', 'Unknown'),
+                'message': message_data.get('text', ''),
+                'timestamp': message_data.get('timestamp', '')
+            })
+    return jsonify(messages)
 
 @app.route('/send_message/<group_id>', methods=['POST'])
 def send_message(group_id):
-
-    data = request.get_json()
-    if not data:
-        return jsonify({'success': False, 'message': 'Invalid JSON payload'}), 400
-
-    username = data.get('sender')
-    message = data.get('text')
-
+    username = request.form.get('username')
+    message = request.form.get('message')
     if not username or not message:
-        return jsonify({'success': False, 'message': 'Sender and text are required'}), 400
+        return jsonify({'success': False, 'message': 'Username and message are required'}), 400
 
-    try:
-        chat_ref = db.reference(f'groups/{group_id}/chat').push()
-        chat_ref.set({
-            'sender': username,
-            'text': message,
-            'timestamp': datetime.now().isoformat()
-        })
-        return jsonify({'success': True, 'message': 'Message sent successfully'})
-    except Exception as e:
-        print(f"Error sending message: {e}")
-        return jsonify({'error': 'Failed to send message'}), 500
+    chat_ref = db.reference(f'groups/{group_id}/chat').push()
+    chat_ref.set({
+        'sender': username,
+        'text': message,
+        'timestamp': datetime.now().isoformat()
+    })
 
 @app.route('/get_pending_requests/<string:group_id>')
 def get_pending_requests(group_id):
