@@ -341,316 +341,317 @@
 }
 
     // --- Assign Modal Functions ---
-    // A single function to manage which panel is visible within the main assign modal
-    function showAssignPanel(panelName) {
-        document.getElementById('assignOptionsContainer').style.display = 'none';
-        document.getElementById('assignRoleOptionsContainer').style.display = 'none';
-        document.getElementById('assignTaskOptionsContainer').style.display = 'none';
-        document.getElementById('assignExistingRoleContainer').style.display = 'none';
-        document.getElementById('createProjectContainer').style.display = 'none';
-        document.getElementById('assignExistingTaskContainer').style.display = 'none';
-        document.getElementById('roleManagementContainer').style.display = 'none';
+let availableCustomRoles = [];
 
-        switch(panelName) {
-            case 'main':
-                document.getElementById('assignOptionsContainer').style.display = 'block';
-                break;
-            case 'role':
-                document.getElementById('assignRoleOptionsContainer').style.display = 'block';
-                break;
-            case 'task':
-                document.getElementById('assignTaskOptionsContainer').style.display = 'block';
-                break;
-            case 'assignRole':
-                document.getElementById('assignExistingRoleContainer').style.display = 'block';
-                break;
-            case 'createProject':
-                document.getElementById('createProjectContainer').style.display = 'block';
-                break;
-            case 'assignTask':
-                document.getElementById('assignExistingTaskContainer').style.display = 'block';
-                break;
-            case 'manageRoles':
-                document.getElementById('roleManagementContainer').style.display = 'block';
-                break;
-            default:
-                document.getElementById('assignOptionsContainer').style.display = 'block';
-                break;
-        }
+function showAssignPanel(panelName) {
+    document.getElementById('assignOptionsContainer').style.display = 'none';
+    document.getElementById('assignRoleOptionsContainer').style.display = 'none';
+    document.getElementById('assignTaskOptionsContainer').style.display = 'none';
+    document.getElementById('assignExistingRoleContainer').style.display = 'none';
+    document.getElementById('createProjectContainer').style.display = 'none';
+    document.getElementById('assignExistingTaskContainer').style.display = 'none';
+    document.getElementById('roleManagementContainer').style.display = 'none';
+
+    switch(panelName) {
+        case 'main':
+            document.getElementById('assignOptionsContainer').style.display = 'block';
+            break;
+        case 'role':
+            document.getElementById('assignRoleOptionsContainer').style.display = 'block';
+            break;
+        case 'task':
+            document.getElementById('assignTaskOptionsContainer').style.display = 'block';
+            break;
+        case 'assignRole': // Used by openAssignExistingRoleModal
+            document.getElementById('assignExistingRoleContainer').style.display = 'block';
+            break;
+        case 'createProject':
+            document.getElementById('createProjectContainer').style.display = 'block';
+            break;
+        case 'assignTask':
+            document.getElementById('assignExistingTaskContainer').style.display = 'block';
+            break;
+        case 'manageRoles': // Used by openRoleManagement
+            document.getElementById('roleManagementContainer').style.display = 'block';
+            break;
+        default:
+            document.getElementById('assignOptionsContainer').style.display = 'block';
+            break;
     }
+}
 
-    function openAssignModal() {
-        // Fetch roles once when the main assign modal is opened
-        fetch(`/get_group_members_with_roles/${groupId}`)
-            .then(res => res.json())
-            .then(data => {
-                if (data.success && Array.isArray(data.available_custom_roles)) {
-                    availableCustomRoles = data.available_custom_roles;
-                } else {
-                    console.error('Failed to load custom roles on modal open:', data.message);
-                }
-            })
-            .catch(err => console.error('Error fetching custom roles on modal open:', err));
-
-        document.getElementById('assignModal').style.display = 'flex'; // Use flex for centering
-        showAssignPanel('main');
-    }
-
-    function closeAssignModal() {
-        document.getElementById('assignModal').style.display = 'none';
-        // Reset any forms here if needed
-        document.getElementById('assignExistingRoleForm').reset();
-        document.getElementById('createProjectForm').reset();
-        document.getElementById('assignExistingTaskForm').reset();
-    }
-
-    // --- Assign Existing Role Modal Functions ---
-    function openAssignExistingRoleModal() {
-        populateRoleSelection(availableCustomRoles);
-        showAssignPanel('assignRole');
-    }
-
-    function populateRoleSelection(roles) {
-        const selectRole = document.getElementById('select-role-to-assign');
-        selectRole.innerHTML = '<option value="">-- Select a Role --</option>'; // Default option
-        if (roles && roles.length > 0) {
-            roles.forEach(role => {
-                const option = document.createElement('option');
-                option.value = role;
-                option.textContent = role;
-                selectRole.appendChild(option);
-            });
-        }
-    }
-
-    function submitAssignExistingRole() {
-        const selectedRole = document.getElementById('select-role-to-assign').value;
-        const selectedUsersElement = document.getElementById('select-users-for-role');
-        const selectedUsers = Array.from(selectedUsersElement.selectedOptions).map(option => option.value);
-
-        if (!selectedRole) {
-            // Use a custom modal instead of alert
-            alert('Please select a role.');
-            return;
-        }
-        if (selectedUsers.length === 0) {
-            // Use a custom modal instead of alert
-            alert('Please select at least one user.');
-            return;
-        }
-
-        const updates = {};
-        selectedUsers.forEach(user => {
-            updates[user] = {
-                custom_roles_to_assign: [selectedRole]
-            };
-        });
-
-        fetch(`/update_roles/${groupId}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(updates)
-        })
+function openAssignModal() {
+    // Fetch roles once when the main assign modal is opened
+    fetch(`/get_group_members_with_roles/${groupId}`)
         .then(res => res.json())
         .then(data => {
-            if (data.success) {
-                // Use a custom modal instead of alert
-                alert(data.message);
-                showAssignPanel('role'); // Go back to role options
-                location.reload();
+            if (data.success && Array.isArray(data.available_custom_roles)) {
+                availableCustomRoles = data.available_custom_roles;
             } else {
-                // Use a custom modal instead of alert
-                alert('Failed to assign role: ' + data.message);
+                console.error('Failed to load custom roles on modal open:', data.message);
             }
         })
-        .catch(err => {
-            console.error('Error assigning role:', err);
-            // Use a custom modal instead of alert
-            alert('Error assigning role.');
+        .catch(err => console.error('Error fetching custom roles on modal open:', err));
+
+    document.getElementById('assignModal').style.display = 'flex'; // Use flex for centering
+    showAssignPanel('main');
+}
+
+function closeAssignModal() {
+    document.getElementById('assignModal').style.display = 'none';
+    // Reset any forms here if needed
+    document.getElementById('assignExistingRoleForm').reset();
+    document.getElementById('createProjectForm').reset();
+    document.getElementById('assignExistingTaskForm').reset();
+}
+
+// --- Assign Existing Role Modal Functions ---
+function openAssignExistingRoleModal() {
+    showAssignPanel('assignRole'); // Show the panel first
+    populateRoleSelection(availableCustomRoles); // Then populate it
+}
+
+function populateRoleSelection(roles) {
+    const selectRole = document.getElementById('select-role-to-assign');
+    selectRole.innerHTML = '<option value="">-- Select a Role --</option>'; // Default option
+    if (roles && roles.length > 0) {
+        roles.forEach(role => {
+            const option = document.createElement('option');
+            option.value = role;
+            option.textContent = role;
+            selectRole.appendChild(option);
         });
     }
+}
 
-    // --- Role Management Functions ---
-    function openRoleManagement() {
-        fetch(`/get_group_members_with_roles/${groupId}`)
-            .then(res => res.json())
-            .then(data => {
-                const content = document.getElementById('roleManagementContent');
-                if (data.success && Array.isArray(data.members)) {
-                    let html = '<form id="roleForm">';
-                    data.members.forEach(user => {
-                        html += `
-                        <div>
-                            <strong>${user.username}:</strong>
-                            <select name="primary_role_${user.username}" data-username="${user.username}">
-                                <option value="admin" ${user.primary_role === 'admin' ? 'selected' : ''}>Admin</option>
-                                <option value="member" ${user.primary_role === 'member' ? 'selected' : ''}>Member</option>
-                            </select>
-                        </div>
-                        `;
-                        html += `
-                        <div style="margin-left: 20px;">
-                            Custom Roles:
-                            <select multiple name="custom_roles_${user.username}" data-username="${user.username}" class="custom-role-select">
-                                ${data.available_custom_roles.map(role => `
-                                    <option value="${role}" ${user.custom_roles.includes(role) ? 'selected' : ''}>${role}</option>
-                                `).join('')}
-                            </select>
-                        </div>
-                        `;
-                    });
-                    
-                    html += '<button type="button" onclick="saveRoles()">Save Roles</button>';
-                    html += '</form>';
+function submitAssignExistingRole() {
+    const selectedRole = document.getElementById('select-role-to-assign').value;
+    const selectedUsersElement = document.getElementById('select-users-for-role');
+    const selectedUsers = Array.from(selectedUsersElement.selectedOptions).map(option => option.value);
 
+    if (!selectedRole) {
+        // Use a custom modal instead of alert
+        alert('Please select a role.');
+        return;
+    }
+    if (selectedUsers.length === 0) {
+        // Use a custom modal instead of alert
+        alert('Please select at least one user.');
+        return;
+    }
+
+    const updates = {};
+    selectedUsers.forEach(user => {
+        updates[user] = {
+            custom_roles_to_assign: [selectedRole]
+        };
+    });
+
+    fetch(`/update_roles/${groupId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            // Use a custom modal instead of alert
+            alert(data.message);
+            showAssignPanel('role'); // Go back to role options
+            location.reload();
+        } else {
+            // Use a custom modal instead of alert
+            alert('Failed to assign role: ' + data.message);
+        }
+    })
+    .catch(err => {
+        console.error('Error assigning role:', err);
+        // Use a custom modal instead of alert
+        alert('Error assigning role.');
+    });
+}
+
+// --- Role Management Functions ---
+function openRoleManagement() {
+    showAssignPanel('manageRoles'); // FIX 2: Show the panel first
+    fetch(`/get_group_members_with_roles/${groupId}`)
+        .then(res => res.json())
+        .then(data => {
+            const content = document.getElementById('roleManagementContent');
+            if (data.success && Array.isArray(data.members)) {
+                let html = '<form id="roleForm">';
+                data.members.forEach(user => {
                     html += `
-                    <hr>
-                    <h4>Create New Custom Role</h4>
-                    <input type="text" id="newRoleName" placeholder="New Role Name">
-                    <button type="button" onclick="createNewRole()">Create Role</button>
+                    <div>
+                        <strong>${user.username}:</strong>
+                        <select name="primary_role_${user.username}" data-username="${user.username}">
+                            <option value="admin" ${user.primary_role === 'admin' ? 'selected' : ''}>Admin</option>
+                            <option value="member" ${user.primary_role === 'member' ? 'selected' : ''}>Member</option>
+                        </select>
+                    </div>
                     `;
-
-                    // Section for deleting custom roles
                     html += `
-                    <hr>
-                    <h4>Remove Custom Role</h4>
-                    <select id="roleToDelete">
-                        <option value="">-- Select Role to Remove --</option>
-                        ${data.available_custom_roles.map(role => `
-                            <option value="${role}">${role}</option>
-                        `).join('')}
-                    </select>
-                    <button type="button" class="cancel-button" onclick="deleteCustomRole()">Remove Role</button>
+                    <div style="margin-left: 20px;">
+                        Custom Roles:
+                        <select multiple name="custom_roles_${user.username}" data-username="${user.username}" class="custom-role-select">
+                            ${data.available_custom_roles.map(role => `
+                                <option value="${role}" ${user.custom_roles && user.custom_roles.includes(role) ? 'selected' : ''}>${role}</option>
+                            `).join('')}
+                        </select>
+                    </div>
                     `;
+                });
+                
+                html += '<button type="button" onclick="saveRoles()">Save Roles</button>';
+                html += '</form>';
 
-                    content.innerHTML = html;
-                    showAssignPanel('manageRoles');
-                } else {
-                    content.innerHTML = 'Error loading group members or roles.';
-                    console.error('Error from server:', data.message);
-                }
-            })
-            .catch(err => {
-                console.error('Error fetching group members:', err);
-                document.getElementById('roleManagementContent').innerHTML = 'Error loading group members.';
-            });
-    }
+                html += `
+                <hr>
+                <h4>Create New Custom Role</h4>
+                <input type="text" id="newRoleName" placeholder="New Role Name">
+                <button type="button" onclick="createNewRole()">Create Role</button>
+                `;
 
-    function createNewRole() {
-        const newRoleName = document.getElementById('newRoleName').value.trim();
-        if (!newRoleName) {
-            // Use a custom modal instead of alert
-            alert('Please enter a role name.');
-            return;
-        }
+                // Section for deleting custom roles
+                html += `
+                <hr>
+                <h4>Remove Custom Role</h4>
+                <select id="roleToDelete">
+                    <option value="">-- Select Role to Remove --</option>
+                    ${data.available_custom_roles.map(role => `
+                        <option value="${role}">${role}</option>
+                    `).join('')}
+                </select>
+                <button type="button" class="cancel-button" onclick="deleteCustomRole()">Remove Role</button>
+                `;
 
-        fetch(`/create_role/${groupId}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ role_name: newRoleName })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                // Use a custom modal instead of alert
-                alert(data.message);
-                openRoleManagement(); // Refresh the modal to show the new role
+                content.innerHTML = html;
+                // showAssignPanel('manageRoles'); // Already called at the top of this function
             } else {
-                // Use a custom modal instead of alert
-                alert('Failed to create role: ' + data.message);
+                content.innerHTML = 'Error loading group members or roles.';
+                console.error('Error from server:', data.message);
             }
         })
         .catch(err => {
-            console.error('Error creating role:', err);
-            // Use a custom modal instead of alert
-            alert('Error creating role.');
+            console.error('Error fetching group members:', err);
+            document.getElementById('roleManagementContent').innerHTML = 'Error loading group members.';
         });
+}
+
+function createNewRole() {
+    const newRoleName = document.getElementById('newRoleName').value.trim();
+    if (!newRoleName) {
+        // Use a custom modal instead of alert
+        alert('Please enter a role name.');
+        return;
     }
 
-    function deleteCustomRole() {
-        const roleToDelete = document.getElementById('roleToDelete').value;
-        if (!roleToDelete) {
+    fetch(`/create_role/${groupId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role_name: newRoleName })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
             // Use a custom modal instead of alert
-            alert('Please select a role to remove.');
-            return;
-        }
-
-        // Use a custom modal instead of a native confirm box
-        const userConfirmation = confirm(`Are you sure you want to remove the role "${roleToDelete}"? This action cannot be undone.`);
-        if (!userConfirmation) {
-            return;
-        }
-
-        fetch(`/delete_role/${groupId}`, { // You'll need to implement this Flask route
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ role_name: roleToDelete })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                // Use a custom modal instead of alert
-                alert(data.message);
-                openRoleManagement(); // Refresh the modal to show updated roles
-            } else {
-                // Use a custom modal instead of alert
-                alert('Failed to remove role: ' + data.message);
-            }
-        })
-        .catch(err => {
-            console.error('Error removing role:', err);
+            alert(data.message);
+            openRoleManagement(); // Refresh the modal to show the new role
+        } else {
             // Use a custom modal instead of alert
-            alert('Error removing role.');
-        });
+            alert('Failed to create role: ' + data.message);
+        }
+    })
+    .catch(err => {
+        console.error('Error creating role:', err);
+        // Use a custom modal instead of alert
+        alert('Error creating role.');
+    });
+}
+
+function deleteCustomRole() {
+    const roleToDelete = document.getElementById('roleToDelete').value;
+    if (!roleToDelete) {
+        // Use a custom modal instead of alert
+        alert('Please select a role to remove.');
+        return;
     }
 
-    function saveRoles() {
-        const primaryRoleSelects = document.querySelectorAll('#roleForm select[name^="primary_role_"]');
-        const customRoleSelects = document.querySelectorAll('#roleForm select[name^="custom_roles_"]');
+    // Use a custom modal instead of a native confirm box
+    const userConfirmation = confirm(`Are you sure you want to remove the role "${roleToDelete}"? This action cannot be undone.`);
+    if (!userConfirmation) {
+        return;
+    }
+
+    fetch(`/delete_role/${groupId}`, { // You'll need to implement this Flask route
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role_name: roleToDelete })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            // Use a custom modal instead of alert
+            alert(data.message);
+            openRoleManagement(); // Refresh the modal to show updated roles
+        } else {
+            // Use a custom modal instead of alert
+            alert('Failed to remove role: ' + data.message);
+        }
+    })
+    .catch(err => {
+        console.error('Error removing role:', err);
+        // Use a custom modal instead of alert
+        alert('Error removing role.');
+    });
+}
+
+function saveRoles() {
+    const primaryRoleSelects = document.querySelectorAll('#roleForm select[name^="primary_role_"]');
+    const customRoleSelects = document.querySelectorAll('#roleForm select[name^="custom_roles_"]');
+    
+    const updates = {};
+
+    primaryRoleSelects.forEach(select => {
+        const username = select.dataset.username;
+        if (!updates[username]) updates[username] = {};
+        updates[username]['primary_role'] = select.value;
+    });
+
+    customRoleSelects.forEach(select => {
+        const username = select.dataset.username;
+        if (!updates[username]) updates[username] = {};
         
-        const updates = {};
+        const selectedOptions = Array.from(select.selectedOptions).map(option => option.value);
+        const allOptions = Array.from(select.options).map(option => option.value);
 
-        primaryRoleSelects.forEach(select => {
-            const username = select.dataset.username;
-            if (!updates[username]) updates[username] = {};
-            updates[username]['primary_role'] = select.value;
-        });
+        updates[username]['custom_roles_to_assign'] = selectedOptions;
+        updates[username]['custom_roles_to_unassign'] = allOptions.filter(role => !selectedOptions.includes(role));
+    });
 
-        customRoleSelects.forEach(select => {
-            const username = select.dataset.username;
-            if (!updates[username]) updates[username] = {};
-            
-            const selectedOptions = Array.from(select.selectedOptions).map(option => option.value);
-            const allOptions = Array.from(select.options).map(option => option.value);
-
-            updates[username]['custom_roles_to_assign'] = selectedOptions;
-            updates[username]['custom_roles_to_unassign'] = allOptions.filter(role => !selectedOptions.includes(role));
-        });
-
-        fetch(`/update_roles/${groupId}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(updates)
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                // Use a custom modal instead of alert
-                alert('Roles updated successfully!');
-                showAssignPanel('role');
-                location.reload(); 
-            } else {
-                // Use a custom modal instead of alert
-                alert('Failed to update roles: ' + data.message);
-            }
-        })
-        .catch(err => {
-            console.error('Error:', err);
+    fetch(`/update_roles/${groupId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
             // Use a custom modal instead of alert
-            alert('Failed to update roles');
-        });
-    }
-
+            alert('Roles updated successfully!');
+            showAssignPanel('role');
+            location.reload(); 
+        } else {
+            // Use a custom modal instead of alert
+            alert('Failed to update roles: ' + data.message);
+        }
+    })
+    .catch(err => {
+        console.error('Error:', err);
+        // Use a custom modal instead of alert
+        alert('Failed to update roles');
+    });
+}
 
     // --- NEW: Create Project Modal Functions ---
     function openCreateProjectModal() {
