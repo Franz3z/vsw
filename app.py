@@ -17,6 +17,8 @@ import sys
 # Load environment variables from .env file (for local development)
 load_dotenv()
 
+print("--- VERCEL DEPLOYMENT TEST: app.py started ---")
+
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'your_super_secret_fallback_key_CHANGE_ME')
 logging.basicConfig(level=logging.DEBUG)
