@@ -1,8 +1,10 @@
-// whiteboard.js
-// Make sure these imports match your actual Firebase SDK URLs
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js';
-import { getDatabase, onValue, ref, set, push } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js'; // Added 'push'
+// whiteboard.js (Ensure this is the latest, consolidated version from our discussion)
 
+// Imports for Firebase (adjust paths if firebase.js is in a different location relative to this file)
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js';
+import { getDatabase, onValue, ref, set, push } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js';
+
+// Firebase Config (as provided by you)
 const firebaseConfig = {
     apiKey: "AIzaSyB5G7A9MDFgojI6sf86UNBgJWU2nLrzzD4",
     authDomain: "virtual-student-workspace.firebaseapp.com",
@@ -15,20 +17,18 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-export const database = getDatabase(app); // Export database for other modules if needed
+export const database = getDatabase(app); // Export database if other modules need it, otherwise 'const' is fine
 
-
+// Global variables for whiteboard state
 let canvas = null;
 let ctx = null;
 let drawing = false;
 let current = { x: 0, y: 0 };
 let whiteboardInitialized = false; // Flag to prevent re-initializing event listeners
 
-
 // Helper function to get mouse position relative to canvas
 function getMousePos(evt) {
-    // Make sure 'canvas' is not null when this is called
-    if (!canvas) return { x: 0, y: 0 };
+    if (!canvas) return { x: 0, y: 0 }; // Defensive check
     const rect = canvas.getBoundingClientRect();
     return {
         x: evt.clientX - rect.left,
@@ -36,14 +36,14 @@ function getMousePos(evt) {
     };
 }
 
-// Draw line on canvas (local drawing and emitting to Firebase)
+// Function to draw a line and optionally send to Firebase
 function drawLine(x0, y0, x1, y1, color = 'black', emit = true) {
     if (!ctx) return; // Ensure context is available
 
     ctx.strokeStyle = color;
-    ctx.lineWidth = 2; // Keep line width consistent
-    ctx.lineJoin = 'round'; // Smooth line joins
-    ctx.lineCap = 'round'; // Smooth line caps
+    ctx.lineWidth = 2;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
 
     ctx.beginPath();
     ctx.moveTo(x0, y0);
@@ -53,10 +53,26 @@ function drawLine(x0, y0, x1, y1, color = 'black', emit = true) {
 
     if (!emit) return; // Don't re-emit if drawing from Firebase data
 
-    // Use 'push' to create a unique ID for each line segment
-    const linesRef = ref(database, 'whiteboard/lines'); // Store lines under 'lines' node
+    const linesRef = ref(database, 'whiteboard/lines');
     push(linesRef, { x0, y0, x1, y1, color, timestamp: Date.now() })
         .catch(error => console.error("Error pushing line to Firebase:", error));
+}
+
+
+// Function to redraw all lines from Firebase
+function redrawAllLinesFromFirebase() {
+    // This listener ensures real-time updates and initial load
+    onValue(ref(database, 'whiteboard/lines'), (snapshot) => {
+        if (!ctx || !canvas) return; // Ensure canvas context is ready
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear before redrawing all
+        snapshot.forEach((childSnapshot) => {
+            const data = childSnapshot.val();
+            if (data && data.x0 !== undefined) {
+                drawLine(data.x0, data.y0, data.x1, data.y1, data.color, false);
+            }
+        });
+    });
 }
 
 
@@ -65,7 +81,7 @@ function initializeWhiteboard() {
     if (whiteboardInitialized) {
         // If already initialized, just ensure canvas dimensions are correct
         // and redraw if necessary (e.g., after modal was hidden)
-        resizeCanvas(); // Important: resize even if already initialized
+        resizeCanvas();
         return;
     }
 
@@ -78,8 +94,6 @@ function initializeWhiteboard() {
 
     // Function to set canvas dimensions correctly and redraw content
     function resizeCanvas() {
-        // Ensure canvas CSS width/height are set (e.g., width: 100%; height: 500px;)
-        // Then set internal canvas resolution to match its displayed size
         const rect = canvas.getBoundingClientRect();
         canvas.width = rect.width;
         canvas.height = rect.height;
@@ -90,13 +104,13 @@ function initializeWhiteboard() {
         ctx.lineJoin = 'round';
         ctx.lineCap = 'round';
 
-        // Redraw content after resize from Firebase
+        // Redraw content after resize
         redrawAllLinesFromFirebase();
     }
 
     // Set initial dimensions and add resize listener
-    resizeCanvas(); // Call on initial init
-    window.addEventListener('resize', resizeCanvas); // Listen for window resize
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
 
 
     // --- Canvas Event Listeners ---
@@ -118,58 +132,42 @@ function initializeWhiteboard() {
         current.y = pos.y;
     });
 
-    // --- Firebase Listeners ---
-    // Listen for all lines on the whiteboard
-    function redrawAllLinesFromFirebase() {
-        // No need to clear here, as onValue will trigger a clear initially
-        onValue(ref(database, 'whiteboard/lines'), (snapshot) => {
-            // This listener will trigger on initial load and any change to 'whiteboard/lines'
-            // Clear the canvas fully before redrawing all lines
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            snapshot.forEach((childSnapshot) => {
-                const data = childSnapshot.val();
-                if (data && data.x0 !== undefined) {
-                    // Draw without emitting back to Firebase
-                    drawLine(data.x0, data.y0, data.x1, data.y1, data.color, false);
-                }
-            });
-        });
-    }
-    // No need to call redrawAllLinesFromFirebase() here, as it's within the resizeCanvas()
-    // and the onValue listener itself will trigger on initial data.
-
     // Listener for clearing the whiteboard via Firebase update
     onValue(ref(database, 'whiteboard/lines'), (snapshot) => {
-        // If the 'lines' node is removed (e.g., by clearWhiteboard), this will be null
-        if (!snapshot.exists() && ctx) { // Ensure ctx exists before clearing
+        if (!snapshot.exists() && ctx) {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
     });
 
     whiteboardInitialized = true; // Set flag AFTER all listeners are attached and canvas is ready
+    console.log("Whiteboard initialized and listeners attached.");
 }
 
 
-// --- Global Functions (exposed to window) ---
-// This function can be called from your HTML to open the modal and initialize whiteboard
+// --- Global Functions (exposed to window for button clicks) ---
+
+// This function will be called when the "Show Whiteboard" button is clicked
 window.openWhiteboard = () => {
     document.getElementById('whiteboardModal').style.display = 'flex';
     // IMPORTANT: Call initializeWhiteboard() AFTER the modal is visible
-    // This ensures the canvas has its final dimensions and is ready for drawing.
     initializeWhiteboard();
+    console.log("Whiteboard modal opened and initialization attempted.");
 };
 
+// This function will be called when the "Close" button is clicked
 window.closeWhiteboard = () => {
     document.getElementById('whiteboardModal').style.display = 'none';
+    console.log("Whiteboard modal closed.");
 };
 
+// This function will be called when the "Clear Whiteboard" button is clicked
 window.clearWhiteboard = () => {
     if (ctx && canvas) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
-    // Set 'whiteboard/lines' to null to clear all data
-    set(ref(database, 'whiteboard/lines'), null) // Changed from {} to null to fully remove node
+    set(ref(database, 'whiteboard/lines'), null) // Clear data in Firebase
         .catch(error => console.error("Error clearing whiteboard in Firebase:", error));
+    console.log("Whiteboard clear requested.");
 };
 
 
@@ -183,25 +181,20 @@ document.addEventListener('DOMContentLoaded', () => {
         whiteboardToggleBtn.addEventListener('click', window.openWhiteboard);
         console.log("Whiteboard toggle button listener attached.");
     } else {
-        console.warn("Whiteboard toggle button not found!");
+        console.warn("Whiteboard toggle button (ID: whiteboardToggleBtn) not found!");
     }
 
     if (closeWhiteboardBtn) {
         closeWhiteboardBtn.addEventListener('click', window.closeWhiteboard);
         console.log("Close whiteboard button listener attached.");
     } else {
-        console.warn("Close whiteboard button not found!");
+        console.warn("Close whiteboard button (ID: closeWhiteboardBtn) not found!");
     }
 
     if (clearWhiteboardBtn) {
         clearWhiteboardBtn.addEventListener('click', window.clearWhiteboard);
         console.log("Clear whiteboard button listener attached.");
     } else {
-        console.warn("Clear whiteboard button not found!");
+        console.warn("Clear whiteboard button (ID: clearWhiteboardBtn) not found!");
     }
-
-    // Optional: If you want whiteboard to be initialized immediately on page load
-    // (e.g., if canvas is always visible), call initializeWhiteboard() here.
-    // However, if it's in a modal, calling it when modal opens is usually better.
-    // initializeWhiteboard();
 });
