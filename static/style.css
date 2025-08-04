@@ -546,6 +546,20 @@ body {
     background-color: darkblue; /* Darker blue when hovering */
 }
 
+.styled-button button {
+    margin-bottom: 10px; /* Adjust the bottom margin for spacing */
+    background-color:  #007bff; /* Change button color to blue */
+    color: white; /* Make text white */
+    padding: 10px 20px; /* Add some padding for better button appearance */
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.styled-button button:hover {
+    background-color: darkblue; /* Darker blue when hovering */
+}
+
 /* General Dashboard Container Styling */
 .dashboard-container {
     display: flex;
