@@ -11,9 +11,9 @@
     <div class="container">
         <div class="left-panel">
             <div class="buttons">
+                <a href="{{ url_for('dashboard', username=username) }}" class="styled-button">←</a>
                 <button onclick="openAssignModal()">Assign</button>
                 <button onclick="openApproveRequests()">Pending Requests</button>
-                <a href="{{ url_for('dashboard', username=username) }}" class="styled-button">←</a>
             </div>
 
             
