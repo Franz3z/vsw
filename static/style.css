@@ -263,21 +263,19 @@ body {
 
 /* Container for sender name and timestamp */
 .message-info {
-    font-size: 0.75rem; /* Smaller font for meta info */
-    margin-top: 0.25rem; /* Small space above timestamp */
-    text-align: right; /* Align timestamp to the right for sent messages */
-}
+    font-size: 0.75rem; 
+    margin-top: 0.25rem; 
+    text-align: right; 
 
 .sent-message .message-info {
-    color: rgba(255, 255, 255, 0.8); /* Lighter color for timestamp on dark bubbles */
-    padding-right: 0.875rem; /* Align with bubble's right edge */
+    color: #333333;
+    padding-right: 0.875rem; 
 }
 
 .received-message .message-info {
-    color: #65676b; /* Darker color for timestamp on light bubbles */
-    text-align: left; /* Align timestamp to the left for received messages */
-    padding-left: 0.875rem; /* Align with bubble's left edge */
-}
+    color: #333333; 
+    text-align: left; 
+    padding-left: 0.875rem; 
 
 /* Hide the sender name for sent messages, typically you don't show your own name */
 .sent-message .sender-name {
@@ -288,10 +286,10 @@ body {
 .received-message .sender-name {
     display: block;
     font-weight: 600;
-    font-size: 0.8125rem; /* Slightly larger for the name */
-    color: #4b4b4b; /* A darker grey for clarity */
-    margin-bottom: 0.2rem; /* Space between name and bubble */
-    padding-left: 0.5rem; /* Indent the name slightly */
+    font-size: 0.8125rem; 
+    color: #4b4b4b; 
+    margin-bottom: 0.2rem; 
+    padding-left: 0.5rem; 
 }
 
 
@@ -299,20 +297,20 @@ body {
     padding: 1rem;
     border-top: 1px solid #e2e8f0;
     display: flex;
-    align-items: flex-end; /* Align items to the bottom, useful for multiline input */
-    gap: 0.5rem; /* Slightly reduced gap */
+    align-items: flex-end; 
+    gap: 0.5rem; 
     background-color: #ffffff;
 }
 
 .input-container textarea {
     flex-grow: 1;
     resize: none;
-    border: 1px solid #ced0d4; /* Softer border color */
-    border-radius: 1.125rem; /* Highly rounded corners for the input field */
-    padding: 0.75rem 1rem; /* More padding */
+    border: 1px solid #ced0d4; 
+    border-radius: 1.125rem; 
+    padding: 0.75rem 1rem; 
     font-size: 0.9375rem;
-    max-height: 80px; /* Prevent textarea from growing too large */
-    overflow-y: auto; /* Enable scrolling if content exceeds max-height */
+    max-height: 80px; 
+    overflow-y: auto; 
 }
 
 .send-button {
