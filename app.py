@@ -362,6 +362,58 @@ def mainadmin(username, group_id):
         available_custom_roles=available_custom_roles_list # Use the new name here
     )
 
+@app.route('/main/<username>/<group_id>')
+def main(username, group_id):
+    """
+    Renders the main collaboration space for regular group members.
+    Fetches tasks and other relevant group data from Firebase.
+    """
+    # Verify the user is logged in and part of the group
+    if 'username' not in session or session['username'] != username:
+        flash('Please log in to view this page.')
+        return redirect(url_for('login'))
+
+    user_group = db.reference(f'users/{username}/groups/{group_id}').get()
+    if not user_group:
+        flash('You are not a member of this group.')
+        return redirect(url_for('dashboard', username=username))
+
+    logging.debug(f"Accessing main for user: {username}, group: {group_id}")
+    group_ref = db.reference(f'groups/{group_id}')
+
+    # Fetch tasks for the main view
+    tasks_ref = group_ref.child('tasks')
+    tasks_data = tasks_ref.get() or {}
+    tasks = []
+
+    for task_id, task in tasks_data.items():
+        task_info = {
+            'task_id': task_id,
+            'task_name': task.get('task_name', 'No Name'),
+            'description': task.get('description', ''),
+            'assigned_to': task.get('assigned_to', 'N/A'),
+            'priority': task.get('priority', 'Low'),
+            'progress_reports': task.get('progress_reports', {}),
+            'assigned_type': task.get('assigned_type', 'user'),
+            'deadline': task.get('deadline', ''),
+            'week_category': task.get('week_category', '')
+        }
+        # Only show tasks assigned to the current user or a group they are in
+        assigned_to_user = task_info['assigned_to'] == username
+        assigned_to_group_with_user = (
+            task_info['assigned_type'] == 'group' and
+            task_info['assigned_to'] in user_group.get('roles', {}).keys()
+        )
+
+        if assigned_to_user or assigned_to_group_with_user:
+            tasks.append(task_info)
+
+    return render_template('main.html',
+                           username=username,
+                           group_id=group_id,
+                           tasks=tasks)
+
+
 @app.route('/create_role/<group_id>', methods=['POST'])
 def create_role(group_id):
     try:
