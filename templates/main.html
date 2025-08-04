@@ -188,30 +188,21 @@
 
         // Mesfuncsage handling
         function fetchMessages() {
-            fetch(`/get_messages/${groupId}`)
-                .then(res => res.json())
-                .then(data => {
-                    const container = document.getElementById('messagesContainer');
-                    container.innerHTML = "";
-                    if (data.messages && data.messages.length > 0) {
-                        data.messages.forEach(msg => {
-                            const msgEl = document.createElement('div');
-                            msgEl.classList.add('message');
-                            msgEl.classList.add(msg.sender === username ? 'right' : 'left');
-                            msgEl.innerHTML = `<strong>${msg.sender}</strong>: ${msg.text} <br><small>${msg.timestamp}</small>`;
-                            container.appendChild(msgEl);
-                        });
-                        container.scrollTop = container.scrollHeight;
-                    } else {
-                        container.innerHTML = "<div class='no-messages'>No messages yet</div>";
-                    }
-                })
-                .catch(err => {
-                    console.error('Failed to fetch messages:', err);
-                    const container = document.getElementById('messagesContainer');
-                    container.innerHTML = "<div class='error'>Failed to load messages</div>";
+        console.log("Fetching messages...");
+        fetch(`/get_messages/${groupId}`)
+            .then(response => response.json())
+            .then(data => {
+                const messagesContainer = document.getElementById('messagesContainer');
+                messagesContainer.innerHTML = '';
+                data.messages.forEach(msg => {
+                    const msgElement = document.createElement('p');
+                    msgElement.textContent = `${msg.timestamp} - ${msg.sender}: ${msg.message}`;
+                    messagesContainer.appendChild(msgElement);
                 });
-        }
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            })
+            .catch(error => console.error('Error fetching messages:', error));
+    }
 
         function sendMessage() {
             const text = document.getElementById('messageInput').value.trim();
