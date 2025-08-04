@@ -712,6 +712,38 @@ def get_all_tasks(group_id):
         traceback.print_exc()
         return jsonify({'success': False, 'message': f'Error fetching tasks: {str(e)}'}), 500
 
+@app.route('/submit_task_for_approval/<group_id>/<task_id>', methods=['POST'])
+def submit_task_for_approval(group_id, task_id):
+
+    try:
+        logging.info(f"Received request to submit task {task_id} for approval in group {group_id}.")
+        
+        # Reference to the specific task in the database
+        task_ref = db.reference(f'groups/{group_id}/tasks/{task_id}')
+        
+        # Check if the task exists
+        task_data = task_ref.get()
+        if not task_data:
+            logging.warning(f"Task with ID {task_id} not found in group {group_id}.")
+            return jsonify({'success': False, 'message': 'Task not found.'}), 404
+
+        # Update the task's status to 'pending_approval'
+        task_ref.update({
+            'status': 'pending_approval',
+            'submitted_timestamp': datetime.now().isoformat()
+        })
+        
+        logging.info(f"Task {task_id} in group {group_id} has been successfully updated to 'pending_approval'.")
+        return jsonify({'success': True, 'message': 'Task submitted for approval.'}), 200
+
+    except Exception as e:
+        logging.error(f"Error submitting task {task_id} for group {group_id}: {e}")
+        # Log the full traceback for detailed debugging
+        import traceback
+        logging.error(traceback.format_exc())
+        return jsonify({'success': False, 'message': f'An error occurred: {str(e)}'}), 500
+
+
 @app.route('/assign_existing_task/<group_id>', methods=['POST'])
 def assign_existing_task(group_id):
     try:
