@@ -560,6 +560,46 @@ body {
     background-color: darkblue; /* Darker blue when hovering */
 }
 
+/* Styling for the logout button */
+.logout-button {
+    display: inline-block; /* Makes it behave like a block but allows it to sit inline */
+    padding: 12px 25px; /* Generous padding for a good touch target */
+    background-color: #dc3545; /* A standard, clear red for caution/logout */
+    color: white; /* White text for strong contrast */
+    border: none; /* Remove default border */
+    border-radius: 5px; /* Slightly rounded corners */
+    font-size: 16px; /* Readable font size */
+    font-weight: bold; /* Make the text stand out a bit */
+    cursor: pointer; /* Indicates it's clickable */
+    text-align: center; /* Ensures text is centered if button width varies */
+    text-decoration: none; /* Important for anchor tags if you were to use one */
+    transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease; /* Smooth transitions */
+    -webkit-appearance: none; /* For cross-browser consistency */
+    -moz-appearance: none;
+    appearance: none;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* A clean, modern font stack */
+}
+
+/* Hover state: makes the button slightly darker */
+.logout-button:hover {
+    background-color: #c82333; /* Darker red on hover */
+    transform: translateY(-1px); /* Slight lift effect */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Subtle shadow */
+}
+
+/* Active state: when the button is being clicked */
+.logout-button:active {
+    background-color: #bd2130; /* Even darker red when clicked */
+    transform: translateY(0); /* Resets the lift */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); /* Smaller shadow */
+}
+
+/* Focus state: for accessibility (keyboard navigation) */
+.logout-button:focus {
+    outline: none; /* Remove default outline */
+    box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.5); /* Custom red focus ring */
+}
+
 /* General Dashboard Container Styling */
 .dashboard-container {
     display: flex;
