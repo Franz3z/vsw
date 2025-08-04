@@ -1008,6 +1008,46 @@
             </div>
         </div>
 
+    <script type="module">
+    // Import the initializeWhiteboard and clearWhiteboard functions from your whiteboard.js module
+    // Adjust the path if '/src/whiteboard.js' is not correct.
+    import { initializeWhiteboard, clearWhiteboard } from '/src/whiteboard.js';
+
+    // Expose clearWhiteboard globally if needed by onclick (which can't directly call module exports)
+    window.clearWhiteboard = clearWhiteboard;
+
+    // This function is called by the "Show Whiteboard" button's onclick
+    function openWhiteboard() {
+        document.getElementById('whiteboardModal').style.display = 'flex';
+        // IMPORTANT: Call initializeWhiteboard() AFTER the modal is visible
+        initializeWhiteboard();
+        console.log("Whiteboard modal opened and initialization attempted.");
+    }
+
+    // This function is called by the "Close" button's onclick
+    function closeWhiteboard() {
+        document.getElementById('whiteboardModal').style.display = 'none';
+        console.log("Whiteboard modal closed.");
+    }
+
+    // Expose openWhiteboard and closeWhiteboard globally
+    window.openWhiteboard = openWhiteboard;
+    window.closeWhiteboard = closeWhiteboard;
+
+    // Optional: If you have a button outside the modal to open it (e.g., in chat header)
+    // You would set its onclick attribute to "openWhiteboard()"
+    document.addEventListener('DOMContentLoaded', () => {
+        const whiteboardToggleBtn = document.getElementById('whiteboardToggleBtn');
+        if (whiteboardToggleBtn) {
+            whiteboardToggleBtn.onclick = window.openWhiteboard; // Assign the global function
+            console.log("Whiteboard toggle button onclick assigned.");
+        } else {
+            console.warn("Whiteboard toggle button (ID: whiteboardToggleBtn) not found!");
+        }
+    });
+
+</script>
+
     <script type="module" src="/src/firebase.js"></script>
     <script type="module" src="/src/whiteboard.js"></script>
 
