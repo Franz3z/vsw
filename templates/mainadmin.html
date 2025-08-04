@@ -303,27 +303,40 @@
     }
 
     function sendMessage() {
-        const messageInput = document.getElementById('messageInput');
-        const message = messageInput.value.trim();
-        if (message) {
-            fetch(`/send_message/${groupId}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sender: username, message: message })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    messageInput.value = '';
-                    fetchMessages();
-                } else {
-                    // Use a custom modal instead of alert
-                    alert('Failed to send message: ' + data.message);
-                }
-            })
-            .catch(error => console.error('Error sending message:', error));
-        }
+    // Get the message text from the input field and remove leading/trailing whitespace
+    const text = document.getElementById('messageInput').value.trim();
+
+    // If the message is empty after trimming, do nothing
+    if (!text) {
+        return;
     }
+
+    // Send a POST request to the server to save the message
+    fetch(`/send_message/${groupId}`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            sender: username,
+            text
+        })
+    })
+    .then(res => res.json()) // Parse the JSON response from the server
+    .then(data => {
+        // If the message was sent successfully
+        if (data.success) {
+            // Clear the message input field
+            document.getElementById('messageInput').value = "";
+            // Immediately fetch the messages to show the new one
+            fetchMessages();
+        }
+    })
+    .catch(error => {
+        // Log any errors that occur during the fetch
+        console.error('Error sending message:', error);
+    });
+}
 
     // --- Assign Modal Functions ---
     // A single function to manage which panel is visible within the main assign modal
