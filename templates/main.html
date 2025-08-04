@@ -237,165 +237,162 @@
         </div>
     </div>
 </div>
-    <script>
-        // Ensure username and groupId are available from the Jinja context
-        const username = "{{ username }}";
-        const groupId = "{{ group_id }}";
-        
-        /**
-         * Fetches all tasks from the backend, filters them by user and status,
-         * and dynamically updates the task lists in the DOM.
-         */
-        function fetchTasks() {
-            console.log("Fetching all tasks...");
-            // Now fetching from the /get_all_tasks endpoint
-            fetch(`/get_all_tasks/${groupId}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // The backend returns a single 'tasks' array, so we must filter on the frontend
-                        const allTasks = data.tasks || [];
 
-                        const completed_tasks = [];
-                        const tasks_this_week = [];
-                        const tasks_next_week = [];
+<script>
+    const groupId = "{{ group_id }}";
 
-                        // Filter and categorize tasks for the current user
-                        allTasks.forEach(task => {
-                            if (task.assigned_to === username || task.assigned_type === 'everyone') {
-                                if (task.completed) {
-                                    completed_tasks.push(task);
-                                } else if (task.week_category === 'This Week') {
-                                    tasks_this_week.push(task);
-                                } else if (task.week_category === 'Next Week') {
-                                    tasks_next_week.push(task);
+    /**
+     * Fetches all tasks from the backend and dynamically updates the task lists in the DOM.
+     * It no longer filters tasks by user, showing all tasks for the entire group.
+     */
+    function fetchTasks() {
+        console.log("Fetching all tasks...");
+        fetch(`/get_all_tasks/${groupId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const allTasks = data.tasks || [];
+
+                    const completed_tasks = [];
+                    const tasks_this_week = [];
+                    const tasks_next_week = [];
+
+                    // Categorize ALL tasks without filtering by a specific user
+                    allTasks.forEach(task => {
+                        if (task.completed) {
+                            completed_tasks.push(task);
+                        } else if (task.week_category === 'This Week') {
+                            tasks_this_week.push(task);
+                        } else if (task.week_category === 'Next Week') {
+                            tasks_next_week.push(task);
+                        }
+                    });
+
+                    // Function to render a list of tasks
+                    const renderTasks = (containerId, tasks, noTasksMessage) => {
+                        const container = document.getElementById(containerId);
+                        container.innerHTML = ''; // Clear existing tasks
+
+                        if (tasks.length === 0) {
+                            const noTasksLi = document.createElement('li');
+                            noTasksLi.className = 'no-tasks';
+                            noTasksLi.textContent = noTasksMessage;
+                            container.appendChild(noTasksLi);
+                        } else {
+                            tasks.forEach(task => {
+                                const taskElement = document.createElement('li');
+                                taskElement.className = 'task-card';
+
+                                // Inner HTML for the task card, including progress forms if applicable
+                                let taskInnerHtml = `
+                                    <div class="task-title">${task.task_name}</div>
+                                    <div class="task-meta">
+                                        <div class="assignee-info">Assigned to: ${task.assigned_to}</div>
+                                        <span class="priority-tag priority-${task.priority.toLowerCase()}">${task.priority}</span>
+                                    </div>
+                                    <div class="task-description">${task.description}</div>
+                                `;
+
+                                // Add deadline for non-completed tasks
+                                if (!task.completed) {
+                                    taskInnerHtml += `<div><span style="font-weight: bold;">Deadline:</span> ${task.deadline}</div>`;
                                 }
+
+                                // Add progress reports for completed tasks
+                                if (task.completed && task.progress_reports) {
+                                    let reportsHtml = `
+                                        <div style="margin-top: 8px;"><strong>Progress Reports:</strong>
+                                            <ul style="margin-top: 5px;">
+                                    `;
+                                    for (const reportId in task.progress_reports) {
+                                        const report = task.progress_reports[reportId];
+                                        reportsHtml += `
+                                            <li style="margin-bottom: 5px;">
+                                                - ${report.progress} by ${report.submitted_by}
+                                                ${report.file ? `<a href="/download_file/${groupId}/${task.task_id}/${report.submitted_by}/${report.file}" target="_blank" style="text-decoration: underline; margin-left: 5px;">Download</a>` : ''}
+                                            </li>
+                                        `;
+                                    }
+                                    reportsHtml += `
+                                            </ul>
+                                        </div>
+                                    `;
+                                    taskInnerHtml += reportsHtml;
+                                } else if (task.completed && !task.progress_reports) {
+                                    taskInnerHtml += `<div><em>No progress reports yet</em></div>`;
+                                }
+
+                                // Add submit progress form for non-completed tasks
+                                // This is still conditional, only for the user assigned to the task
+                                if (!task.completed && (task.assigned_to === username || task.assigned_type === 'everyone')) {
+                                    taskInnerHtml += `
+                                        <form action="/submit_progress/${username}/${groupId}/${task.task_id}" method="POST" enctype="multipart/form-data" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee;">
+                                            <div style="margin-bottom: 8px;"><input type="text" name="progress" placeholder="Progress update..." required style="width: 100%;"></div>
+                                            <div style="margin-bottom: 8px;"><input type="file" name="file"></div>
+                                            <button type="submit">Submit Progress</button>
+                                        </form>
+                                    `;
+                                }
+                                
+                                taskElement.innerHTML = taskInnerHtml;
+                                container.appendChild(taskElement);
+                            });
+                        }
+
+                        // Re-attach event listeners for collapsible sections
+                        document.querySelectorAll('.collapsible').forEach(el => {
+                            if (!el.dataset.listenerAdded) {
+                                el.addEventListener('click', () => toggleCollapsible(el));
+                                el.dataset.listenerAdded = 'true';
                             }
                         });
+                    };
 
-                        // Function to render a list of tasks
-                        const renderTasks = (containerId, tasks, noTasksMessage) => {
-                            const container = document.getElementById(containerId);
-                            container.innerHTML = ''; // Clear existing tasks
+                    // Render each task category
+                    renderTasks('done-tasks', completed_tasks, 'No completed tasks');
+                    renderTasks('this-week-tasks', tasks_this_week, 'No tasks for this week');
+                    renderTasks('next-week-tasks', tasks_next_week, 'No tasks for next week');
 
-                            if (tasks.length === 0) {
-                                const noTasksLi = document.createElement('li');
-                                noTasksLi.className = 'no-tasks';
-                                noTasksLi.textContent = noTasksMessage;
-                                container.appendChild(noTasksLi);
-                            } else {
-                                tasks.forEach(task => {
-                                    const taskElement = document.createElement('li');
-                                    taskElement.className = 'task-card';
+                } else {
+                    console.error('Failed to fetch tasks:', data.message);
+                }
+            })
+            .catch(error => console.error('Error fetching tasks:', error));
+    }
 
-                                    // Inner HTML for the task card, including progress forms if applicable
-                                    let taskInnerHtml = `
-                                        <div class="task-title">${task.task_name}</div>
-                                        <div class="task-meta">
-                                            <div class="assignee-info">Assigned to: ${task.assigned_to}</div>
-                                            <span class="priority-tag priority-${task.priority.toLowerCase()}">${task.priority}</span>
-                                        </div>
-                                        <div class="task-description">${task.description}</div>
-                                    `;
+    /**
+     * Toggles the visibility of the task panel.
+     */
+    function toggleTaskPanel() {
+        const panel = document.getElementById('taskPanel');
+        panel.classList.toggle('collapsed');
+        document.getElementById('taskPanelToggle').textContent = panel.classList.contains('collapsed') ? '≡' : '×';
+    }
 
-                                    // Add deadline for non-completed tasks
-                                    if (!task.completed) {
-                                        taskInnerHtml += `<div><span style="font-weight: bold;">Deadline:</span> ${task.deadline}</div>`;
-                                    }
+    /**
+     * Toggles the visibility of a collapsible section.
+     */
+    function toggleCollapsible(element) {
+        element.classList.toggle('collapsed');
+        const ul = element.nextElementSibling;
+        ul.style.display = ul.style.display === 'none' ? 'block' : 'none';
+    }
 
-                                    // Add progress reports for completed tasks
-                                    if (task.completed && task.progress_reports) {
-                                        let reportsHtml = `
-                                            <div style="margin-top: 8px;"><strong>Progress Reports:</strong>
-                                                <ul style="margin-top: 5px;">
-                                        `;
-                                        for (const reportId in task.progress_reports) {
-                                            const report = task.progress_reports[reportId];
-                                            reportsHtml += `
-                                                <li style="margin-bottom: 5px;">
-                                                    - ${report.progress} by ${report.submitted_by}
-                                                    ${report.file ? `<a href="/download_file/${groupId}/${task.task_id}/${report.submitted_by}/${report.file}" target="_blank" style="text-decoration: underline; margin-left: 5px;">Download</a>` : ''}
-                                                </li>
-                                            `;
-                                        }
-                                        reportsHtml += `
-                                                </ul>
-                                            </div>
-                                        `;
-                                        taskInnerHtml += reportsHtml;
-                                    } else if (task.completed && !task.progress_reports) {
-                                        taskInnerHtml += `<div><em>No progress reports yet</em></div>`;
-                                    }
-
-                                    // Add submit progress form for non-completed tasks
-                                    if (!task.completed && (task.assigned_to === username || task.assigned_type === 'everyone')) {
-                                        taskInnerHtml += `
-                                            <form action="/submit_progress/${username}/${groupId}/${task.task_id}" method="POST" enctype="multipart/form-data" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee;">
-                                                <div style="margin-bottom: 8px;"><input type="text" name="progress" placeholder="Progress update..." required style="width: 100%;"></div>
-                                                <div style="margin-bottom: 8px;"><input type="file" name="file"></div>
-                                                <button type="submit">Submit Progress</button>
-                                            </form>
-                                        `;
-                                    }
-                                    
-                                    taskElement.innerHTML = taskInnerHtml;
-                                    container.appendChild(taskElement);
-                                });
-                            }
-
-                            // Re-attach event listeners for collapsible sections
-                            document.querySelectorAll('.collapsible').forEach(el => {
-                                if (!el.dataset.listenerAdded) {
-                                    el.addEventListener('click', () => toggleCollapsible(el));
-                                    el.dataset.listenerAdded = 'true';
-                                }
-                            });
-                        };
-
-                        // Render each task category
-                        renderTasks('done-tasks', completed_tasks, 'No completed tasks');
-                        renderTasks('this-week-tasks', tasks_this_week, 'No tasks for this week');
-                        renderTasks('next-week-tasks', tasks_next_week, 'No tasks for next week');
-
-                    } else {
-                        console.error('Failed to fetch tasks:', data.message);
-                    }
-                })
-                .catch(error => console.error('Error fetching tasks:', error));
-        }
-
-        /**
-         * Toggles the visibility of the task panel.
-         */
-        function toggleTaskPanel() {
-            const panel = document.getElementById('taskPanel');
-            panel.classList.toggle('collapsed');
-            document.getElementById('taskPanelToggle').textContent = panel.classList.contains('collapsed') ? '≡' : '×';
-        }
-
-        /**
-         * Toggles the visibility of a collapsible section.
-         */
-        function toggleCollapsible(element) {
-            element.classList.toggle('collapsed');
-            const ul = element.nextElementSibling;
-            ul.style.display = ul.style.display === 'none' ? 'block' : 'none';
-        }
-
-        // Set up the interface when the page loads
-        document.addEventListener('DOMContentLoaded', () => {
-            // Initial fetch of tasks
-            fetchTasks(); 
-            // Refresh tasks every 10 seconds
-            setInterval(fetchTasks, 10000); 
-            // Listen for the task panel toggle button click
-            document.getElementById('taskPanelToggle').addEventListener('click', toggleTaskPanel);
-            // Listen for collapsible section clicks
-            document.querySelectorAll('.collapsible').forEach(el => {
-                el.addEventListener('click', () => toggleCollapsible(el));
-            });
+    // Set up the interface when the page loads
+    document.addEventListener('DOMContentLoaded', () => {
+        // Initial fetch of tasks
+        fetchTasks();
+        // Refresh tasks every 10 seconds
+        setInterval(fetchTasks, 10000);
+        // Listen for the task panel toggle button click
+        document.getElementById('taskPanelToggle').addEventListener('click', toggleTaskPanel);
+        // Listen for collapsible section clicks
+        document.querySelectorAll('.collapsible').forEach(el => {
+            el.addEventListener('click', () => toggleCollapsible(el));
         });
-    </script>
+    });
+</script>
+
 
 
     <div id="whiteboardModal"
