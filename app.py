@@ -264,11 +264,11 @@ def mainadmin(username, group_id):
     pending_requests = list(pending_requests_data.keys())
     logging.debug(f"Pending requests: {pending_requests}")
 
-# --- Fetch Tasks Data ---
+    # --- Fetch Tasks Data ---
     tasks_ref = group_ref.child('tasks')
     tasks_data = tasks_ref.get() or {}
-    print(f"\n--- DEBUGGING TASKS IN mainadmin for user: {username}, group: {group_id} ---")
-    print(f"DEBUG: Raw tasks_data fetched from Firebase: {json.dumps(tasks_data, indent=2)}")
+    logging.info(f"\n--- DEBUGGING TASKS IN mainadmin for user: {username}, group: {group_id} ---")
+    logging.info(f"DEBUG: Raw tasks_data fetched from Firebase: {json.dumps(tasks_data, indent=2)}")
 
     tasks_this_week = []
     tasks_next_week = []
@@ -282,9 +282,9 @@ def mainadmin(username, group_id):
     start_of_next_week = start_of_this_week + timedelta(weeks=1)
     
     # Debugging the current time and week boundaries
-    print(f"DEBUG: Current Time (Server): {today.isoformat()}")
-    print(f"DEBUG: Start of This Week (Server): {start_of_this_week.isoformat()}")
-    print(f"DEBUG: Start of Next Week (Server): {start_of_next_week.isoformat()}")
+    logging.info(f"DEBUG: Current Time (Server): {today.isoformat()}")
+    logging.info(f"DEBUG: Start of This Week (Server): {start_of_this_week.isoformat()}")
+    logging.info(f"DEBUG: Start of Next Week (Server): {start_of_next_week.isoformat()}")
 
     
     # Define week boundaries for categorization in mainadmin
@@ -314,26 +314,26 @@ def mainadmin(username, group_id):
             'deadline': task.get('deadline', ''),
             'week_category': task.get('week_category', '')
         }
-        print(f"DEBUG: Processing task_id: {task_id}, task_info: {json.dumps(task_info)}")
+        logging.info(f"DEBUG: Processing task_id: {task_id}, task_info: {json.dumps(task_info)}")
         
         if task.get('completed', False):
             completed_tasks.append(task_info)
-            print(f"DEBUG: Task {task_id} added to completed_tasks (completed: True).")
+            logging.info(f"DEBUG: Task {task_id} added to completed_tasks (completed: True).")
         else:
             # Check week category
             if task_info['week_category'] == 'this_week':
                 tasks_this_week.append(task_info)
-                print(f"DEBUG: Task {task_id} added to tasks_this_week (week_category: this_week).")
+                logging.info(f"DEBUG: Task {task_id} added to tasks_this_week (week_category: this_week).")
             elif task_info['week_category'] == 'next_week':
                 tasks_next_week.append(task_info)
-                print(f"DEBUG: Task {task_id} added to tasks_next_week (week_category: next_week).")
+                logging.info(f"DEBUG: Task {task_id} added to tasks_next_week (week_category: next_week).")
             else:
-                print(f"DEBUG: Task {task_id} not categorized into this_week/next_week (week_category: {task_info['week_category']}).")
+                logging.info(f"DEBUG: Task {task_id} not categorized into this_week/next_week (week_category: {task_info['week_category']}).")
 
-    print(f"DEBUG: Final tasks_this_week list: {json.dumps(tasks_this_week, indent=2)}")
-    print(f"DEBUG: Final tasks_next_week list: {json.dumps(tasks_next_week, indent=2)}")
-    print(f"DEBUG: Final completed_tasks list: {json.dumps(completed_tasks, indent=2)}")
-    print("------------------------------------------------------------------\n")
+    logging.info(f"DEBUG: Final tasks_this_week list: {json.dumps(tasks_this_week, indent=2)}")
+    logging.info(f"DEBUG: Final tasks_next_week list: {json.dumps(tasks_next_week, indent=2)}")
+    logging.info(f"DEBUG: Final completed_tasks list: {json.dumps(completed_tasks, indent=2)}")
+    logging.info("------------------------------------------------------------------\n")
             
     # Sort tasks within categories (e.g., by priority)
     priority_order = {'high': 1, 'medium': 2, 'low': 3}
