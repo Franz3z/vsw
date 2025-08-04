@@ -353,23 +353,61 @@
 </div>
 
 <script>
+    // Initialize currentTasks as an empty object
+    let currentTasks = {};
+
+    // Function to populate currentTasks from the categorized lists
+    // This function can be called once the page loads and the variables are available.
+    function populateCurrentTasks() {
+        // Clear any existing tasks
+        currentTasks = {};
+
+        // Combine tasks from tasksThisWeek
+        if (typeof tasksThisWeek !== 'undefined' && tasksThisWeek && Array.isArray(tasksThisWeek)) {
+            tasksThisWeek.forEach(task => {
+                if (task && task.task_id) {
+                    currentTasks[task.task_id] = task;
+                }
+            });
+        }
+
+        // Combine tasks from tasksNextWeek
+        if (typeof tasksNextWeek !== 'undefined' && tasksNextWeek && Array.isArray(tasksNextWeek)) {
+            tasksNextWeek.forEach(task => {
+                if (task && task.task_id) {
+                    currentTasks[task.task_id] = task;
+                }
+            });
+        }
+
+        // Combine tasks from completedTasks (include if you want completed tasks in submit dropdown)
+        // If you only want *uncompleted* tasks in the submit feature, you can remove this block.
+        if (typeof completedTasks !== 'undefined' && completedTasks && Array.isArray(completedTasks)) {
+            completedTasks.forEach(task => {
+                if (task && task.task_id) {
+                    currentTasks[task.task_id] = task;
+                }
+            });
+        }
+        console.log("DEBUG: currentTasks populated:", currentTasks); // For debugging
+    }
+
     // Function to open the progress modal and populate tasks
     function submitModal() {
         const progressModal = document.getElementById('progressModal');
         const taskSelector = document.getElementById('taskSelector');
 
-        // Add null checks to prevent errors if elements aren't found for some reason
         if (!progressModal || !taskSelector) {
             console.error("Error: Modal or task selector elements not found. Cannot open modal.");
             return;
         }
 
-        // Clear previous options
-        taskSelector.innerHTML = '<option value="">--Please choose a task--</option>';
+        taskSelector.innerHTML = '<option value="">--Please choose a task--</option>'; // Clear previous options
 
-        // Populate the dropdown with tasks using the globally available currentTasks
-        if (typeof currentTasks !== 'undefined' && currentTasks) {
-            // currentTasks is expected to be an object where keys are task_ids
+        // Ensure currentTasks is populated before using it
+        populateCurrentTasks(); 
+
+        if (Object.keys(currentTasks).length > 0) {
             for (const taskId in currentTasks) {
                 if (currentTasks.hasOwnProperty(taskId)) {
                     const task = currentTasks[taskId];
@@ -379,9 +417,14 @@
                     taskSelector.appendChild(option);
                 }
             }
+        } else {
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = 'No tasks available';
+            taskSelector.appendChild(option);
         }
         
-        progressModal.style.display = 'block';
+        progressModal.style.display = 'flex'; // Use flex for centering with modal-backdrop
     }
 
     function closeProgressModal() {
@@ -394,8 +437,10 @@
         if (taskSelector) taskSelector.value = ''; // Reset dropdown selection
     }
 
-    // Use DOMContentLoaded to ensure the form and modal elements are available
     document.addEventListener('DOMContentLoaded', () => {
+        // Call populateCurrentTasks on DOMContentLoaded to ensure data is ready
+        populateCurrentTasks(); 
+
         const progressForm = document.getElementById('progressForm');
         
         if (progressForm) {
@@ -412,19 +457,19 @@
 
                 const formData = new FormData(progressForm);
 
-                // Use the globally available currentUsername and currentGroupId
                 try {
-                    const response = await fetch(`/submit_progress/${currentUsername}/${currentGroupId}/${selectedTaskId}`, {
+                    // Make sure currentUsername and currentGroupId are defined (from mainadmin.html's global JS)
+                    const response = await fetch(`/submit_progress/${username}/${groupId}/${selectedTaskId}`, {
                         method: 'POST',
                         body: formData
                     });
 
-                    const result = await response.text(); // Backend returns plain text
+                    const result = await response.text();
 
                     if (response.ok) {
                         alert(result);
                         closeProgressModal();
-                        location.reload(); // Reload to show updated progress
+                        location.reload(); 
                     } else {
                         alert('Error submitting progress: ' + result);
                     }
@@ -436,7 +481,6 @@
             });
         }
 
-        // Close modal when clicking outside of it
         const progressModal = document.getElementById('progressModal');
         if (progressModal) {
             window.onclick = function(event) {
