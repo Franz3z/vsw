@@ -210,6 +210,11 @@ def join_group_handler(username):
 
 @app.route('/group_redirect/<username>/<group_id>')
 def group_redirect(username, group_id):
+    """
+    Redirects users to the appropriate group page based on their role.
+    This function has been updated to explicitly prevent caching of the redirect response.
+    """
+    logging.debug(f"Attempting to redirect user {username} for group {group_id}")
     user_group = db.reference(f'users/{username}/groups/{group_id}').get()
 
     if not user_group:
@@ -217,7 +222,12 @@ def group_redirect(username, group_id):
         return redirect(url_for('dashboard', username=username))
 
     if user_group.get('role') == 'admin':
-        return redirect(url_for('mainadmin', username=username, group_id=group_id))
+        response = make_response(redirect(url_for('mainadmin', username=username, group_id=group_id)))
+        # Add headers to prevent caching
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        return response
     else:
         return redirect(url_for('main', username=username, group_id=group_id))
 
