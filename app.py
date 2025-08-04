@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_from_directory
 import firebase_admin
 from firebase_admin import credentials, db, initialize_app
 from flask import session
@@ -54,6 +54,17 @@ except Exception as e:
     logging.error(f"Error initializing Firebase from environment variables: {e}")
     logging.error(traceback.format_exc())
     sys.exit(1)
+
+# New routes to handle favicon requests properly
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory(os.path.join(app.root_path, 'static'),
+                               'favicon.ico', mimetype='image/vnd.microsoft.icon')
+
+@app.route('/favicon.png')
+def favicon_png():
+    return send_from_directory(os.path.join(app.root_path, 'static'),
+                               'favicon.png', mimetype='image/png')
 
 @app.route('/')
 def login():
@@ -195,94 +206,6 @@ def join_group_handler(username):
     flash(f'Join request sent to "{group_data["group_name"]}". Please wait for admin approval.')
     return redirect(url_for('dashboard', username=username))
 
-@app.route('/approve_request/<group_id>/<pending_username>', methods=['POST'])
-def approve_request_handler(group_id, pending_username):
-    """
-    Handles the approval of a pending request to join a group.
-
-    Args:
-        group_id (str): The ID of the group.
-        pending_username (str): The username of the user to be approved.
-    
-    Returns:
-        A JSON response indicating success or failure.
-    """
-    try:
-        # Get references to the database locations
-        group_ref = db.reference(f'groups/{group_id}')
-        user_ref = db.reference(f'users/{pending_username}')
-
-        # Retrieve group and user data
-        group_data = group_ref.get()
-        user_data = user_ref.get()
-
-        if not group_data or not user_data:
-            # Handle cases where the group or user does not exist
-            logging.warning(f"Attempted to approve request for non-existent group {group_id} or user {pending_username}")
-            return jsonify({'success': False, 'message': 'Group or user not found.'}), 404
-
-        # Check if the user is in the pending requests list
-        pending_requests = group_data.get('pending_requests', {})
-        if pending_username not in pending_requests:
-            logging.warning(f"User {pending_username} is not in the pending requests for group {group_id}.")
-            return jsonify({'success': False, 'message': 'User is not a pending member.'}), 400
-
-        # Move the user from pending requests to members with a default role of 'member'
-        members_ref = group_ref.child('members')
-        members_ref.child(pending_username).set({'username': pending_username, 'is_admin': False, 'role': 'member', 'roles': {'member': True}})
-        
-        # Remove the user from the pending requests list
-        pending_requests_ref = group_ref.child('pending_requests')
-        pending_requests_ref.child(pending_username).delete()
-
-        # Add the group to the user's list of groups
-        user_groups_ref = user_ref.child('groups')
-        user_groups_ref.child(group_id).set({'group_id': group_id, 'is_admin': False, 'role': 'member', 'roles': {'member': True}})
-
-        logging.info(f"Successfully approved user {pending_username} for group {group_id}.")
-        return jsonify({'success': True, 'message': 'User approved and added to group.'})
-
-    except Exception as e:
-        # Log a detailed error message and return a 500
-        logging.error(f"Error approving user {pending_username} for group {group_id}: {e}")
-        traceback.print_exc()
-        return jsonify({'success': False, 'message': 'An internal server error occurred.'}), 500
-
-@app.route('/deny_request/<group_id>/<pending_username>', methods=['POST'])
-def deny_request_handler(group_id, pending_username):
-    """
-    Handles the denial of a pending request to join a group.
-
-    Args:
-        group_id (str): The ID of the group.
-        pending_username (str): The username of the user to be denied.
-    
-    Returns:
-        A JSON response indicating success or failure.
-    """
-    try:
-        # Get references to the database locations
-        group_ref = db.reference(f'groups/{group_id}')
-        
-        # Check if the user is in the pending requests list
-        pending_requests_ref = group_ref.child('pending_requests')
-        pending_requests = pending_requests_ref.get() or {}
-        if pending_username not in pending_requests:
-            logging.warning(f"User {pending_username} is not in the pending requests for group {group_id}.")
-            return jsonify({'success': False, 'message': 'User is not a pending member.'}), 400
-
-        # Remove the user from the pending requests list
-        pending_requests_ref.child(pending_username).delete()
-
-        logging.info(f"Successfully denied user {pending_username} for group {group_id}.")
-        return jsonify({'success': True, 'message': 'User request denied.'})
-
-    except Exception as e:
-        # Log a detailed error message and return a 500
-        logging.error(f"Error denying user {pending_username} for group {group_id}: {e}")
-        traceback.print_exc()
-        return jsonify({'success': False, 'message': 'An internal server error occurred.'}), 500
-
 @app.route('/group_redirect/<username>/<group_id>')
 def group_redirect(username, group_id):
     user_group = db.reference(f'users/{username}/groups/{group_id}').get()
@@ -368,6 +291,11 @@ def mainadmin(username, group_id):
 
 
     for task_id, task in tasks_data.items():
+        # IMPORTANT: Add a safety check to ensure task is a dictionary
+        if not isinstance(task, dict):
+            logging.warning(f"Skipping malformed task data for task_id: {task_id}. Data was not a dictionary: {task}")
+            continue
+
         task_info = {
             'task_id': task_id,
             'task_name': task.get('task_name', 'No Name'),
@@ -474,7 +402,16 @@ def main(username, group_id):
     tasks_data = tasks_ref.get() or {}
     tasks = []
 
+    if not isinstance(tasks_data, dict):
+        logging.error(f"tasks_data is not a dictionary for group {group_id}. Type: {type(tasks_data)}, Value: {tasks_data}")
+        tasks_data = {}
+
     for task_id, task in tasks_data.items():
+        # IMPORTANT: Add a safety check to ensure task is a dictionary
+        if not isinstance(task, dict):
+            logging.warning(f"Skipping malformed task data for task_id: {task_id}. Data was not a dictionary: {task}")
+            continue
+
         task_info = {
             'task_id': task_id,
             'task_name': task.get('task_name', 'No Name'),
@@ -802,205 +739,320 @@ def submit_progress(username, group_id, task_id):
         return 'No progress, file, or completion status provided', 400
 
     task_ref = db.reference(f'groups/{group_id}/tasks/{task_id}')
-    progress_ref = task_ref.child('progress_reports')
-
+    progress_ref = task_ref.child('progress_reports').push()
     progress_data = {
-        'submitted_by': username,
-        'progress': progress_text or '',
-        'timestamp': datetime.now().isoformat()
+        'reported_by': username,
+        'timestamp': datetime.now().isoformat(),
+        'progress': progress_text
     }
 
-    if file and file.filename:
-        filename = secure_filename(file.filename)
-        user_folder = os.path.join(app.config['UPLOAD_FOLDER'], group_id, task_id, username)
-        os.makedirs(user_folder, exist_ok=True)
-        filepath = os.path.join(user_folder, filename)
-        file.save(filepath)
-        progress_data['file'] = filename
+    if file:
+        try:
+            filename = secure_filename(file.filename)
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(file_path)
 
-    # Add progress report (even if empty, if task is just being marked complete)
-    progress_ref.push(progress_data)
+            # NOTE: For a production app, you would want to use a more persistent storage
+            # solution like Firebase Storage or AWS S3 and save the URL here, not the local path.
+            # This implementation is for a simple demonstration.
+            progress_data['file_path'] = file_path
+            progress_data['file_name'] = filename
+        except Exception as e:
+            logging.error(f"Error saving uploaded file: {e}")
+            return f"File upload failed: {e}", 500
 
-    # Update task completion status if requested
+    progress_ref.set(progress_data)
+    
+    # If the user marked the task as completed, update the task status
     if mark_completed:
-        task_ref.child('completed').set(True)
+        task_ref.update({'completed': True})
 
-    flash('Progress submitted and task status updated successfully.')
-    return redirect(url_for('main', username=username, group_id=group_id))
+    # Notify the group admin
+    admin_ref = db.reference(f'groups/{group_id}/admin')
+    admin_username = admin_ref.get()
+    if admin_username:
+        task_name = task_ref.child('task_name').get()
+        message = f'User "{username}" submitted a progress report for task "{task_name}".'
+        if mark_completed:
+             message = f'User "{username}" marked task "{task_name}" as completed.'
+        
+        db.reference(f'users/{admin_username}/notifications').push().set({
+            'message': message,
+            'group_id': group_id,
+            'task_id': task_id,
+            'timestamp': datetime.now().isoformat(),
+            'read': False
+        })
+    
+    return 'Progress report submitted successfully!', 200
 
-@app.route('/download/<group_id>/<task_id>/<username>/<filename>')
-def download_file(group_id, task_id, username, filename):
-    directory = os.path.join(app.config['UPLOAD_FOLDER'], group_id, task_id, username)
-    return send_from_directory(directory, filename, as_attachment=True)
+@app.route('/messages/<group_id>')
+def get_messages(group_id):
+    chat_ref = db.reference(f'groups/{group_id}/chat')
+    chat_data = chat_ref.get() or {}
+
+    messages = []
+    for message_id, message_data in chat_data.items():
+        if isinstance(message_data, dict):
+            messages.append({
+                'sender': message_data.get('sender', 'Unknown'),
+                'message': message_data.get('text', ''),
+                'timestamp': message_data.get('timestamp', '')
+            })
+    return jsonify(messages)
 
 @app.route('/send_message/<group_id>', methods=['POST'])
 def send_message(group_id):
-    data = request.get_json()
-    sender = data.get('sender')
-    text = data.get('text')
+    username = request.form.get('username')
+    message = request.form.get('message')
+    if not username or not message:
+        return jsonify({'success': False, 'message': 'Username and message are required'}), 400
 
-    if not text or not sender:
-        return jsonify({'success': False, 'error': 'Missing data'}), 400
+    chat_ref = db.reference(f'groups/{group_id}/chat').push()
+    chat_ref.set({
+        'sender': username,
+        'text': message,
+        'timestamp': datetime.now().isoformat()
+    })
+    return jsonify({'success': True, 'message': 'Message sent successfully'})
 
-    timestamp = datetime.now().isoformat() # Changed to ISO format for easier sorting
-    message = {
-        'sender': sender,
-        'text': text,
-        'timestamp': timestamp
-    }
-
-    messages_ref = db.reference(f'groups/{group_id}/chat')
-    messages_ref.push(message)
-
-    return jsonify({'success': True})
-
-
-@app.route('/get_messages/<group_id>', methods=['GET']) # Removed /chat from URL path
-def get_messages(group_id):
+@app.route('/approve_request_handler/<group_id>', methods=['POST'])
+def approve_request_handler(group_id):
     try:
-        messages_ref = db.reference(f'groups/{group_id}/chat')
-        messages = messages_ref.get() or {}
+        requester_username = request.form['username']
         
-        message_list = []
-        # Sort messages by timestamp before sending
-        sorted_messages = sorted(messages.items(), key=lambda item: item[1].get('timestamp', ''))
+        # Move user from pending_requests to members
+        pending_ref = db.reference(f'groups/{group_id}/pending_requests/{requester_username}')
+        request_data = pending_ref.get()
+        
+        if request_data:
+            # Add to members with a default role
+            members_ref = db.reference(f'groups/{group_id}/members/{requester_username}')
+            members_ref.set({'role': 'member', 'roles': {'member': True}}) # Explicitly set 'member' as a custom role
+            
+            # Add group to user's list with default role
+            user_groups_ref = db.reference(f'users/{requester_username}/groups/{group_id}')
+            group_name = db.reference(f'groups/{group_id}/group_name').get()
+            user_groups_ref.set({
+                'group_name': group_name,
+                'role': 'member',
+                'roles': {'member': True}
+            })
 
-        for key, msg in sorted_messages:
-            if isinstance(msg, dict):
-                # Ensure timestamp is in correct format for client-side display
-                timestamp_str = msg.get('timestamp', '')
-                try:
-                    # Attempt to parse as ISO format if it matches
-                    dt_object = datetime.fromisoformat(timestamp_str)
-                    formatted_timestamp = dt_object.strftime('%b %d, %I:%M %p')
-                except ValueError:
-                    # Fallback if not ISO, or use as is
-                    formatted_timestamp = timestamp_str
-
-                message_list.append({
-                    'sender': msg.get('sender', ''),
-                    'message': msg.get('text', ''),
-                    'timestamp': formatted_timestamp
-                })
-            else:
-                logging.warning(f"Skipping malformed message in group {group_id} with key {key}: {msg}")
-
-        return jsonify({'messages': message_list})
+            pending_ref.delete()
+            return jsonify({'success': True, 'message': f'Request from {requester_username} approved.'})
+        else:
+            return jsonify({'success': False, 'message': 'Pending request not found.'}), 404
 
     except Exception as e:
-        logging.error(f"Error in get_messages for group {group_id}: {e}")
-        sys.stderr.write(traceback.format_exc() + '\n')
-        return jsonify({'success': False, 'error': 'Internal server error fetching messages'}), 500
+        logging.error(f"Error approving request for group {group_id}: {e}")
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': 'An internal server error occurred.'}), 500
 
-@app.route('/clear_notification/<notification_id>', methods=['POST'])
-def clear_notification(notification_id):
-    if 'username' not in session:
-        return jsonify({'error': 'Not logged in'}), 401
-        
+@app.route('/deny_request_handler/<group_id>', methods=['POST'])
+def deny_request_handler(group_id):
     try:
-        ref = db.reference(f'users/{session["username"]}/notifications/{notification_id}')
-        ref.delete()
+        requester_username = request.form['username']
+        pending_ref = db.reference(f'groups/{group_id}/pending_requests/{requester_username}')
+        if pending_ref.get():
+            pending_ref.delete()
+            return jsonify({'success': True, 'message': f'Request from {requester_username} denied.'})
+        else:
+            return jsonify({'success': False, 'message': 'Pending request not found.'}), 404
+    except Exception as e:
+        logging.error(f"Error denying request for group {group_id}: {e}")
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': 'An internal server error occurred.'}), 500
+
+
+@app.route('/get_notifications/<username>')
+def get_notifications(username):
+    notifications_ref = db.reference(f'users/{username}/notifications')
+    notifications_data = notifications_ref.get() or {}
+    
+    # Convert Firebase dict to a list of notifications, adding the notification key
+    notifications = [
+        {**notif_data, 'id': notif_id}
+        for notif_id, notif_data in notifications_data.items() if isinstance(notif_data, dict)
+    ]
+    
+    # Sort by timestamp, newest first
+    notifications.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
+
+    return jsonify(notifications)
+
+@app.route('/mark_notification_read/<username>/<notification_id>', methods=['POST'])
+def mark_notification_read(username, notification_id):
+    try:
+        notification_ref = db.reference(f'users/{username}/notifications/{notification_id}')
+        notification_ref.update({'read': True})
         return jsonify({'success': True})
     except Exception as e:
-        logging.error(f"Error deleting notification: {e}")
-        return jsonify({'error': str(e)}), 500
+        logging.error(f"Error marking notification {notification_id} as read for user {username}: {e}")
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
 
-@app.route('/get_group_members_with_roles/<group_id>')
-def get_group_members_with_roles(group_id):
+@app.route('/mark_task_completed/<group_id>/<task_id>', methods=['POST'])
+def mark_task_completed(group_id, task_id):
     try:
-        group_members_ref = db.reference(f'groups/{group_id}/members')
-        members_data_raw = group_members_ref.get() or {} # Renamed to raw for clarity
+        task_ref = db.reference(f'groups/{group_id}/tasks/{task_id}')
+        task_ref.update({'completed': True})
 
-        members_list = []
-        if not isinstance(members_data_raw, dict): # Add this check
-            logging.error(f"members_data_raw for group {group_id} is not a dictionary. Type: {type(members_data_raw)}, Value: {members_data_raw}")
-            members_data_raw = {} # Default to empty dict to prevent further errors
-
-        for username, member_info in members_data_raw.items(): # Use member_info instead of data for consistency
-            primary_role = 'member'
-            custom_roles = {}
-
-            if isinstance(member_info, dict):
-                primary_role = member_info.get('role', 'member') # Default to 'member'
-                custom_roles = member_info.get('roles', {}) # This holds the dictionary of custom roles
-            elif isinstance(member_info, str): # Handle case where member data is just a string role
-                primary_role = member_info
-                custom_roles = {member_info: True} # Assume the string is also a custom role
-                logging.warning(f"Member data for {username} in group {group_id} is string. Converting.")
-            else:
-                logging.error(f"Unexpected member data type for {username} in group {group_id}: {type(member_info)} - {member_info}. Skipping.")
-                continue
-
-
-            members_list.append({
-                'username': username,
-                'primary_role': primary_role, # This is the main 'admin' or 'member' role
-                'custom_roles': list(custom_roles.keys()) # List of custom role names (e.g., ['editor', 'viewer'])
+        # Get task details for notification
+        task_data = task_ref.get()
+        task_name = task_data.get('task_name', 'Unnamed Task')
+        assigned_to = task_data.get('assigned_to', '')
+        
+        # Notify the assigned user if it's a user, not a role or everyone
+        if task_data.get('assigned_to_type') == 'user' and assigned_to:
+            db.reference(f'users/{assigned_to}/notifications').push().set({
+                'message': f'Task "{task_name}" has been marked as completed by an admin.',
+                'group_id': group_id,
+                'task_id': task_id,
+                'timestamp': datetime.now().isoformat(),
+                'read': False
             })
-            
-        # Also fetch all available custom roles for the dropdowns
-        available_roles_ref = db.reference(f'groups/{group_id}/custom_roles')
-        available_roles_data = available_roles_ref.get() or {}
-        available_custom_roles = list(available_roles_data.keys())
 
-
-        return jsonify({
-            'success': True,
-            'members': members_list,
-            'available_custom_roles': available_custom_roles
-        })
-
+        return jsonify({'success': True, 'message': f'Task {task_id} marked as completed.'})
     except Exception as e:
-        logging.error(f"Error fetching group members with roles for group {group_id}: {e}")
-        return jsonify({'success': False, 'message': 'Error fetching members.'}), 500
+        logging.error(f"Error marking task {task_id} as completed: {e}")
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': 'An internal server error occurred.'}), 500
 
-@app.route('/update_roles/<group_id>', methods=['POST'])
-def update_roles(group_id):
+@app.route('/delete_task/<group_id>/<task_id>', methods=['POST'])
+def delete_task(group_id, task_id):
+    try:
+        task_ref = db.reference(f'groups/{group_id}/tasks/{task_id}')
+        if not task_ref.get():
+            return jsonify({'success': False, 'message': 'Task not found.'}), 404
+        
+        task_ref.delete()
+        return jsonify({'success': True, 'message': f'Task {task_id} deleted successfully.'})
+    except Exception as e:
+        logging.error(f"Error deleting task {task_id}: {e}")
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': 'An internal server error occurred.'}), 500
+
+@app.route('/update_member_roles/<group_id>/<member_username>', methods=['POST'])
+def update_member_roles(group_id, member_username):
     try:
         data = request.get_json()
-        if not data:
-            return jsonify({'success': False, 'message': 'No data provided'}), 400
+        if not data or 'roles_to_assign' not in data or 'roles_to_unassign' not in data:
+            return jsonify({'success': False, 'message': 'Invalid data provided.'}), 400
 
-        for username, updates in data.items():
-            member_ref = db.reference(f'groups/{group_id}/members/{username}')
-            user_group_ref = db.reference(f'users/{username}/groups/{group_id}')
+        roles_to_assign = set(data.get('roles_to_assign', []))
+        roles_to_unassign = set(data.get('roles_to_unassign', []))
 
-            if 'primary_role' in updates:
-                # Update the primary role (admin/member)
-                member_ref.child('role').set(updates['primary_role'])
-                user_group_ref.child('role').set(updates['primary_role'])
-
-            # Handle custom roles:
-            # Safely get the lists, defaulting to empty list if not present
-            custom_roles_to_unassign = updates.get('custom_roles_to_unassign', [])
-            custom_roles_to_assign = updates.get('custom_roles_to_assign', [])
-
-            # Get current custom roles from Firebase
-            current_member_custom_roles = member_ref.child('roles').get() or {}
-            current_user_custom_roles = user_group_ref.child('roles').get() or {}
-
-            # Clear roles that are to be unassigned
-            for role_name in custom_roles_to_unassign:
-                if role_name in current_member_custom_roles:
-                    del current_member_custom_roles[role_name]
-                if role_name in current_user_custom_roles:
-                    del current_user_custom_roles[role_name]
-            
-            # Add roles that are to be assigned
-            for role_name in custom_roles_to_assign:
-                current_member_custom_roles[role_name] = True
-                current_user_custom_roles[role_name] = True
-            
-            # Update Firebase with the modified custom roles
-            member_ref.child('roles').set(current_member_custom_roles)
-            user_group_ref.child('roles').set(current_user_custom_roles)
+        # Update group's member data
+        member_ref = db.reference(f'groups/{group_id}/members/{member_username}/roles')
+        current_member_roles = member_ref.get() or {}
         
+        for role_name in roles_to_assign:
+            current_member_roles[role_name] = True
+        for role_name in roles_to_unassign:
+            if role_name in current_member_roles:
+                del current_member_roles[role_name]
+
+        member_ref.set(current_member_roles)
+
+        # Update user's personal group data
+        user_group_ref = db.reference(f'users/{member_username}/groups/{group_id}/roles')
+        current_user_group_roles = user_group_ref.get() or {}
+
+        for role_name in roles_to_assign:
+            current_user_group_roles[role_name] = True
+        for role_name in roles_to_unassign:
+            if role_name in current_user_group_roles:
+                del current_user_group_roles[role_name]
+
+        user_group_ref.set(current_user_group_roles)
+
         return jsonify({'success': True, 'message': 'Roles updated successfully.'})
 
     except Exception as e:
-        logging.error(f"Error updating roles for group {group_id}: {e}")
-        traceback.print_exc() # Print full traceback
+        logging.error(f"Error updating roles for user {member_username} in group {group_id}: {e}")
+        traceback.print_exc()
         return jsonify({'success': False, 'message': 'Error updating roles.'}), 500
+
+
+@app.route('/update_task_details/<group_id>/<task_id>', methods=['POST'])
+def update_task_details(group_id, task_id):
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'message': 'No data provided.'}), 400
+
+        task_ref = db.reference(f'groups/{group_id}/tasks/{task_id}')
+        task_ref.update(data)
+        
+        return jsonify({'success': True, 'message': 'Task details updated successfully.'})
+    except Exception as e:
+        logging.error(f"Error updating task {task_id}: {e}")
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': 'An internal server error occurred.'}), 500
+
+
+@app.route('/get_member_roles/<group_id>/<member_username>', methods=['GET'])
+def get_member_roles(group_id, member_username):
+    try:
+        member_roles_ref = db.reference(f'groups/{group_id}/members/{member_username}/roles')
+        member_roles = member_roles_ref.get() or {}
+        return jsonify({'success': True, 'roles': list(member_roles.keys())})
+    except Exception as e:
+        logging.error(f"Error fetching roles for {member_username} in group {group_id}: {e}")
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': 'An internal server error occurred.'}), 500
+
+@app.route('/upload_file_handler/<group_id>', methods=['POST'])
+def upload_file_handler(group_id):
+    if 'file' not in request.files:
+        return jsonify({'success': False, 'message': 'No file part'}), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'success': False, 'message': 'No selected file'}), 400
+
+    if file:
+        filename = secure_filename(file.filename)
+        # For this temporary deployment, we save to /tmp
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        try:
+            file.save(file_path)
+            
+            file_info = {
+                'filename': filename,
+                'uploader': request.form.get('username', 'Unknown'),
+                'timestamp': datetime.now().isoformat(),
+                'type': file.content_type
+            }
+            # Save file info to Firebase
+            db.reference(f'groups/{group_id}/uploaded_files').push().set(file_info)
+            return jsonify({'success': True, 'message': 'File uploaded successfully!', 'filename': filename})
+        except Exception as e:
+            logging.error(f"Error saving file: {e}")
+            return jsonify({'success': False, 'message': f'Error saving file: {str(e)}'}), 500
+
+@app.route('/get_uploaded_files/<group_id>')
+def get_uploaded_files(group_id):
+    files_ref = db.reference(f'groups/{group_id}/uploaded_files')
+    files_data = files_ref.get() or {}
+    
+    files_list = []
+    for file_id, file_info in files_data.items():
+        if isinstance(file_info, dict):
+            files_list.append(file_info)
+    
+    # Sort files by timestamp, newest first
+    files_list.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
+    return jsonify(files_list)
+
+
+@app.route('/download/<filename>')
+def download_file(filename):
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    if os.path.exists(file_path):
+        return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=True)
+    else:
+        return 'File not found.', 404
 
 @app.errorhandler(Exception)
 def handle_exception(e):
