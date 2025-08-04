@@ -205,11 +205,14 @@ body {
 .chatbox {
     display: flex;
     flex-direction: column;
-    height: 100%;
+    width: 100%; /* Or a fixed width like 400px */
+    max-width: 450px; /* Max width for larger screens */
+    height: 90vh; /* Make it take up most of the viewport height */
+    max-height: 700px; /* Optional: cap max height */
     border-radius: 12px;
-    overflow: hidden;
+    overflow: hidden; /* Ensures rounded corners are respected */
     background-color: #ffffff;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); /* More pronounced shadow */
 }
 
 .chatbox-header {
@@ -222,21 +225,41 @@ body {
     border-bottom: 1px solid #e2e8f0;
     font-size: 1.125rem; /* Larger header text */
     font-weight: 600;
+    flex-shrink: 0; /* Prevent header from shrinking */
 }
 
 .messages {
-    flex-grow: 1;
-    padding: 1rem;
-    overflow-y: auto;
+    flex-grow: 1; /* Allows messages area to take available space */
+    padding: 1rem; /* Padding inside the messages container */
+    overflow-y: auto; /* Enables vertical scrolling for messages */
     display: flex;
-    flex-direction: column;
-    gap: 0.5rem; /* Reduced gap for a more continuous flow */
+    flex-direction: column; /* Stack messages vertically */
+    gap: 0.5rem; /* Reduced gap for a more continuous flow between messages */
     background-color: #f0f2f5; /* Light gray background, typical for chat apps */
 }
 
+/* Individual message wrapper - crucial for alignment */
+.message-wrapper {
+    display: flex;
+    flex-direction: column; /* Stack bubble and info vertically */
+    max-width: 75%; /* Limit message width */
+    margin: 0; /* Reset margins */
+}
+
+/* Alignment for sent messages */
+.sent-message {
+    align-self: flex-end; /* Pushes the entire message wrapper to the right */
+    margin-left: auto; /* Also helps push to the right */
+}
+
+/* Alignment for received messages */
+.received-message {
+    align-self: flex-start; /* Pushes the entire message wrapper to the left */
+    margin-right: auto; /* Also helps push to the left */
+}
+
 /* Base message bubble style */
-.message-bubble { /* Renamed from .message for better semantics */
-    max-width: 75%; /* Slightly reduced max-width */
+.message-bubble {
     padding: 0.625rem 0.875rem; /* Adjusted padding */
     border-radius: 1.125rem; /* More rounded corners for bubbles */
     line-height: 1.35; /* Slightly adjusted line height */
@@ -249,68 +272,73 @@ body {
 .sent-message .message-bubble {
     background-color: #007bff; /* Messenger-like blue */
     color: #ffffff;
-    align-self: flex-end; /* Aligns to the right */
-    border-bottom-right-radius: 0.375rem; /* Sharper corner on the bottom-right */
+    /* Sharper corner on the bottom-right for sent messages */
+    border-bottom-right-radius: 0.375rem;
 }
 
 /* Styles for messages you receive */
 .received-message .message-bubble {
     background-color: #e4e6eb; /* Light gray, typical for received messages */
     color: #000000;
-    align-self: flex-start; /* Aligns to the left */
-    border-bottom-left-radius: 0.375rem; /* Sharper corner on the bottom-left */
+    /* Sharper corner on the bottom-left for received messages */
+    border-bottom-left-radius: 0.375rem;
 }
 
-/* Container for sender name and timestamp */
+/* Container for sender name and timestamp (meta-info) */
 .message-info {
-    font-size: 0.75rem; 
-    margin-top: 0.25rem; 
-    text-align: right; 
-
-.sent-message .message-info {
-    color: #333333;
-    padding-right: 0.875rem; 
+    font-size: 0.75rem; /* Smaller font for meta info */
+    margin-top: 0.25rem; /* Small space above timestamp */
 }
 
-.received-message .message-info {
-    color: #333333; 
-    text-align: left; 
-    padding-left: 0.875rem; 
+/* Timestamp for sent messages (dark color on blue bubble) */
+.sent-message .message-info {
+    color: #333333; /* Darker color for timestamp on sent messages */
+    text-align: right; /* Align timestamp to the right */
+    padding-right: 0.875rem; /* Indent to align with bubble edge */
+}
 
-/* Hide the sender name for sent messages, typically you don't show your own name */
+/* Timestamp for received messages (dark color on light bubble) */
+.received-message .message-info {
+    color: #333333; /* Darker color for timestamp on received messages */
+    text-align: left; /* Align timestamp to the left */
+    padding-left: 0.875rem; /* Indent to align with bubble edge */
+}
+
+/* Sender Name for received messages */
+.received-message .sender-name {
+    display: block; /* Ensure it takes its own line */
+    font-weight: 600;
+    font-size: 0.8125rem; /* Slightly larger for the name */
+    color: #4b4b4b; /* A darker grey for clarity */
+    margin-bottom: 0.2rem; /* Space between name and bubble */
+    padding-left: 0.5rem; /* Indent the name slightly */
+}
+
+/* Hide the sender name for sent messages */
 .sent-message .sender-name {
     display: none;
 }
 
-/* For received messages, show the sender name above the bubble */
-.received-message .sender-name {
-    display: block;
-    font-weight: 600;
-    font-size: 0.8125rem; 
-    color: #4b4b4b; 
-    margin-bottom: 0.2rem; 
-    padding-left: 0.5rem; 
-}
-
-
+/* Input Area */
 .input-container {
     padding: 1rem;
     border-top: 1px solid #e2e8f0;
     display: flex;
-    align-items: flex-end; 
-    gap: 0.5rem; 
+    align-items: flex-end; /* Align items to the bottom, useful for multiline input */
+    gap: 0.5rem; /* Slightly reduced gap */
     background-color: #ffffff;
+    flex-shrink: 0; /* Prevent input area from shrinking */
 }
 
 .input-container textarea {
-    flex-grow: 1;
-    resize: none;
-    border: 1px solid #ced0d4; 
-    border-radius: 1.125rem; 
-    padding: 0.75rem 1rem; 
+    flex-grow: 1; /* Allows textarea to take available space */
+    resize: none; /* Disables manual resizing by user */
+    border: 1px solid #ced0d4; /* Softer border color */
+    border-radius: 1.125rem; /* Highly rounded corners for the input field */
+    padding: 0.75rem 1rem; /* More padding */
     font-size: 0.9375rem;
-    max-height: 80px; 
-    overflow-y: auto; 
+    max-height: 80px; /* Prevent textarea from growing too large */
+    overflow-y: auto; /* Enable scrolling if content exceeds max-height */
 }
 
 .send-button {
@@ -326,15 +354,11 @@ body {
     cursor: pointer;
     transition: background-color 0.2s;
     flex-shrink: 0; /* Prevent button from shrinking */
-    font-size: 1.25rem; /* Larger icon/text if you add one */
+    font-size: 1.25rem; /* Larger icon/text if you add one (e.g., a paper airplane emoji or icon) */
 }
 
 .send-button:hover {
     background-color: #0056b3; /* Darker blue on hover */
-}
-
-.task-panel-header {
-    cursor: pointer;
 }
 
 /* Whiteboard Styling */
