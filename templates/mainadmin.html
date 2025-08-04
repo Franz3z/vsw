@@ -107,22 +107,28 @@
 
     <!-- Modals (pop-ups) -->
     <!-- Approve Requests Modal -->
-    <div id="approveRequestsContainer" class="modal-backdrop" style="display: none;">
-        <div class="modal-content">
-            <button class="modal-close-btn" onclick="closeApproveRequests()">×</button>
-            <h3>Pending Join Requests</h3>
-            <ul id="pending-requests-list">
-                {% for username in pending_requests %}
-                <li>
-                    {{ username }}
-                    <form action="{{ url_for('approve_request_handler', group_id=group_id, username=username) }}" method="post" style="display: inline;">
-                        <button type="submit">Approve</button>
-                    </form>
-                </li>
-                {% endfor %}
-            </ul>
-        </div>
-    </div>
+    <div id="pendingRequestsModal" class="modal-backdrop" style="display: none;">
+                    <div class="modal-content">
+                        <button class="modal-close-btn" onclick="closeApproveRequests()">×</button>
+                        <h3>Pending Join Requests</h3>
+                        <ul id="pending-requests-list">
+                            {% for username in pending_requests %}
+                            <li>
+                                {{ username }}
+                                <!-- FIX: Using a hidden input to pass the username to the form body -->
+                                <form action="{{ url_for('approve_request_handler', group_id=group_id) }}" method="post" style="display: inline;">
+                                    <input type="hidden" name="username" value="{{ username }}">
+                                    <button type="submit" class="approve-btn">Approve</button>
+                                </form>
+                                <form action="{{ url_for('decline_request_handler', group_id=group_id) }}" method="post" style="display: inline;">
+                                    <input type="hidden" name="username" value="{{ username }}">
+                                    <button type="submit" class="decline-btn">Decline</button>
+                                </form>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
 
     <!-- Main Assign Modal -->
     <div id="assignModal" class="modal-backdrop" style="display: none;">
