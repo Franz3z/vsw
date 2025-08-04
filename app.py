@@ -816,53 +816,105 @@ def send_message(group_id):
     })
     return jsonify({'success': True, 'message': 'Message sent successfully'})
 
-@app.route('/approve_request_handler/<group_id>', methods=['POST'])
-def approve_request_handler(group_id):
+@app.route('/get_pending_requests/<string:group_id>')
+def get_pending_requests(group_id):
+    """
+    Endpoint to get all pending join requests for a group.
+    """
     try:
-        requester_username = request.form['username']
+        pending_requests_ref = db.reference(f'groups/{group_id}/pending_requests')
+        pending_requests_data = pending_requests_ref.get() or {}
         
-        # Move user from pending_requests to members
-        pending_ref = db.reference(f'groups/{group_id}/pending_requests/{requester_username}')
-        request_data = pending_ref.get()
+        # Format the data into a list of objects with a consistent structure
+        pending_requests_list = [
+            {'username': username, **info}
+            for username, info in pending_requests_data.items()
+        ]
         
-        if request_data:
-            # Add to members with a default role
-            members_ref = db.reference(f'groups/{group_id}/members/{requester_username}')
-            members_ref.set({'role': 'member', 'roles': {'member': True}}) # Explicitly set 'member' as a custom role
-            
-            # Add group to user's list with default role
-            user_groups_ref = db.reference(f'users/{requester_username}/groups/{group_id}')
-            group_name = db.reference(f'groups/{group_id}/group_name').get()
-            user_groups_ref.set({
-                'group_name': group_name,
-                'role': 'member',
-                'roles': {'member': True}
-            })
-
-            pending_ref.delete()
-            return jsonify({'success': True, 'message': f'Request from {requester_username} approved.'})
-        else:
-            return jsonify({'success': False, 'message': 'Pending request not found.'}), 404
-
+        return jsonify({'success': True, 'pending_requests': pending_requests_list})
+    
     except Exception as e:
-        logging.error(f"Error approving request for group {group_id}: {e}")
+        logging.error(f"Error getting pending requests for group {group_id}: {e}")
         traceback.print_exc()
-        return jsonify({'success': False, 'message': 'An internal server error occurred.'}), 500
+        return jsonify({'success': False, 'message': 'Error getting pending requests.'}), 500
 
-@app.route('/deny_request_handler/<group_id>', methods=['POST'])
-def deny_request_handler(group_id):
+
+@app.route('/approve_request/<string:group_id>', methods=['POST'])
+def approve_request(group_id):
+    """
+    Endpoint for an admin to approve a pending join request.
+    
+    It expects a JSON payload with 'username' of the user to be approved.
+    """
     try:
-        requester_username = request.form['username']
-        pending_ref = db.reference(f'groups/{group_id}/pending_requests/{requester_username}')
-        if pending_ref.get():
-            pending_ref.delete()
-            return jsonify({'success': True, 'message': f'Request from {requester_username} denied.'})
-        else:
-            return jsonify({'success': False, 'message': 'Pending request not found.'}), 404
+        data = request.get_json()
+        username = data.get('username')
+        
+        if not username:
+            return jsonify({'success': False, 'message': 'Missing username.'}), 400
+
+        group_ref = db.reference(f'groups/{group_id}')
+        
+        # Get the pending user's data
+        pending_user_ref = group_ref.child('pending_requests').child(username)
+        pending_user_data = pending_user_ref.get()
+        
+        if not pending_user_data:
+            return jsonify({'success': False, 'message': 'User not found in pending requests.'}), 404
+
+        # Move the user from pending_requests to members
+        members_ref = group_ref.child('members').child(username)
+        members_ref.set(pending_user_data)
+        
+        # Add the group to the user's list of groups
+        user_group_ref = db.reference(f'users/{username}/groups/{group_id}')
+        user_group_ref.set({
+            'group_id': group_id,
+            'group_name': pending_user_data.get('group_name'), # Assuming group_name is in pending data
+            'role': 'member'
+        })
+        
+        # Remove the user from the pending_requests
+        pending_user_ref.delete()
+        
+        logging.info(f"Approved join request for user '{username}' in group '{group_id}'")
+        
+        return jsonify({'success': True, 'message': 'User approved successfully.'})
+        
     except Exception as e:
-        logging.error(f"Error denying request for group {group_id}: {e}")
+        logging.error(f"Error approving request for user {username} in group {group_id}: {e}")
         traceback.print_exc()
-        return jsonify({'success': False, 'message': 'An internal server error occurred.'}), 500
+        return jsonify({'success': False, 'message': 'Error approving request.'}), 500
+
+@app.route('/deny_request/<string:group_id>', methods=['POST'])
+def deny_request(group_id):
+    """
+    Endpoint for an admin to deny a pending join request.
+    
+    It expects a JSON payload with 'username' of the user to be denied.
+    """
+    try:
+        data = request.get_json()
+        username = data.get('username')
+        
+        if not username:
+            return jsonify({'success': False, 'message': 'Missing username.'}), 400
+
+        # Remove the user from the pending_requests
+        pending_user_ref = db.reference(f'groups/{group_id}/pending_requests/{username}')
+        if pending_user_ref.get() is None:
+            return jsonify({'success': False, 'message': 'User not found in pending requests.'}), 404
+
+        pending_user_ref.delete()
+        
+        logging.info(f"Denied join request for user '{username}' in group '{group_id}'")
+        
+        return jsonify({'success': True, 'message': 'User request denied.'})
+        
+    except Exception as e:
+        logging.error(f"Error denying request for user {username} in group {group_id}: {e}")
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': 'Error denying request.'}), 500
 
 
 @app.route('/get_notifications/<username>')
@@ -933,45 +985,59 @@ def delete_task(group_id, task_id):
         traceback.print_exc()
         return jsonify({'success': False, 'message': 'An internal server error occurred.'}), 500
 
-@app.route('/update_member_roles/<group_id>/<member_username>', methods=['POST'])
-def update_member_roles(group_id, member_username):
+@app.route('/update_roles/<string:group_id>', methods=['POST'])
+def update_roles(group_id):
+    """
+    Endpoint to update roles for members within a group.
+    
+    It expects a JSON payload with a 'member_id' and a dictionary of 'updates'
+    which contains 'custom_roles_to_assign' and 'custom_roles_to_unassign'.
+    """
     try:
         data = request.get_json()
-        if not data or 'roles_to_assign' not in data or 'roles_to_unassign' not in data:
-            return jsonify({'success': False, 'message': 'Invalid data provided.'}), 400
+        member_id = data.get('member_id')
+        updates = data.get('updates')
 
-        roles_to_assign = set(data.get('roles_to_assign', []))
-        roles_to_unassign = set(data.get('roles_to_unassign', []))
+        if not member_id or not updates:
+            return jsonify({'success': False, 'message': 'Missing member_id or updates.'}), 400
 
-        # Update group's member data
-        member_ref = db.reference(f'groups/{group_id}/members/{member_username}/roles')
-        current_member_roles = member_ref.get() or {}
+        # Reference to the group and the specific member
+        group_ref = db.reference(f'groups/{group_id}')
+        member_ref = group_ref.child('members').child(member_id)
+
+        # Reference to the user's group entry
+        user_group_ref = db.reference(f'users/{member_id}/groups/{group_id}')
+
+        custom_roles_to_assign = updates.get('custom_roles_to_assign', {})
+        custom_roles_to_unassign = updates.get('custom_roles_to_unassign', {})
+
+        # Ensure we have roles to process
+        if custom_roles_to_assign or custom_roles_to_unassign:
+            # Fetch current custom roles from Firebase
+            current_member_custom_roles = member_ref.child('roles').get() or {}
+            current_user_custom_roles = user_group_ref.child('roles').get() or {}
+
+            # Clear roles that are to be unassigned
+            for role_name in custom_roles_to_unassign:
+                if role_name in current_member_custom_roles:
+                    del current_member_custom_roles[role_name]
+                if role_name in current_user_custom_roles:
+                    del current_user_custom_roles[role_name]
+            
+            # Add roles that are to be assigned
+            for role_name in custom_roles_to_assign:
+                current_member_custom_roles[role_name] = True
+                current_user_custom_roles[role_name] = True
+            
+            # Update Firebase with the modified custom roles
+            member_ref.child('roles').set(current_member_custom_roles)
+            user_group_ref.child('roles').set(current_user_custom_roles)
         
-        for role_name in roles_to_assign:
-            current_member_roles[role_name] = True
-        for role_name in roles_to_unassign:
-            if role_name in current_member_roles:
-                del current_member_roles[role_name]
-
-        member_ref.set(current_member_roles)
-
-        # Update user's personal group data
-        user_group_ref = db.reference(f'users/{member_username}/groups/{group_id}/roles')
-        current_user_group_roles = user_group_ref.get() or {}
-
-        for role_name in roles_to_assign:
-            current_user_group_roles[role_name] = True
-        for role_name in roles_to_unassign:
-            if role_name in current_user_group_roles:
-                del current_user_group_roles[role_name]
-
-        user_group_ref.set(current_user_group_roles)
-
         return jsonify({'success': True, 'message': 'Roles updated successfully.'})
 
     except Exception as e:
-        logging.error(f"Error updating roles for user {member_username} in group {group_id}: {e}")
-        traceback.print_exc()
+        logging.error(f"Error updating roles for group {group_id}: {e}")
+        traceback.print_exc() # Print full traceback
         return jsonify({'success': False, 'message': 'Error updating roles.'}), 500
 
 
