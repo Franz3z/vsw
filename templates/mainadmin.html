@@ -30,23 +30,45 @@
             </div>
             <script>
                 // Message handling
-                function fetchMessages() {
-                    console.log("Fetching messages...");
-                    fetch(`/get_messages/${groupId}`)
-                        .then(response => response.json())
-                        .then(data => {
-                            const messagesContainer = document.getElementById('messagesContainer');
-                            messagesContainer.innerHTML = '';
-                            data.messages.forEach(msg => {
-                                const msgElement = document.createElement('p');
-                                msgElement.textContent = `${msg.timestamp} - ${msg.sender}: ${msg.message}`;
-                                messagesContainer.appendChild(msgElement);
-                            });
-                            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                        })
-                        .catch(error => console.error('Error fetching messages:', error));
+               function fetchMessages() {
+    console.log("Fetching messages...");
+    fetch(`/get_messages/${groupId}`)
+        .then(response => response.json())
+        .then(data => {
+            const messagesContainer = document.getElementById('messagesContainer');
+            messagesContainer.innerHTML = ''; // Clear existing messages
+
+            data.messages.forEach(msg => { // Assuming Flask returns {'messages': [...]}
+                const messageWrapper = document.createElement('div');
+                const isSent = (msg.sender === username); // Assuming 'username' is the current user's username
+                messageWrapper.classList.add('message-wrapper', isSent ? 'sent-message' : 'received-message');
+
+                // Sender Name (only for received messages)
+                if (!isSent) {
+                    const senderNameElement = document.createElement('div');
+                    senderNameElement.classList.add('sender-name');
+                    senderNameElement.textContent = msg.sender;
+                    messageWrapper.appendChild(senderNameElement);
                 }
 
+                // Message Bubble
+                const msgBubble = document.createElement('div');
+                msgBubble.classList.add('message-bubble');
+                msgBubble.textContent = msg.message;
+                messageWrapper.appendChild(msgBubble);
+
+                // Timestamp
+                const msgInfo = document.createElement('div');
+                msgInfo.classList.add('message-info');
+                msgInfo.textContent = new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); // Format timestamp nicely
+                messageWrapper.appendChild(msgInfo);
+
+                messagesContainer.appendChild(messageWrapper);
+            });
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        })
+        .catch(error => console.error('Error fetching messages:', error));
+}
                 function sendMessage() {
                     const text = document.getElementById('messageInput').value.trim();
                     if (!text) {
