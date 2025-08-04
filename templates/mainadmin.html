@@ -404,14 +404,6 @@
         document.getElementById('assignExistingTaskForm').reset();
     }
 
-    function openApproveRequests() {
-        document.getElementById('approveRequestsContainer').style.display = 'flex';
-    }
-
-    function closeApproveRequests() {
-        document.getElementById('approveRequestsContainer').style.display = 'none';
-    }
-
     // --- Assign Existing Role Modal Functions ---
     function openAssignExistingRoleModal() {
         populateRoleSelection(availableCustomRoles);
@@ -1026,6 +1018,14 @@
         } else {
             content.style.display = "block";
         }
+    }
+
+function openApproveRequests() {
+        document.getElementById('approveRequestsContainer').style.display = 'flex';
+    }
+
+function closeApproveRequests() {
+        document.getElementById('approveRequestsContainer').style.display = 'none';
     }
 
 async function openApproveRequests() {  
