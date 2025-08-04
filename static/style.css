@@ -1121,23 +1121,7 @@ body {
     margin-bottom: 10px; /* Spacing between options */
 }
 
-.modal-content form {
-    background-color: #ffffff; /* White background for the form itself */
-    padding: 25px;
-    border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.modal-content button {
-    padding: 12px 20px; /* Larger padding for buttons */
-    border: none;
-    border-radius: 8px; /* More rounded buttons */
-    cursor: pointer;
-    font-size: 1.1rem; /* Slightly larger font */
-    font-weight: bold;
-    transition: background-color 0.3s ease, transform 0.2s ease;
-}
-
+/* Modal Backdrop Styles */
 .modal-backdrop {
     position: fixed;
     top: 0;
@@ -1145,25 +1129,27 @@ body {
     width: 100%;
     height: 100%;
     background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent black overlay */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
+    display: none; /* Crucial: Hidden by default; will be 'flex' when open */
+    justify-content: center; /* Center content horizontally */
+    align-items: center; /* Center content vertically */
+    z-index: 1000; /* Ensure it's on top of everything else */
 }
 
+/* Modal Content Box Styles */
 .modal-content {
     background: linear-gradient(to bottom right, #e3f2fd, #90caf9); /* Light blue gradient background */
     padding: 30px; /* Increased padding */
     border-radius: 12px; /* Slightly more rounded corners */
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2); /* More prominent shadow */
-    max-width: 90%;
-    width: 500px; /* Adjust as needed */
-    max-height: 90vh;
-    overflow-y: auto;
-    position: relative;
+    max-width: 90%; /* Max width relative to viewport */
+    width: 500px; /* Specific width, will respect max-width */
+    max-height: 90vh; /* Max height relative to viewport */
+    overflow-y: auto; /* Enable vertical scrolling if content overflows */
+    position: relative; /* For positioning close button */
     box-sizing: border-box; /* Include padding in width/height calculation */
 }
 
+/* Modal Form Styles */
 .modal-content form {
     background-color: #ffffff; /* White background for the form itself */
     padding: 25px;
@@ -1171,6 +1157,7 @@ body {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
+/* General Button Styles within Modal Content */
 .modal-content button {
     padding: 12px 20px; /* Larger padding for buttons */
     border: none;
@@ -1179,8 +1166,10 @@ body {
     font-size: 1.1rem; /* Slightly larger font */
     font-weight: bold;
     transition: background-color 0.3s ease, transform 0.2s ease;
+    margin-top: 15px; /* Add some space above buttons */
 }
 
+/* Specific Submit Button Styles */
 .modal-content button[type="submit"] {
     background-color: #007bff; /* Blue color for submit button */
     color: white;
@@ -1191,9 +1180,11 @@ body {
     transform: translateY(-1px); /* Slight lift effect */
 }
 
+/* Cancel Button Styles (if you add a cancel button) */
 .modal-content .cancel-button {
     background-color: #dc3545; /* Red color for cancel button */
     color: white;
+    margin-left: 10px; /* Space between submit and cancel */
 }
 
 .modal-content .cancel-button:hover {
@@ -1201,21 +1192,53 @@ body {
     transform: translateY(-1px); /* Slight lift effect */
 }
         
+/* Modal Close Button (X icon) Styles */
 .modal-close-btn {
     position: absolute;
-    top: 15px; /* Adjust position */
-    right: 15px; /* Adjust position */
-    background: none;
-    border: none;
+    top: 15px; /* Adjust position from top */
+    right: 15px; /* Adjust position from right */
+    background: none; /* No background */
+    border: none; /* No border */
     font-size: 1.8rem; /* Larger close button */
     cursor: pointer;
     color: #333; /* Darker color for visibility */
     transition: color 0.2s ease, transform 0.2s ease;
+    padding: 0; /* Remove default button padding */
 }
 
 .modal-close-btn:hover {
     color: #ff0000; /* Red on hover */
     transform: rotate(90deg); /* Rotate effect on hover */
+}
+
+/* Add some basic styling for labels and inputs within the form */
+.modal-content label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: #555;
+    margin-top: 15px;
+}
+
+.modal-content input[type="text"],
+.modal-content input[type="file"],
+.modal-content textarea,
+.modal-content select {
+    width: calc(100% - 20px); /* Adjust for padding */
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    box-sizing: border-box; /* Include padding in width */
+    font-size: 1rem;
+}
+
+.modal-content textarea {
+    resize: vertical; /* Allow vertical resizing */
+}
+
+.modal-content input[type="checkbox"] {
+    margin-right: 8px;
 }
 
 /* Assign Task Pop-up Styles */
