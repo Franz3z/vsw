@@ -14,6 +14,7 @@
                 <a href="{{ url_for('dashboard', username=username) }}" class="styled-button">←</a>
                 <button onclick="openAssignModal()">Assign</button>
                 <button onclick="openApproveRequests()">Pending Requests</button>
+                <button onclick="submitModal()">Submit</button>
             </div>
 
             
@@ -326,6 +327,56 @@
         }
     </script>
 
+<div class="task-panel" id="taskPanel">
+    <h2>All Group Tasks in {{ group_id }}</h2>
+    <button onclick="submitModal()">Submit</button>
+    <div id="tasks-container">
+        {% if tasks %}
+            {% for task in tasks %}
+            <div class="task-card">
+                <h3>{{ task.task_name }}</h3>
+                <p><strong>Description:</strong> {{ task.description }}</p>
+                <p><strong>Assigned To:</strong> 
+                    {% if task.assigned_type == 'user' %}
+                        {{ task.assigned_to }}
+                    {% elif task.assigned_type == 'role' %}
+                        Role: {{ task.assigned_to }}
+                    {% elif task.assigned_type == 'everyone' %}
+                        Everyone
+                    {% endif %}
+                </p>
+                <p><strong>Priority:</strong> {{ task.priority }}</p>
+                <p><strong>Deadline:</strong> {{ task.deadline }}</p>
+                <p><strong>Week Category:</strong> {{ task.week_category }}</p>
+                <p><strong>Completed:</strong> {{ 'Yes' if task.completed else 'No' }}</p>
+
+                <div class="task-details-section">
+                    <h4>Progress Reports:</h4>
+                    {% if task.progress_reports %}
+                        <ul>
+                        {% for report_id, report in task.progress_reports.items() %}
+                            <li>
+                                <strong>{{ report.reported_by }}</strong> on {{ report.timestamp }}: {{ report.progress }}
+                                {% if report.file_name %}
+                                    <a href="{{ url_for('download_file', filename=report.file_name) }}" target="_blank">Download File: {{ report.file_name }}</a>
+                                {% endif %}
+                            </li>
+                        {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p>No progress reports yet.</p>
+                    {% endif %}
+
+                    <button onclick="openEditTaskModal('{{ task.task_id }}')">Edit Task</button>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p>No tasks created in this group.</p>
+        {% endif %}
+    </div>
+</div>
+            
     <div id="assignModal" class="modal-backdrop" style="display: none;">
         <div class="modal-content">
             <button class="modal-close-btn" onclick="closeAssignModal()">×</button>
