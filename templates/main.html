@@ -253,9 +253,8 @@
                     Whiteboard</button>
             </div>
         </div>
-    </div>
+
     <script>
-        // UI functions
         function openWhiteboard() {
             document.getElementById('whiteboardModal').style.display = 'flex';
         }
@@ -264,11 +263,10 @@
             document.getElementById('whiteboardModal').style.display = 'none';
         }
 
-        function clearWhiteboard() {
-            // Implementation would be in whiteboard.js
-            console.log("Whiteboard cleared");
-        }
     </script>
+
+    <script type="module" src="/src/firebase.js"></script>
+    <script type="module" src="/src/whiteboard.js"></script>
 
     <script>
         // User credentials and API configuration
