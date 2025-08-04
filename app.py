@@ -813,27 +813,36 @@ def submit_progress(username, group_id, task_id):
     
     return 'Progress report submitted successfully!', 200
 
-@app.route('/messages/<group_id>')
+@app.route('/get_messages/<group_id>') # Corrected route path to match fetch
 def get_messages(group_id):
     chat_ref = db.reference(f'groups/{group_id}/chat')
     chat_data = chat_ref.get() or {}
 
     messages = []
-    for message_id, message_data in chat_data.items():
+
+    sorted_chat_data = sorted(chat_data.items()) # Sort by Firebase push key
+
+    for message_id, message_data in sorted_chat_data:
         if isinstance(message_data, dict):
             messages.append({
                 'sender': message_data.get('sender', 'Unknown'),
                 'message': message_data.get('text', ''),
                 'timestamp': message_data.get('timestamp', '')
             })
-    return jsonify(messages)
+    return jsonify({'messages': messages})
 
 @app.route('/send_message/<group_id>', methods=['POST'])
 def send_message(group_id):
-    username = request.form.get('username')
-    message = request.form.get('message')
+    # Check if the request body is JSON
+    if not request.is_json:
+        return jsonify({'success': False, 'message': 'Request must be JSON'}), 400
+
+    data = request.get_json()
+    username = data.get('sender') # Changed from 'username' to 'sender' to match JS
+    message = data.get('text')    # Changed from 'message' to 'text' to match JS
+
     if not username or not message:
-        return jsonify({'success': False, 'message': 'Username and message are required'}), 400
+        return jsonify({'success': False, 'message': 'Sender and text are required'}), 400
 
     chat_ref = db.reference(f'groups/{group_id}/chat').push()
     chat_ref.set({
@@ -841,6 +850,7 @@ def send_message(group_id):
         'text': message,
         'timestamp': datetime.now().isoformat()
     })
+    return jsonify({'success': True, 'message': 'Message sent successfully'})
 
 @app.route('/get_pending_requests/<string:group_id>')
 def get_pending_requests(group_id):
