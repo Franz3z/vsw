@@ -353,145 +353,36 @@
 </div>
 
 <script>
-    // Initialize currentTasks as an empty object
-    let currentTasks = {};
+    // Assuming you have a button for a specific task, for example:
+    // <button onclick="submitTask('task_id_12345')">Submit Task</button>
 
-    // Function to populate currentTasks from the categorized lists
-    // This function can be called once the page loads and the variables are available.
-    function populateCurrentTasks() {
-        // Clear any existing tasks
-        currentTasks = {};
+    function submitModal(taskId) {
+        const groupId = "{{ group_id }}"; // Get the group ID from the template context
 
-        // Combine tasks from tasksThisWeek
-        if (typeof tasksThisWeek !== 'undefined' && tasksThisWeek && Array.isArray(tasksThisWeek)) {
-            tasksThisWeek.forEach(task => {
-                if (task && task.task_id) {
-                    currentTasks[task.task_id] = task;
-                }
-            });
-        }
-
-        // Combine tasks from tasksNextWeek
-        if (typeof tasksNextWeek !== 'undefined' && tasksNextWeek && Array.isArray(tasksNextWeek)) {
-            tasksNextWeek.forEach(task => {
-                if (task && task.task_id) {
-                    currentTasks[task.task_id] = task;
-                }
-            });
-        }
-
-        // Combine tasks from completedTasks (include if you want completed tasks in submit dropdown)
-        // If you only want *uncompleted* tasks in the submit feature, you can remove this block.
-        if (typeof completedTasks !== 'undefined' && completedTasks && Array.isArray(completedTasks)) {
-            completedTasks.forEach(task => {
-                if (task && task.task_id) {
-                    currentTasks[task.task_id] = task;
-                }
-            });
-        }
-        console.log("DEBUG: currentTasks populated:", currentTasks); // For debugging
-    }
-
-    // Function to open the progress modal and populate tasks
-    function submitModal() {
-        const progressModal = document.getElementById('progressModal');
-        const taskSelector = document.getElementById('taskSelector');
-
-        if (!progressModal || !taskSelector) {
-            console.error("Error: Modal or task selector elements not found. Cannot open modal.");
-            return;
-        }
-
-        taskSelector.innerHTML = '<option value="">--Please choose a task--</option>'; // Clear previous options
-
-        // Ensure currentTasks is populated before using it
-        populateCurrentTasks(); 
-
-        if (Object.keys(currentTasks).length > 0) {
-            for (const taskId in currentTasks) {
-                if (currentTasks.hasOwnProperty(taskId)) {
-                    const task = currentTasks[taskId];
-                    const option = document.createElement('option');
-                    option.value = taskId;
-                    option.textContent = task.task_name;
-                    taskSelector.appendChild(option);
-                }
+        // Make sure to use a POST method as defined in the Python route
+        fetch(`/submit_task_for_approval/${groupId}/${taskId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log('Task submitted successfully:', data.message);
+                // You can add logic here to update the UI, e.g.,
+                // change the button text or move the task to a different list.
+            } else {
+                console.error('Failed to submit task:', data.message);
+                // Handle the error, maybe show an alert to the user.
             }
-        } else {
-            const option = document.createElement('option');
-            option.value = '';
-            option.textContent = 'No tasks available';
-            taskSelector.appendChild(option);
-        }
-        
-        progressModal.style.display = 'flex'; // Use flex for centering with modal-backdrop
+        })
+        .catch(error => {
+            console.error('Error during fetch:', error);
+        });
     }
-
-    function closeProgressModal() {
-        const progressModal = document.getElementById('progressModal');
-        const progressForm = document.getElementById('progressForm');
-        const taskSelector = document.getElementById('taskSelector');
-
-        if (progressModal) progressModal.style.display = 'none';
-        if (progressForm) progressForm.reset(); 
-        if (taskSelector) taskSelector.value = ''; // Reset dropdown selection
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-        // Call populateCurrentTasks on DOMContentLoaded to ensure data is ready
-        populateCurrentTasks(); 
-
-        const progressForm = document.getElementById('progressForm');
-        
-        if (progressForm) {
-            progressForm.addEventListener('submit', async function(event) {
-                event.preventDefault();
-
-                const taskSelector = document.getElementById('taskSelector');
-                const selectedTaskId = taskSelector ? taskSelector.value : null;
-
-                if (!selectedTaskId) {
-                    alert('Please select a task.');
-                    return;
-                }
-
-                const formData = new FormData(progressForm);
-
-                try {
-                    // Make sure currentUsername and currentGroupId are defined (from mainadmin.html's global JS)
-                    const response = await fetch(`/submit_progress/${username}/${groupId}/${selectedTaskId}`, {
-                        method: 'POST',
-                        body: formData
-                    });
-
-                    const result = await response.text();
-
-                    if (response.ok) {
-                        alert(result);
-                        closeProgressModal();
-                        location.reload(); 
-                    } else {
-                        alert('Error submitting progress: ' + result);
-                    }
-                }
-                catch (error) {
-                    console.error('Fetch error:', error);
-                    alert('An error occurred while submitting progress.');
-                }
-            });
-        }
-
-        const progressModal = document.getElementById('progressModal');
-        if (progressModal) {
-            window.onclick = function(event) {
-                if (event.target == progressModal) {
-                    closeProgressModal();
-                }
-            }
-        }
-    });
-
 </script>
+
             
     <div id="assignModal" class="modal-backdrop" style="display: none;">
         <div class="modal-content">
