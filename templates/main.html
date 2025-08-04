@@ -238,6 +238,100 @@
             </div>
         </div>
         <script>
+            
+    function fetchTasks() {
+    console.log("Fetching tasks...");
+    // You'll need a Flask endpoint that returns task data for the current user/group
+    fetch(`/get_tasks_for_user/${groupId}/${username}`) // Assuming such an endpoint exists
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update "Done" tasks
+                const doneTasksContainer = document.getElementById('done-tasks');
+                doneTasksContainer.innerHTML = ''; // Clear existing tasks
+                data.completed_tasks.forEach(task => {
+                    const taskElement = document.createElement('li');
+                    taskElement.className = 'task-card';
+                    taskElement.innerHTML = `
+                        <div class="task-title">${task.task_name}</div>
+                        <div class="task-meta">
+                            <div class="assignee-info">Assigned to: ${task.assigned_to}</div>
+                            <span class="priority-tag priority-${task.priority.toLowerCase()}">${task.priority}</span>
+                        </div>
+                        <div class="task-description">${task.description}</div>
+                        ${task.progress_reports ? `
+                            <div style="margin-top: 8px;"><strong>Progress Reports:</strong>
+                                <ul style="margin-top: 5px;">
+                                    ${Object.values(task.progress_reports).map(report => `
+                                        <li style="margin-bottom: 5px;">
+                                            - ${report.progress} by ${report.submitted_by}
+                                            ${report.file ? `<a href="/download_file/${groupId}/${task.task_id}/${report.submitted_by}/${report.file}" target="_blank" style="text-decoration: underline; margin-left: 5px;">Download</a>` : ''}
+                                        </li>
+                                    `).join('')}
+                                </ul>
+                            </div>
+                        ` : `<div><em>No progress reports yet</em></div>`}
+                    `;
+                    doneTasksContainer.appendChild(taskElement);
+                });
+
+                // Update "This Week" tasks (similar logic)
+                const thisWeekTasksContainer = document.getElementById('this-week-tasks');
+                thisWeekTasksContainer.innerHTML = '';
+                data.tasks_this_week.forEach(task => {
+                    const taskElement = document.createElement('li');
+                    taskElement.className = 'task-card';
+                    taskElement.innerHTML = `
+                        <div class="task-title">${task.task_name}</div>
+                        <div class="task-meta">
+                            <div class="assignee-info">Assigned to: ${task.assigned_to}</div>
+                            <span class="priority-tag priority-${task.priority.toLowerCase()}">${task.priority}</span>
+                        </div>
+                        <div><span style="font-weight: bold;">Deadline:</span> ${task.deadline}</div>
+                        <div class="task-description">${task.description}</div>
+                        ${(task.assigned_to === username || task.assigned_type === 'everyone') ? `
+                            <form action="/submit_progress/${username}/${groupId}/${task.task_id}" method="POST" enctype="multipart/form-data" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee;">
+                                <div style="margin-bottom: 8px;"><input type="text" name="progress" placeholder="Progress update..." required style="width: 100%;"></div>
+                                <div style="margin-bottom: 8px;"><input type="file" name="file"></div>
+                                <button type="submit">Submit Progress</button>
+                            </form>
+                        ` : ''}
+                    `;
+                    thisWeekTasksContainer.appendChild(taskElement);
+                });
+
+                // Update "Next Week" tasks (similar logic)
+                const nextWeekTasksContainer = document.getElementById('next-week-tasks');
+                nextWeekTasksContainer.innerHTML = '';
+                data.tasks_next_week.forEach(task => {
+                    const taskElement = document.createElement('li');
+                    taskElement.className = 'task-card';
+                    taskElement.innerHTML = `
+                        <div class="task-title">${task.task_name}</div>
+                        <div class="task-meta">
+                            <div class="assignee-info">Assigned to: ${task.assigned_to}</div>
+                            <span class="priority-tag priority-${task.priority.toLowerCase()}">${task.priority}</span>
+                        </div>
+                        <div class="task-description">${task.description}</div>
+                    `;
+                    nextWeekTasksContainer.appendChild(taskElement);
+                });
+
+                // Re-attach event listeners for collapsible sections if they are dynamically re-rendered
+                document.querySelectorAll('.collapsible').forEach(el => {
+                    if (!el.dataset.listenerAdded) { // Prevent adding multiple listeners
+                        el.addEventListener('click', () => toggleCollapsible(el));
+                        el.dataset.listenerAdded = 'true';
+                    }
+                });
+
+            } else {
+                console.error('Failed to fetch tasks:', data.message);
+            }
+        })
+        .catch(error => console.error('Error fetching tasks:', error));
+}
+
             function toggleTaskPanel() {
                 const panel = document.getElementById('taskPanel');
                 panel.classList.toggle('collapsed');
