@@ -10,7 +10,6 @@
 </head>
 <body>
     <div class="container">
-        <!-- LEFT PANEL: Navigation & Controls -->
         <div class="left-panel">
             <div class="buttons">
                 <a href="{{ url_for('dashboard', username=username) }}" class="styled-button">←</a>
@@ -27,21 +26,122 @@
                     <button class="send-button" onclick="sendMessage()">Send</button>
                 </div>
             </div>
+            <script>
+                // Mesfuncsage handling
+                function fetchMessages() {
+                    console.log("Fetching messages...");
+                    fetch(`/get_messages/${groupId}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            const messagesContainer = document.getElementById('messagesContainer');
+                            messagesContainer.innerHTML = '';
+                            data.messages.forEach(msg => {
+                                const msgElement = document.createElement('p');
+                                msgElement.textContent = `${msg.timestamp} - ${msg.sender}: ${msg.message}`;
+                                messagesContainer.appendChild(msgElement);
+                            });
+                            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                        })
+                        .catch(error => console.error('Error fetching messages:', error));
+                }
+
+                function sendMessage() {
+                    // Get the message text from the input field and remove leading/trailing whitespace
+                    const text = document.getElementById('messageInput').value.trim();
+
+                    // If the message is empty after trimming, do nothing
+                    if (!text) {
+                        return;
+                    }
+
+                    // Send a POST request to the server to save the message
+                    fetch(`/send_message/${groupId}`, {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json"
+                            },
+                            body: JSON.stringify({
+                                sender: username,
+                                text
+                            })
+                        })
+                        .then(res => res.json()) // Parse the JSON response from the server
+                        .then(data => {
+                            // If the message was sent successfully
+                            if (data.success) {
+                                // Clear the message input field
+                                document.getElementById('messageInput').value = "";
+                                // Immediately fetch the messages to show the new one
+                                fetchMessages();
+                            }
+                        })
+                        .catch(error => {
+                            // Log any errors that occur during the fetch
+                            console.error('Error sending message:', error);
+                        });
+                }
+            </script>
 
             <div class="voice-call-container">
                 <h4>Voice Call</h4>
                 <button id="joinBtn">Join Call</button>
                 <button id="leaveBtn" disabled>Leave Call</button>
             </div>
+            <script>
+                // Voice call functions
+                function joinVoiceCall() {
+                    client = AgoraRTC.createClient({
+                        mode: "rtc",
+                        codec: "vp8"
+                    });
+
+                    client.on("user-published", async (user, mediaType) => {
+                        await client.subscribe(user, mediaType);
+                        if (mediaType === "audio") {
+                            user.audioTrack.play();
+                        }
+                    });
+
+                    client.on("user-unpublished", () => {});
+
+                    client.join(APP_ID, CHANNEL, null, UID)
+                        .then(() => {
+                            return AgoraRTC.createMicrophoneAudioTrack();
+                        })
+                        .then(track => {
+                            localTrack = track;
+                            client.publish([localTrack]);
+                            document.getElementById("joinBtn").disabled = true;
+                            document.getElementById("leaveBtn").disabled = false;
+                        })
+                        .catch(err => {
+                            console.error("Failed to join channel:", err);
+                            alert("Error joining the call: " + err.message);
+                        });
+                }
+
+                function leaveVoiceCall() {
+                    if (localTrack) {
+                        localTrack.stop();
+                        localTrack.close();
+                    }
+
+                    if (client) {
+                        client.leave()
+                            .then(() => {
+                                document.getElementById("joinBtn").disabled = false;
+                                document.getElementById("leaveBtn").disabled = true;
+                            });
+                    }
+                }
+            </script>
         </div>
-        
-        <!-- RIGHT PANEL: Persistent Task Panel -->
+
         <div class="right-panel" id="taskPanel">
             <button class="panel-toggle" id="taskPanelToggle">≡</button>
             <div class="task-panel-content">
                 <h3>Group Tasks</h3>
-                
-                <!-- DONE SECTION -->
+
                 <div class="task-section">
                     <div class="collapsible">✅ Done</div>
                     <ul id="done-tasks">
@@ -55,24 +155,23 @@
                             <div class="task-description">{{ task.description }}</div>
                             {% if task.assigned_to == username or task.assigned_type == 'everyone' %}
                             {% if task.progress_reports %}
-                                <div style="margin-top: 8px;"><strong>Progress Reports:</strong>
-                                    <ul style="margin-top: 5px;">
-                                        {% for report_id, report in task.progress_reports.items() %}
-                                        <li style="margin-bottom: 5px;">
-                                            - {{ report.progress }} by {{ report.submitted_by }}
-                                            {% if report.file %}
-                                                <a href="{{ url_for('download_file', group_id=group_id, task_id=task.task_id, username=report.submitted_by, filename=report.file) }}" 
-                                                  target="_blank" 
-                                                  style="text-decoration: underline; margin-left: 5px;">
-                                                    Download
-                                                </a>
-                                            {% endif %}
-                                        </li>
-                                        {% endfor %}
-                                    </ul>
-                                </div>
+                            <div style="margin-top: 8px;"><strong>Progress Reports:</strong>
+                                <ul style="margin-top: 5px;">
+                                    {% for report_id, report in task.progress_reports.items() %}
+                                    <li style="margin-bottom: 5px;">
+                                        - {{ report.progress }} by {{ report.submitted_by }}
+                                        {% if report.file %}
+                                        <a href="{{ url_for('download_file', group_id=group_id, task_id=task.task_id, username=report.submitted_by, filename=report.file) }}"
+                                            target="_blank" style="text-decoration: underline; margin-left: 5px;">
+                                            Download
+                                        </a>
+                                        {% endif %}
+                                    </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
                             {% else %}
-                                <div><em>No progress reports yet</em></div>
+                            <div><em>No progress reports yet</em></div>
                             {% endif %}
                             {% endif %}
                         </li>
@@ -82,7 +181,6 @@
                     </ul>
                 </div>
 
-                <!-- TO BE DONE THIS WEEK -->
                 <div class="task-section">
                     <div class="collapsible">🎯 To Be Done This Week</div>
                     <ul id="this-week-tasks">
@@ -97,13 +195,15 @@
                                 <span style="font-weight: bold;">Deadline:</span> {{ task.deadline }}
                             </div>
                             <div class="task-description">{{ task.description }}</div>
-                            
+
                             {% if task.assigned_to == username or task.assigned_type == 'everyone' %}
-                            <form action="{{ url_for('submit_progress', username=username, group_id=group_id, task_id=task.task_id) }}"
-                                  method="POST" enctype="multipart/form-data" 
-                                  style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee;">
+                            <form
+                                action="{{ url_for('submit_progress', username=username, group_id=group_id, task_id=task.task_id) }}"
+                                method="POST" enctype="multipart/form-data"
+                                style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee;">
                                 <div style="margin-bottom: 8px;">
-                                    <input type="text" name="progress" placeholder="Progress update..." required style="width: 100%;">
+                                    <input type="text" name="progress" placeholder="Progress update..." required
+                                        style="width: 100%;">
                                 </div>
                                 <div style="margin-bottom: 8px;">
                                     <input type="file" name="file">
@@ -118,7 +218,6 @@
                     </ul>
                 </div>
 
-                <!-- TASKS NEXT WEEK -->
                 <div class="task-section">
                     <div class="collapsible">🗓️ Tasks Next Week</div>
                     <ul id="next-week-tasks">
@@ -138,21 +237,58 @@
                 </div>
             </div>
         </div>
+        <script>
+            function toggleTaskPanel() {
+                const panel = document.getElementById('taskPanel');
+                panel.classList.toggle('collapsed');
+                this.textContent = panel.classList.contains('collapsed') ? '≡' : '×';
+            }
+
+            function toggleCollapsible(element) {
+                element.classList.toggle('collapsed');
+                const ul = element.nextElementSibling;
+                if (ul.style.display === 'none') {
+                    ul.style.display = 'block';
+                } else {
+                    ul.style.display = 'none';
+                }
+            }
+        </script>
     </div>
 
-    <!-- Whiteboard Modal -->
-    <div id="whiteboardModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center;">
-        <div style="background:white; border-radius:8px; padding:20px; width:80%; max-width:800px; max-height:90vh; overflow:auto;">
+    <div id="whiteboardModal"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center;">
+        <div
+            style="background:white; border-radius:8px; padding:20px; width:80%; max-width:800px; max-height:90vh; overflow:auto;">
             <div style="display:flex; justify-content:space-between; align-items:center;">
                 <h3>Whiteboard</h3>
-                <button id="closeWhiteboardBtn" style="background:#ff5555; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">Close</button>
+                <button id="closeWhiteboardBtn"
+                    style="background:#ff5555; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">Close</button>
             </div>
-            <canvas id="whiteboardCanvas" style="border:1px solid #ccc; background-color:white; width:100%; height:500px;"></canvas>
+            <canvas id="whiteboardCanvas"
+                style="border:1px solid #ccc; background-color:white; width:100%; height:500px;"></canvas>
             <div style="text-align:center; margin-top:10px;">
-                <button id="clearWhiteboardBtn" style="padding:8px 15px; background:#4CAF50; color:white; border:none; border-radius:4px; cursor:pointer;">Clear Whiteboard</button>
+                <button id="clearWhiteboardBtn"
+                    style="padding:8px 15px; background:#4CAF50; color:white; border:none; border-radius:4px; cursor:pointer;">Clear
+                    Whiteboard</button>
             </div>
         </div>
     </div>
+    <script>
+        // UI functions
+        function openWhiteboard() {
+            document.getElementById('whiteboardModal').style.display = 'flex';
+        }
+
+        function closeWhiteboard() {
+            document.getElementById('whiteboardModal').style.display = 'none';
+        }
+
+        function clearWhiteboard() {
+            // Implementation would be in whiteboard.js
+            console.log("Whiteboard cleared");
+        }
+    </script>
 
     <script>
         // User credentials and API configuration
@@ -171,7 +307,7 @@
                 el.classList.remove('collapsed');
                 el.nextElementSibling.style.display = 'block';
             });
-            
+
             // Add event listeners
             document.getElementById('whiteboardToggleBtn').addEventListener('click', openWhiteboard);
             document.getElementById('closeWhiteboardBtn').addEventListener('click', closeWhiteboard);
@@ -179,144 +315,16 @@
             document.getElementById('taskPanelToggle').addEventListener('click', toggleTaskPanel);
             document.getElementById('joinBtn').addEventListener('click', joinVoiceCall);
             document.getElementById('leaveBtn').addEventListener('click', leaveVoiceCall);
-            
+
             // Set up collapsible sections
             document.querySelectorAll('.collapsible').forEach(el => {
                 el.addEventListener('click', () => toggleCollapsible(el));
             });
         }
 
-        // Mesfuncsage handling
-        function fetchMessages() {
-        console.log("Fetching messages...");
-        fetch(`/get_messages/${groupId}`)
-            .then(response => response.json())
-            .then(data => {
-                const messagesContainer = document.getElementById('messagesContainer');
-                messagesContainer.innerHTML = '';
-                data.messages.forEach(msg => {
-                    const msgElement = document.createElement('p');
-                    msgElement.textContent = `${msg.timestamp} - ${msg.sender}: ${msg.message}`;
-                    messagesContainer.appendChild(msgElement);
-                });
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            })
-            .catch(error => console.error('Error fetching messages:', error));
-    }
-
-function sendMessage() {
-    // Get the message text from the input field and remove leading/trailing whitespace
-    const text = document.getElementById('messageInput').value.trim();
-
-    // If the message is empty after trimming, do nothing
-    if (!text) {
-        return;
-    }
-
-    // Send a POST request to the server to save the message
-    fetch(`/send_message/${groupId}`, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            sender: username,
-            text
-        })
-    })
-    .then(res => res.json()) // Parse the JSON response from the server
-    .then(data => {
-        // If the message was sent successfully
-        if (data.success) {
-            // Clear the message input field
-            document.getElementById('messageInput').value = "";
-            // Immediately fetch the messages to show the new one
-            fetchMessages();
-        }
-    })
-    .catch(error => {
-        // Log any errors that occur during the fetch
-        console.error('Error sending message:', error);
-    });
-}
-
-        // Voice call functions
-        function joinVoiceCall() {
-            client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
-
-            client.on("user-published", async (user, mediaType) => {
-                await client.subscribe(user, mediaType);
-                if (mediaType === "audio") {
-                    user.audioTrack.play();
-                }
-            });
-
-            client.on("user-unpublished", () => {});
-
-            client.join(APP_ID, CHANNEL, null, UID)
-                .then(() => {
-                    return AgoraRTC.createMicrophoneAudioTrack();
-                })
-                .then(track => {
-                    localTrack = track;
-                    client.publish([localTrack]);
-                    document.getElementById("joinBtn").disabled = true;
-                    document.getElementById("leaveBtn").disabled = false;
-                })
-                .catch(err => {
-                    console.error("Failed to join channel:", err);
-                    alert("Error joining the call: " + err.message);
-                });
-        }
-
-        function leaveVoiceCall() {
-            if (localTrack) {
-                localTrack.stop();
-                localTrack.close();
-            }
-
-            if (client) {
-                client.leave()
-                    .then(() => {
-                        document.getElementById("joinBtn").disabled = false;
-                        document.getElementById("leaveBtn").disabled = true;
-                    });
-            }
-        }
-
-        // UI functions
-        function openWhiteboard() {
-            document.getElementById('whiteboardModal').style.display = 'flex';
-        }
-
-        function closeWhiteboard() {
-            document.getElementById('whiteboardModal').style.display = 'none';
-        }
-
-        function clearWhiteboard() {
-            // Implementation would be in whiteboard.js
-            console.log("Whiteboard cleared");
-        }
-
-        function toggleTaskPanel() {
-            const panel = document.getElementById('taskPanel');
-            panel.classList.toggle('collapsed');
-            this.textContent = panel.classList.contains('collapsed') ? '≡' : '×';
-        }
-
-        function toggleCollapsible(element) {
-            element.classList.toggle('collapsed');
-            const ul = element.nextElementSibling;
-            if (ul.style.display === 'none') {
-                ul.style.display = 'block';
-            } else {
-                ul.style.display = 'none';
-            }
-        }
-
         // Set up the interface when page loads
         window.onload = initInterface;
-        setInterval(fetchMessages, 5000);  // Refresh messages every 5 seconds
+        setInterval(fetchMessages, 5000); // Refresh messages every 5 seconds
     </script>
 </body>
 </html>
