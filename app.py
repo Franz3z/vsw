@@ -815,10 +815,6 @@ def submit_progress(username, group_id, task_id):
 
 @app.route('/get_messages/<group_id>')
 def get_messages(group_id):
-    """
-    Fetches all messages for a given group ID.
-    The database reference is wrapped in a try-except block to prevent a 500 error.
-    """
     try:
         # Corrected indentation for the code block inside the 'try' statement
         chat_ref = db.reference(f'groups/{group_id}/chat')
@@ -841,10 +837,7 @@ def get_messages(group_id):
 
 @app.route('/send_message/<group_id>', methods=['POST'])
 def send_message(group_id):
-    """
-    Sends a new message to a group. It now correctly expects a JSON payload.
-    """
-    # Get JSON data instead of form data
+
     data = request.get_json()
     if not data:
         return jsonify({'success': False, 'message': 'Invalid JSON payload'}), 400
