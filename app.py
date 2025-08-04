@@ -512,15 +512,6 @@ def delete_role(group_id):
         traceback.print_exc()
         return jsonify({'success': False, 'message': f'Error deleting role: {str(e)}'}), 500
 
-
-@app.route('/assign_role/<group_id>', methods=['POST'])
-def assign_role(group_id):
-    # This endpoint is kept for a potential direct assign_role call,
-    # but the frontend's 'saveRoles' function directly updates member roles.
-    # If not used directly, it can be removed.
-    # If used, ensure `request.json` contains 'username' and 'role_name'
-    return jsonify({'success': False, 'message': 'This endpoint is not fully implemented for direct use in the current flow.'}), 400
-
 # NEW: Endpoint for creating a project with multiple tasks
 @app.route('/create_project_with_tasks/<group_id>', methods=['POST'])
 def create_project_with_tasks(group_id):
