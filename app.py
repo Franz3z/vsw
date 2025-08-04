@@ -262,10 +262,11 @@ def mainadmin(username, group_id):
     pending_requests = list(pending_requests_data.keys())
     logging.debug(f"Pending requests: {pending_requests}")
 
-    # --- Fetch Tasks Data ---
+# --- Fetch Tasks Data ---
     tasks_ref = group_ref.child('tasks')
     tasks_data = tasks_ref.get() or {}
-    logging.debug(f"Tasks data: {tasks_data}")
+    print(f"\n--- DEBUGGING TASKS IN mainadmin for user: {username}, group: {group_id} ---")
+    print(f"DEBUG: Raw tasks_data fetched from Firebase: {json.dumps(tasks_data, indent=2)}")
 
     tasks_this_week = []
     tasks_next_week = []
@@ -274,10 +275,15 @@ def mainadmin(username, group_id):
     # Calculate start of current week (Monday) and next week
     today = datetime.now()
     start_of_this_week = today - timedelta(days=today.weekday())
-    # Ensure start_of_this_week is just the date for comparison (midnight)
     start_of_this_week = start_of_this_week.replace(hour=0, minute=0, second=0, microsecond=0)
     
     start_of_next_week = start_of_this_week + timedelta(weeks=1)
+    
+    # Debugging the current time and week boundaries
+    print(f"DEBUG: Current Time (Server): {today.isoformat()}")
+    print(f"DEBUG: Start of This Week (Server): {start_of_this_week.isoformat()}")
+    print(f"DEBUG: Start of Next Week (Server): {start_of_next_week.isoformat()}")
+
     
     # Define week boundaries for categorization in mainadmin
     week_boundaries = {
@@ -291,7 +297,6 @@ def mainadmin(username, group_id):
 
 
     for task_id, task in tasks_data.items():
-        # IMPORTANT: Add a safety check to ensure task is a dictionary
         if not isinstance(task, dict):
             logging.warning(f"Skipping malformed task data for task_id: {task_id}. Data was not a dictionary: {task}")
             continue
@@ -303,23 +308,30 @@ def mainadmin(username, group_id):
             'assigned_to': task.get('assigned_to', 'N/A'),
             'priority': task.get('priority', 'Low'),
             'progress_reports': task.get('progress_reports', {}),
-            'assigned_type': task.get('assigned_type', 'user'), # New field
+            'assigned_type': task.get('assigned_type', 'user'),
             'deadline': task.get('deadline', ''),
-            'week_category': task.get('week_category', '') # New field
+            'week_category': task.get('week_category', '')
         }
+        print(f"DEBUG: Processing task_id: {task_id}, task_info: {json.dumps(task_info)}")
         
-        # Determine if task is completed
         if task.get('completed', False):
             completed_tasks.append(task_info)
+            print(f"DEBUG: Task {task_id} added to completed_tasks (completed: True).")
         else:
-            # Categorize pending tasks based on week_category stored in Firebase
+            # Check week category
             if task_info['week_category'] == 'this_week':
                 tasks_this_week.append(task_info)
+                print(f"DEBUG: Task {task_id} added to tasks_this_week (week_category: this_week).")
             elif task_info['week_category'] == 'next_week':
                 tasks_next_week.append(task_info)
-            # You might need more lists for 'week_2', 'week_3' etc. here
-            # For simplicity, if week_category is not 'this_week' or 'next_week', it won't be shown in these specific panels.
-            # The JS for 'Create Project' handles setting week_category.
+                print(f"DEBUG: Task {task_id} added to tasks_next_week (week_category: next_week).")
+            else:
+                print(f"DEBUG: Task {task_id} not categorized into this_week/next_week (week_category: {task_info['week_category']}).")
+
+    print(f"DEBUG: Final tasks_this_week list: {json.dumps(tasks_this_week, indent=2)}")
+    print(f"DEBUG: Final tasks_next_week list: {json.dumps(tasks_next_week, indent=2)}")
+    print(f"DEBUG: Final completed_tasks list: {json.dumps(completed_tasks, indent=2)}")
+    print("------------------------------------------------------------------\n")
             
     # Sort tasks within categories (e.g., by priority)
     priority_order = {'high': 1, 'medium': 2, 'low': 3}
