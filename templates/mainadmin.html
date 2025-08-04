@@ -107,28 +107,24 @@
 
     <!-- Modals (pop-ups) -->
     <!-- Approve Requests Modal -->
-    <div id="pendingRequestsModal" class="modal-backdrop" style="display: none;">
-                    <div class="modal-content">
-                        <button class="modal-close-btn" onclick="closeApproveRequests()">×</button>
-                        <h3>Pending Join Requests</h3>
-                        <ul id="pending-requests-list">
-                            {% for username in pending_requests %}
-                            <li>
-                                {{ username }}
-                                <!-- FIX: Using a hidden input to pass the username to the form body -->
-                                <form action="{{ url_for('approve_request_handler', group_id=group_id) }}" method="post" style="display: inline;">
-                                    <input type="hidden" name="username" value="{{ username }}">
-                                    <button type="submit" class="approve-btn">Approve</button>
-                                </form>
-                                <form action="{{ url_for('deny_request_handler', group_id=group_id) }}" method="post" style="display: inline;">
-                                    <input type="hidden" name="username" value="{{ username }}">
-                                    <button type="submit" class="decline-btn">Decline</button>
-                                </form>
-                            </li>
-                            {% endfor %}
-                        </ul>
-                    </div>
-                </div>
+<div id="pendingRequestsModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-content">
+        <button class="modal-close-btn" onclick="closeApproveRequests()">×</button>
+        <h3>Pending Join Requests</h3>
+        <ul id="pending-requests-list">
+            {# Iterate over pending_requests, assuming each item in pending_requests is an object with a 'username' key #}
+            {% for request_item in pending_requests %}
+            <li>
+                {{ request_item.username }}
+                <button type="button" class="approve-btn"
+                        onclick="handleRequestAction('{{ group_id }}', '{{ request_item.username }}', 'approve')">Approve</button>
+                <button type="button" class="decline-btn"
+                        onclick="handleRequestAction('{{ group_id }}', '{{ request_item.username }}', 'deny')">Decline</button>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
 
     <!-- Main Assign Modal -->
     <div id="assignModal" class="modal-backdrop" style="display: none;">
@@ -1031,7 +1027,36 @@
             content.style.display = "block";
         }
     }
+async function handleRequestAction(groupId, username, actionType) {
+    const url = actionType === 'approve'
+        ? `/approve_request/${groupId}`
+        : `/deny_request/${groupId}`;
+    try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username: username })
+            });
 
+            const data = await response.json();
+
+            if (data.success) {
+                alert(data.message);
+            } else {
+                alert('Error: ' + data.message);
+            }
+        } catch (error) {
+            console.error('Network or server error:', error);
+            alert('An error occurred while processing your request.');
+        }
+    }
+    
+    function closeApproveRequests() {
+        document.getElementById('pendingRequestsModal').style.display = 'none';
+    }
+    
     window.onload = initAdminInterface;
     setInterval(fetchMessages, 5000);
 </script>
