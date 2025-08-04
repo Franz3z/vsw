@@ -785,6 +785,7 @@
             }
         }
 
+        // CORRECTED: submitProject function
         function submitProject() {
             const projectName = document.getElementById('project-name').value.trim();
             const projectDescription = document.getElementById('project-description').value.trim();
@@ -794,7 +795,7 @@
             if (taskForms.length === 0) { alert('Please add at least one task to the project.'); return; }
 
             const tasks = [];
-            let allTasksValid = true; // Flag to check if all tasks are valid
+            let allTasksValid = true;
             taskForms.forEach(taskForm => {
                 const taskId = taskForm.id;
                 const taskName = document.getElementById(`${taskId}-name`).value.trim();
@@ -802,30 +803,33 @@
                 const taskWeek = document.getElementById(`${taskId}-week`).value;
                 const taskPriority = document.getElementById(`${taskId}-priority`).value;
                 const assigneeType = document.getElementById(`${taskId}-assignee-type`).value;
-                let assignedTo = assigneeType;
+                let assignedTo = ''; // Initialize as empty string
 
                 if (assigneeType === 'user') {
                     assignedTo = document.getElementById(`${taskId}-assignee-user`).value;
                 } else if (assigneeType === 'role') {
                     assignedTo = document.getElementById(`${taskId}-assignee-role`).value;
+                } else if (assigneeType === 'everyone') {
+                    assignedTo = 'everyone'; // Explicitly set to 'everyone'
                 }
 
-                if (taskName && assignedTo) {
+                if (taskName && (assignedTo || assigneeType === 'everyone')) { // Ensure assignedTo has a value or is 'everyone'
                     tasks.push({
                         task_name: taskName,
                         description: taskDescription,
-                        deadline: taskWeek,
+                        week_category: taskWeek, // Use week_category to match backend
                         priority: taskPriority,
+                        assigned_to_type: assigneeType, // NEW: Send assigneeType
                         assigned_to: assignedTo
                     });
                 } else {
-                    alert('Please fill in all task details for each task.');
-                    allTasksValid = false; // Set flag to false
-                    return; // Stop iterating
+                    alert('Please fill in all task details and select an assignee for each task.');
+                    allTasksValid = false;
+                    return;
                 }
             });
 
-            if (!allTasksValid) { return; } // If any task was invalid, stop submission
+            if (!allTasksValid) { return; }
 
             const projectData = {
                 project_name: projectName,
@@ -833,7 +837,8 @@
                 tasks: tasks
             };
 
-            fetch(`/create_project/${groupId}`, {
+            // CORRECTED FETCH URL for creating project
+            fetch(`/create_project_with_tasks/${groupId}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(projectData)
@@ -855,12 +860,14 @@
         }
 
         // --- Assign Existing Task Modal Functions ---
+        // CORRECTED: openAssignExistingTaskModal function
         function openAssignExistingTaskModal() {
-            fetch(`/get_available_tasks/${groupId}`)
+            // CORRECTED FETCH URL for getting all tasks
+            fetch(`/get_all_tasks/${groupId}`)
                 .then(res => res.json())
                 .then(data => {
-                    if (data.success && Array.isArray(data.available_tasks)) {
-                        existingTasks = data.available_tasks;
+                    if (data.success && Array.isArray(data.tasks)) { // Data key is 'tasks' not 'available_tasks'
+                        existingTasks = data.tasks;
                         populateExistingTaskSelection(existingTasks);
                         populateExistingTaskRoleSelection();
                         showAssignPanel('assignTask');
@@ -911,10 +918,11 @@
             roleSelectDiv.style.display = assigneeType === 'role' ? 'block' : 'none';
         }
 
+        // CORRECTED: submitAssignExistingTask function
         function submitAssignExistingTask() {
             const taskId = document.getElementById('select-existing-task').value;
             const assigneeType = document.getElementById('assign-task-to-type').value;
-            let assignedTo = assigneeType;
+            let assignedTo = ''; // Initialize as empty string
 
             if (!taskId) { alert('Please select a task.'); return; }
 
@@ -922,14 +930,24 @@
                 assignedTo = document.getElementById('assign-task-to-user').value;
             } else if (assigneeType === 'role') {
                 assignedTo = document.getElementById('assign-task-to-role').value;
+            } else if (assigneeType === 'everyone') {
+                assignedTo = 'everyone'; // Explicitly set to 'everyone'
             }
 
-            if (!assignedTo) { alert('Please select an assignee.'); return; }
+            if (!assignedTo && assigneeType !== 'everyone') { // Ensure assignedTo has a value unless type is 'everyone'
+                alert('Please select an assignee.');
+                return;
+            }
 
-            fetch(`/assign_task/${groupId}`, {
+            // CORRECTED FETCH URL and BODY for assigning existing task
+            fetch(`/assign_existing_task/${groupId}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ task_id: taskId, assigned_to: assignedTo })
+                body: JSON.stringify({
+                    task_id: taskId,
+                    assigned_to_type: assigneeType, // NEW: Send assigneeType
+                    assigned_to: assignedTo
+                })
             })
             .then(res => res.json())
             .then(data => {
