@@ -22,11 +22,13 @@ let canvas = null;
 let ctx = null;
 let drawing = false;
 let current = { x: 0, y: 0 };
-let whiteboardInitialized = false; // Flag to prevent re-initialization
+let whiteboardInitialized = false; // Flag to prevent re-initializing event listeners
 
 
 // Helper function to get mouse position relative to canvas
 function getMousePos(evt) {
+    // Make sure 'canvas' is not null when this is called
+    if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
     return {
         x: evt.clientX - rect.left,
@@ -61,8 +63,10 @@ function drawLine(x0, y0, x1, y1, color = 'black', emit = true) {
 // --- Main Whiteboard Initialization Function ---
 function initializeWhiteboard() {
     if (whiteboardInitialized) {
-        console.log("Whiteboard already initialized.");
-        return; // Prevent re-initializing if already done
+        // If already initialized, just ensure canvas dimensions are correct
+        // and redraw if necessary (e.g., after modal was hidden)
+        resizeCanvas(); // Important: resize even if already initialized
+        return;
     }
 
     canvas = document.getElementById('whiteboardCanvas');
@@ -72,7 +76,7 @@ function initializeWhiteboard() {
     }
     ctx = canvas.getContext('2d');
 
-    // Function to set canvas dimensions correctly
+    // Function to set canvas dimensions correctly and redraw content
     function resizeCanvas() {
         // Ensure canvas CSS width/height are set (e.g., width: 100%; height: 500px;)
         // Then set internal canvas resolution to match its displayed size
@@ -80,13 +84,19 @@ function initializeWhiteboard() {
         canvas.width = rect.width;
         canvas.height = rect.height;
         console.log("Canvas resized to:", canvas.width, "x", canvas.height);
-        // Redraw content after resize if necessary (e.g., fetch all lines and redraw)
+
+        // ALWAYS RE-APPLY CONTEXT SETTINGS AFTER RESIZING
+        ctx.lineWidth = 2;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+
+        // Redraw content after resize from Firebase
         redrawAllLinesFromFirebase();
     }
 
     // Set initial dimensions and add resize listener
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas(); // Call on initial init
+    window.addEventListener('resize', resizeCanvas); // Listen for window resize
 
 
     // --- Canvas Event Listeners ---
@@ -111,10 +121,11 @@ function initializeWhiteboard() {
     // --- Firebase Listeners ---
     // Listen for all lines on the whiteboard
     function redrawAllLinesFromFirebase() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear before redrawing
+        // No need to clear here, as onValue will trigger a clear initially
         onValue(ref(database, 'whiteboard/lines'), (snapshot) => {
             // This listener will trigger on initial load and any change to 'whiteboard/lines'
-            ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear again just in case (e.g., on initial load)
+            // Clear the canvas fully before redrawing all lines
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
             snapshot.forEach((childSnapshot) => {
                 const data = childSnapshot.val();
                 if (data && data.x0 !== undefined) {
@@ -124,18 +135,18 @@ function initializeWhiteboard() {
             });
         });
     }
-    redrawAllLinesFromFirebase(); // Call initially to load existing lines
+    // No need to call redrawAllLinesFromFirebase() here, as it's within the resizeCanvas()
+    // and the onValue listener itself will trigger on initial data.
 
     // Listener for clearing the whiteboard via Firebase update
-    // This is optional if your 'clearWhiteboard' function directly sets 'whiteboard/lines' to null
     onValue(ref(database, 'whiteboard/lines'), (snapshot) => {
         // If the 'lines' node is removed (e.g., by clearWhiteboard), this will be null
-        if (!snapshot.exists()) {
+        if (!snapshot.exists() && ctx) { // Ensure ctx exists before clearing
             ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
     });
 
-    whiteboardInitialized = true; // Set flag after successful initialization
+    whiteboardInitialized = true; // Set flag AFTER all listeners are attached and canvas is ready
 }
 
 
@@ -143,14 +154,13 @@ function initializeWhiteboard() {
 // This function can be called from your HTML to open the modal and initialize whiteboard
 window.openWhiteboard = () => {
     document.getElementById('whiteboardModal').style.display = 'flex';
-    initializeWhiteboard(); // Call initialize when opening the modal
+    // IMPORTANT: Call initializeWhiteboard() AFTER the modal is visible
+    // This ensures the canvas has its final dimensions and is ready for drawing.
+    initializeWhiteboard();
 };
 
 window.closeWhiteboard = () => {
     document.getElementById('whiteboardModal').style.display = 'none';
-    // Optionally, if you want to stop listeners when modal closes:
-    // This would require storing the unsubscribe function from onValue.
-    // For simplicity, we'll keep them running for now.
 };
 
 window.clearWhiteboard = () => {
@@ -163,7 +173,7 @@ window.clearWhiteboard = () => {
 };
 
 
-// --- Event listeners for UI buttons ---
+// --- Event listeners for UI buttons (Run when DOM is fully loaded) ---
 document.addEventListener('DOMContentLoaded', () => {
     const whiteboardToggleBtn = document.getElementById('whiteboardToggleBtn');
     const closeWhiteboardBtn = document.getElementById('closeWhiteboardBtn');
@@ -171,19 +181,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (whiteboardToggleBtn) {
         whiteboardToggleBtn.addEventListener('click', window.openWhiteboard);
+        console.log("Whiteboard toggle button listener attached.");
     } else {
         console.warn("Whiteboard toggle button not found!");
     }
 
     if (closeWhiteboardBtn) {
         closeWhiteboardBtn.addEventListener('click', window.closeWhiteboard);
+        console.log("Close whiteboard button listener attached.");
     } else {
         console.warn("Close whiteboard button not found!");
     }
 
     if (clearWhiteboardBtn) {
         clearWhiteboardBtn.addEventListener('click', window.clearWhiteboard);
+        console.log("Clear whiteboard button listener attached.");
     } else {
         console.warn("Clear whiteboard button not found!");
     }
+
+    // Optional: If you want whiteboard to be initialized immediately on page load
+    // (e.g., if canvas is always visible), call initializeWhiteboard() here.
+    // However, if it's in a modal, calling it when modal opens is usually better.
+    // initializeWhiteboard();
 });
