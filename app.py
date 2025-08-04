@@ -1015,61 +1015,64 @@ def delete_task(group_id, task_id):
         traceback.print_exc()
         return jsonify({'success': False, 'message': 'An internal server error occurred.'}), 500
 
-@app.route('/update_roles/<string:group_id>', methods=['POST'])
+@app.route('/update_roles/<group_id>', methods=['POST'])
 def update_roles(group_id):
-    """
-    Endpoint to update roles for members within a group.
-    
-    It expects a JSON payload with a 'member_id' and a dictionary of 'updates'
-    which contains 'custom_roles_to_assign' and 'custom_roles_to_unassign'.
-    """
     try:
         data = request.get_json()
-        member_id = data.get('member_id')
-        updates = data.get('updates')
+        if not data:
+            return jsonify({'success': False, 'message': 'No updates data provided.'}), 400
 
-        if not member_id or not updates:
-            return jsonify({'success': False, 'message': 'Missing member_id or updates.'}), 400
+        # The 'data' variable now directly contains the updates dictionary for all users
+        # For example: {'username1': {'primary_role': 'admin', ...}, 'username2': {...}}
 
-        # Reference to the group and the specific member
-        group_ref = db.reference(f'groups/{group_id}')
-        member_ref = group_ref.child('members').child(member_id)
+        if not isinstance(data, dict):
+            return jsonify({'success': False, 'message': 'Invalid data format. Expected a dictionary of user updates.'}), 400
 
-        # Reference to the user's group entry
-        user_group_ref = db.reference(f'users/{member_id}/groups/{group_id}')
+        # Iterate through each user's updates in the received data
+        for username, updates in data.items():
+            member_ref = db.reference(f'groups/{group_id}/members/{username}')
+            user_group_ref = db.reference(f'users/{username}/groups/{group_id}')
 
-        custom_roles_to_assign = updates.get('custom_roles_to_assign', {})
-        custom_roles_to_unassign = updates.get('custom_roles_to_unassign', {})
+            current_member_info = member_ref.get() or {}
+            current_user_group_info = user_group_ref.get() or {}
 
-        # Ensure we have roles to process
-        if custom_roles_to_assign or custom_roles_to_unassign:
-            # Fetch current custom roles from Firebase
-            current_member_custom_roles = member_ref.child('roles').get() or {}
-            current_user_custom_roles = user_group_ref.child('roles').get() or {}
+            # Update primary role if provided
+            if 'primary_role' in updates:
+                new_primary_role = updates['primary_role']
+                member_ref.update({'primary_role': new_primary_role})
+                user_group_ref.update({'primary_role': new_primary_role})
+                logging.info(f"Updated primary role for {username} in group {group_id} to {new_primary_role}")
 
-            # Clear roles that are to be unassigned
-            for role_name in custom_roles_to_unassign:
-                if role_name in current_member_custom_roles:
-                    del current_member_custom_roles[role_name]
-                if role_name in current_user_custom_roles:
-                    del current_user_custom_roles[role_name]
-            
-            # Add roles that are to be assigned
+            # Update custom roles
+            custom_roles_to_assign = updates.get('custom_roles_to_assign', [])
+            custom_roles_to_unassign = updates.get('custom_roles_to_unassign', [])
+
+            # Assign roles
             for role_name in custom_roles_to_assign:
-                current_member_custom_roles[role_name] = True
-                current_user_custom_roles[role_name] = True
-            
-            # Update Firebase with the modified custom roles
-            member_ref.child('roles').set(current_member_custom_roles)
-            user_group_ref.child('roles').set(current_user_custom_roles)
-        
-        return jsonify({'success': True, 'message': 'Roles updated successfully.'})
+                # Check if the role exists as an available custom role
+                available_role_ref = db.reference(f'groups/{group_id}/custom_roles/{role_name}')
+                if available_role_ref.get(): # Check if it's a valid custom role
+                    member_ref.child(f'roles/{role_name}').set(True)
+                    user_group_ref.child(f'roles/{role_name}').set(True)
+                    logging.info(f"Assigned custom role '{role_name}' to {username} in group {group_id}")
+                else:
+                    logging.warning(f"Attempted to assign non-existent custom role '{role_name}' to {username}")
+
+            # Unassign roles
+            for role_name in custom_roles_to_unassign:
+                member_ref.child(f'roles/{role_name}').delete()
+                user_group_ref.child(f'roles/{role_name}').delete()
+                logging.info(f"Unassigned custom role '{role_name}' from {username} in group {group_id}")
+
+        return jsonify({
+            'success': True,
+            'message': 'Roles updated successfully for all specified members.'
+        }), 200
 
     except Exception as e:
         logging.error(f"Error updating roles for group {group_id}: {e}")
-        traceback.print_exc() # Print full traceback
-        return jsonify({'success': False, 'message': 'Error updating roles.'}), 500
-
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'Failed to update roles: {str(e)}'}), 500
 
 @app.route('/update_task_details/<group_id>/<task_id>', methods=['POST'])
 def update_task_details(group_id, task_id):
