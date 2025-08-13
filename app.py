@@ -863,60 +863,6 @@ def assign_existing_task(group_id):
         traceback.print_exc()
         return jsonify({'success': False, 'message': f'Error assigning existing task: {str(e)}'}), 500
 
-@app.route('/submit_progress/<username>/<group_id>/<task_id>', methods=['POST'])
-def submit_progress(username, group_id, task_id):
-    progress_text = request.form.get('progress')
-    file = request.files.get('file')
-    mark_completed = request.form.get('mark_completed') == 'true' # Check for this new field
-
-    if not progress_text and not file and not mark_completed: # If nothing is provided
-        return 'No progress, file, or completion status provided', 400
-
-    task_ref = db.reference(f'groups/{group_id}/tasks/{task_id}')
-    progress_ref = task_ref.child('progress_reports').push()
-    progress_data = {
-        'reported_by': username,
-        'timestamp': datetime.now().isoformat(),
-        'progress': progress_text
-    }
-
-    if file:
-        try:
-            filename = secure_filename(file.filename)
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(file_path)
-
-            progress_data['file_path'] = file_path
-            progress_data['file_name'] = filename
-        except Exception as e:
-            logging.error(f"Error saving uploaded file: {e}")
-            return f"File upload failed: {e}", 500
-
-    progress_ref.set(progress_data)
-    
-    # If the user marked the task as completed, update the task status
-    if mark_completed:
-        task_ref.update({'completed': True})
-
-    # Notify the group admin
-    admin_ref = db.reference(f'groups/{group_id}/admin')
-    admin_username = admin_ref.get()
-    if admin_username:
-        task_name = task_ref.child('task_name').get()
-        message = f'User "{username}" submitted a progress report for task "{task_name}".'
-        if mark_completed:
-             message = f'User "{username}" marked task "{task_name}" as completed.'
-        
-        db.reference(f'users/{admin_username}/notifications').push().set({
-            'message': message,
-            'group_id': group_id,
-            'task_id': task_id,
-            'timestamp': datetime.now().isoformat(),
-            'read': False
-        })
-    
-    return 'Progress report submitted successfully!', 200
-
 @app.route('/get_messages/<group_id>') # Corrected route path to match fetch
 def get_messages(group_id):
     chat_ref = db.reference(f'groups/{group_id}/chat')
