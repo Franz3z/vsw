@@ -15,6 +15,7 @@
                 <button onclick="openAssignModal()">Assign</button>
                 <button onclick="openApproveRequests()">Pending Requests</button>
                 <button onclick="openSubmitModal()">Submit Task</button>
+                <button onclick="openAdminViewModal()">View Submissions</button>
             </div>
 
             
@@ -507,6 +508,76 @@
 
     // --- Initial Load ---
     document.addEventListener('DOMContentLoaded', fetchAndRenderTasks);
+</script>
+
+    <!-- New Modal for Admin View of Submitted Tasks -->
+    <div id="adminViewModalContainer" class="modal-backdrop" style="display:none;">
+        <div class="modal-content">
+            <h3 class="modal-header">Submitted Tasks (Admin View)</h3>
+            <button class="modal-close-btn" onclick="closeAdminViewModal()">&times;</button>
+            <div class="modal-body">
+                <p>All tasks that have been marked as completed:</p>
+                <div id="submittedTasksList" class="task-selection-list">
+                    <p>No tasks have been submitted yet.</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button onclick="closeAdminViewModal()" class="cancel-button">Close</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    function openAdminViewModal() {
+        const modal = document.getElementById('adminViewModalContainer');
+        if (!modal) return;
+        modal.style.display = 'flex';
+
+        fetch(`/get_tasks/${groupId}`)
+            .then(response => response.json())
+            .then(data => {
+                const tasksList = document.getElementById('submittedTasksList');
+                if (!tasksList) return;
+                tasksList.innerHTML = '';
+                
+                // Filter for tasks that are marked as completed
+                const completedTasks = [
+                    ...data.tasks_this_week, 
+                    ...data.tasks_next_week,
+                    ...data.completed_tasks
+                ].filter(task => task.status === 'completed');
+                
+                if (completedTasks.length === 0) {
+                    tasksList.innerHTML = `<p>No tasks have been submitted yet.</p>`;
+                    return;
+                }
+
+                completedTasks.forEach(task => {
+                    const taskItem = document.createElement('div');
+                    taskItem.className = 'submitted-task-item';
+                    taskItem.innerHTML = `
+                        <h4>${task.task_name}</h4>
+                        <p><strong>Submitted by:</strong> ${task.assigned_to}</p>
+                        <p><strong>Progress Notes:</strong> ${task.progress_notes || 'N/A'}</p>
+                        <div class="task-buttons">
+                            ${task.file_name ? `<a href="/download/${task.file_name}" class="download-button" download>Download File</a>` : ''}
+                        </div>
+                    `;
+                    tasksList.appendChild(taskItem);
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching submitted tasks for admin view:', error);
+                alert('Could not load submitted tasks.');
+            });
+    }
+
+    function closeAdminViewModal() {
+        const modal = document.getElementById('adminViewModalContainer');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
 </script>
             
     <div id="assignModal" class="modal-backdrop" style="display: none;">
