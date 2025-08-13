@@ -16,6 +16,7 @@
                 <button onclick="openApproveRequests()">Pending Requests</button>
                 <button onclick="openSubmitModal()">Submit</button>
                 <button onclick="openSubmitProgressModal()">Submit Progress</button>
+                <button onclick="pendingRequestsModalContainer()">Tasks Approval</button> 
             </div>
 
             
@@ -587,6 +588,114 @@
 
     // --- Initial Load ---
     document.addEventListener('DOMContentLoaded', fetchAndRenderTasks);
+</script>
+
+<div id="pendingRequestsModalContainer" class="modal-backdrop" style="display:none;">
+    <div class="modal-content">
+        <h3 class="modal-header">Pending Requests</h3>
+        <button class="modal-close-btn" onclick="closePendingRequestsModal()">&times;</button>
+        <div class="modal-body">
+            <p>Tasks that have been submitted for approval:</p>
+            <div id="pendingRequestsList" class="task-selection-list">
+                <p>No pending requests at this time.</p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button onclick="closePendingRequestsModal()" class="cancel-button">Close</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openPendingRequestsModal() {
+    const modal = document.getElementById('pendingRequestsModalContainer');
+    modal.style.display = 'flex';
+
+    fetch(`/get_tasks/${groupId}`)
+        .then(response => response.json())
+        .then(data => {
+            const requestsList = document.getElementById('pendingRequestsList');
+            requestsList.innerHTML = '';
+            
+            const pendingTasks = [
+                ...data.tasks_this_week, 
+                ...data.tasks_next_week,
+                ...data.completed_tasks
+            ].filter(task => task.status === 'pending_approval');
+            
+            if (pendingTasks.length === 0) {
+                requestsList.innerHTML = `<p>No pending requests at this time.</p>`;
+                return;
+            }
+
+            pendingTasks.forEach(task => {
+                const requestItem = document.createElement('div');
+                requestItem.className = 'pending-request-item';
+                requestItem.innerHTML = `
+                    <h4>${task.task_name}</h4>
+                    <p><strong>Submitted by:</strong> ${task.assigned_to}</p>
+                    <p><strong>Progress Notes:</strong> ${task.progress_notes || 'N/A'}</p>
+                    <div class="request-buttons">
+                        ${task.file_name ? `<a href="/download/${task.file_name}" class="download-button" download>Download File</a>` : ''}
+                        <button onclick="approveTask('${task.task_id}')" class="approve-button">Approve</button>
+                        <button onclick="rejectTask('${task.task_id}')" class="reject-button">Reject</button>
+                    </div>
+                `;
+                requestsList.appendChild(requestItem);
+            });
+        })
+        .catch(error => {
+            console.error('Error fetching pending requests:', error);
+            alert('Could not load pending requests.');
+        });
+}
+
+function closePendingRequestsModal() {
+    const modal = document.getElementById('pendingRequestsModalContainer');
+    modal.style.display = 'none';
+}
+
+function approveTask(taskId) {
+    console.log(`Approving task with ID: ${taskId}`);
+    const url = `/approve_task/${groupId}/${taskId}`;
+    
+    fetch(url, { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Task approved successfully!');
+                closePendingRequestsModal();
+                fetchAndRenderTasks();
+            } else {
+                alert('Failed to approve task: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error approving task:', error);
+            alert('An error occurred while approving the task.');
+        });
+}
+
+function rejectTask(taskId) {
+    console.log(`Rejecting task with ID: ${taskId}`);
+    const url = `/reject_task/${groupId}/${taskId}`;
+    
+    fetch(url, { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Task rejected successfully!');
+                closePendingRequestsModal();
+                fetchAndRenderTasks();
+            } else {
+                alert('Failed to reject task: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error rejecting task:', error);
+            alert('An error occurred while rejecting the task.');
+        });
+}
 </script>
             
     <div id="assignModal" class="modal-backdrop" style="display: none;">
