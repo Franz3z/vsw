@@ -760,38 +760,6 @@ def get_all_tasks(group_id):
         traceback.print_exc()
         return jsonify({'success': False, 'message': f'Error fetching tasks: {str(e)}'}), 500
 
-@app.route('/submit_task_for_approval/<group_id>/<task_id>', methods=['POST'])
-def submit_task_for_approval(group_id, task_id):
-
-    try:
-        logging.info(f"Received request to submit task {task_id} for approval in group {group_id}.")
-        
-        # Reference to the specific task in the database
-        task_ref = db.reference(f'groups/{group_id}/tasks/{task_id}')
-        
-        # Check if the task exists
-        task_data = task_ref.get()
-        if not task_data:
-            logging.warning(f"Task with ID {task_id} not found in group {group_id}.")
-            return jsonify({'success': False, 'message': 'Task not found.'}), 404
-
-        # Update the task's status to 'pending_approval'
-        task_ref.update({
-            'status': 'pending_approval',
-            'submitted_timestamp': datetime.now().isoformat()
-        })
-        
-        logging.info(f"Task {task_id} in group {group_id} has been successfully updated to 'pending_approval'.")
-        return jsonify({'success': True, 'message': 'Task submitted for approval.'}), 200
-
-    except Exception as e:
-        logging.error(f"Error submitting task {task_id} for group {group_id}: {e}")
-        # Log the full traceback for detailed debugging
-        import traceback
-        logging.error(traceback.format_exc())
-        return jsonify({'success': False, 'message': f'An error occurred: {str(e)}'}), 500
-
-
 @app.route('/assign_existing_task/<group_id>', methods=['POST'])
 def assign_existing_task(group_id):
     try:
@@ -1208,6 +1176,162 @@ def download_file(filename):
         return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=True)
     else:
         return 'File not found.', 404
+
+def get_week_category(deadline_str):
+    if not deadline_str:
+        return 'no_deadline'
+
+    try:
+        deadline = datetime.fromisoformat(deadline_str)
+        today = datetime.now()
+        
+        # Calculate the difference in days
+        time_difference = deadline.date() - today.date()
+        
+        if time_difference.days <= 0:
+            return 'overdue'
+        elif time_difference.days <= 7:
+            return 'this_week'
+        else:
+            return 'next_week'
+            
+    except ValueError:
+        logging.error(f"Invalid deadline format: {deadline_str}")
+        return 'invalid_date'
+
+# --- Backend Routes ---
+
+# This is the route you were missing, causing the 404 error
+@app.route('/get_tasks/<group_id>', methods=['GET'])
+def get_tasks(group_id):
+    try:
+        logging.info(f"Fetching all tasks for group {group_id}")
+        tasks_ref = db.reference(f'groups/{group_id}/tasks')
+        all_tasks = tasks_ref.get()
+
+        if not all_tasks:
+            logging.info(f"No tasks found for group {group_id}.")
+            return jsonify({
+                "tasks_this_week": [],
+                "tasks_next_week": [],
+                "completed_tasks": []
+            }), 200
+
+        tasks_this_week = []
+        tasks_next_week = []
+        completed_tasks = []
+
+        # Assuming task data has a 'deadline' and 'status' key
+        for task_id, task_data in all_tasks.items():
+            # Add task_id to the task data for front-end use
+            task_data['task_id'] = task_id
+            
+            # Categorize based on status first
+            if task_data.get('status') == 'completed':
+                completed_tasks.append(task_data)
+            else:
+                # Then categorize by deadline for uncompleted tasks
+                week_category = get_week_category(task_data.get('deadline'))
+                if week_category == 'this_week' or week_category == 'overdue':
+                    tasks_this_week.append(task_data)
+                elif week_category == 'next_week':
+                    tasks_next_week.append(task_data)
+                # Tasks with no deadline or invalid dates will be ignored for these lists
+        
+        return jsonify({
+            "tasks_this_week": tasks_this_week,
+            "tasks_next_week": tasks_next_week,
+            "completed_tasks": completed_tasks
+        }), 200
+
+    except Exception as e:
+        logging.error(f"Error fetching tasks for group {group_id}: {e}")
+        import traceback
+        logging.error(traceback.format_exc())
+        return jsonify({'error': 'An internal server error occurred.'}), 500
+
+# The following routes were provided in your original request,
+# I'm including them here with necessary imports added.
+
+@app.route('/submit_task_for_approval/<group_id>/<task_id>', methods=['POST'])
+def submit_task_for_approval(group_id, task_id):
+    try:
+        logging.info(f"Received request to submit task {task_id} for approval in group {group_id}.")
+        task_ref = db.reference(f'groups/{group_id}/tasks/{task_id}')
+        task_data = task_ref.get()
+        if not task_data:
+            logging.warning(f"Task with ID {task_id} not found in group {group_id}.")
+            return jsonify({'success': False, 'message': 'Task not found.'}), 404
+
+        # Check if the task is already pending approval or completed to prevent duplicate submissions
+        if task_data.get('status') in ['pending_approval', 'completed']:
+            logging.warning(f"Task {task_id} in group {group_id} is already in status '{task_data.get('status')}'.")
+            return jsonify({'success': False, 'message': 'Task is already pending approval or completed.'}), 409
+
+        task_ref.update({
+            'status': 'pending_approval',
+            'submitted_timestamp': datetime.now().isoformat()
+        })
+        
+        logging.info(f"Task {task_id} in group {group_id} has been successfully updated to 'pending_approval'.")
+        return jsonify({'success': True, 'message': 'Task submitted for approval.'}), 200
+
+    except Exception as e:
+        logging.error(f"Error submitting task {task_id} for group {group_id}: {e}")
+        import traceback
+        logging.error(traceback.format_exc())
+        return jsonify({'success': False, 'message': f'An error occurred: {str(e)}'}), 500
+
+@app.route('/submit_progress/<username>/<group_id>/<task_id>', methods=['POST'])
+def submit_progress(username, group_id, task_id):
+    progress_text = request.form.get('progress')
+    file = request.files.get('file')
+    mark_completed = request.form.get('mark_completed') == 'true'
+
+    if not progress_text and not file and not mark_completed:
+        return 'No progress, file, or completion status provided', 400
+
+    task_ref = db.reference(f'groups/{group_id}/tasks/{task_id}')
+    progress_ref = task_ref.child('progress_reports').push()
+    progress_data = {
+        'reported_by': username,
+        'timestamp': datetime.now().isoformat(),
+        'progress': progress_text
+    }
+
+    if file:
+        try:
+            filename = secure_filename(file.filename)
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(file_path)
+            progress_data['file_path'] = file_path
+            progress_data['file_name'] = filename
+        except Exception as e:
+            logging.error(f"Error saving uploaded file: {e}")
+            return f"File upload failed: {e}", 500
+
+    progress_ref.set(progress_data)
+    
+    if mark_completed:
+        task_ref.update({'completed': True})
+
+    admin_ref = db.reference(f'groups/{group_id}/admin')
+    admin_username = admin_ref.get()
+    if admin_username:
+        task_name = task_ref.child('task_name').get()
+        message = f'User "{username}" submitted a progress report for task "{task_name}".'
+        if mark_completed:
+            message = f'User "{username}" marked task "{task_name}" as completed.'
+        
+        db.reference(f'users/{admin_username}/notifications').push().set({
+            'message': message,
+            'group_id': group_id,
+            'task_id': task_id,
+            'timestamp': datetime.now().isoformat(),
+            'read': False
+        })
+    
+    return 'Progress report submitted successfully!', 200
 
 @app.errorhandler(Exception)
 def handle_exception(e):
