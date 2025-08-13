@@ -387,40 +387,45 @@
             container.appendChild(taskElement);
         });
     }
-    
-    // Function to open the submit task modal
-    function openSubmitModal() {
-        const modal = document.getElementById('submitModalContainer');
-        modal.style.display = 'flex';
-        
-        // Fetch tasks again to ensure the list is up-to-date
-        fetch(`/get_tasks/${groupId}`)
-            .then(response => response.json())
-            .then(data => {
-                const tasksList = document.getElementById('tasksForSubmissionList');
-                tasksList.innerHTML = ''; // Clear previous list
-                
-                const uncompletedTasks = data.tasks_this_week.concat(data.tasks_next_week);
-                if (uncompletedTasks.length === 0) {
-                    tasksList.innerHTML = `<p>No tasks to submit.</p>`;
-                    return;
-                }
 
-                uncompletedTasks.forEach(task => {
-                    const taskItem = document.createElement('div');
-                    taskItem.className = 'submit-task-item';
-                    taskItem.innerHTML = `
-                        <span>${task.task_name}</span>
-                        <button onclick="submitTaskFromModal('${task.task_id}')">Submit</button>
-                    `;
-                    tasksList.appendChild(taskItem);
-                });
-            })
-            .catch(error => {
-                console.error('Error fetching tasks for modal:', error);
-                alert('Could not load tasks for submission.');
+    // Function to open the submit task modal
+function openSubmitModal() {
+    const modal = document.getElementById('submitModalContainer');
+    modal.style.display = 'flex';
+
+    // Fetch tasks again to ensure the list is up-to-date
+    fetch(`/get_tasks/${groupId}`)
+        .then(response => response.json())
+        .then(data => {
+            const tasksList = document.getElementById('tasksForSubmissionList');
+            tasksList.innerHTML = ''; // Clear previous list
+
+            // Combine tasks and filter for those that are not yet submitted or completed
+            const tasksToSubmit = [
+                ...data.tasks_this_week,
+                ...data.tasks_next_week
+            ].filter(task => task.status !== 'pending_approval' && task.status !== 'completed');
+
+            if (tasksToSubmit.length === 0) {
+                tasksList.innerHTML = `<p>No tasks to submit.</p>`;
+                return;
+            }
+
+            tasksToSubmit.forEach(task => {
+                const taskItem = document.createElement('div');
+                taskItem.className = 'submit-task-item';
+                taskItem.innerHTML = `
+                    <span>${task.task_name}</span>
+                    <button onclick="submitTaskFromModal('${task.task_id}')">Submit</button>
+                `;
+                tasksList.appendChild(taskItem);
             });
-    }
+        })
+        .catch(error => {
+            console.error('Error fetching tasks for modal:', error);
+            alert('Could not load tasks for submission.');
+        });
+}
     
     // Function to close the submit task modal
     function closeSubmitModal() {
