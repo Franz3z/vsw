@@ -424,14 +424,38 @@ def main(username, group_id):
     # Fetch tasks for the main view
     tasks_ref = group_ref.child('tasks')
     tasks_data = tasks_ref.get() or {}
-    tasks = []
+    logging.info(f"\n--- DEBUGGING TASKS IN mainadmin for user: {username}, group: {group_id} ---")
+    logging.info(f"DEBUG: Raw tasks_data fetched from Firebase: {json.dumps(tasks_data, indent=2)}")
 
-    if not isinstance(tasks_data, dict):
-        logging.error(f"tasks_data is not a dictionary for group {group_id}. Type: {type(tasks_data)}, Value: {tasks_data}")
-        tasks_data = {}
+    tasks_this_week = []
+    tasks_next_week = []
+    completed_tasks = []
+    
+    # Calculate start of current week (Monday) and next week
+    today = datetime.now()
+    start_of_this_week = today - timedelta(days=today.weekday())
+    start_of_this_week = start_of_this_week.replace(hour=0, minute=0, second=0, microsecond=0)
+    
+    start_of_next_week = start_of_this_week + timedelta(weeks=1)
+    
+    # Debugging the current time and week boundaries
+    logging.info(f"DEBUG: Current Time (Server): {today.isoformat()}")
+    logging.info(f"DEBUG: Start of This Week (Server): {start_of_this_week.isoformat()}")
+    logging.info(f"DEBUG: Start of Next Week (Server): {start_of_next_week.isoformat()}")
+
+    
+    # Define week boundaries for categorization in mainadmin
+    week_boundaries = {
+        'this_week': (start_of_this_week, start_of_this_week + timedelta(weeks=1)),
+        'next_week': (start_of_next_week, start_of_next_week + timedelta(weeks=1)),
+    }
+    # Add more week categories if needed, e.g., 'week_2', 'week_3' etc.
+    for i in range(2, 5): # For week_2, week_3, week_4
+        week_start = start_of_this_week + timedelta(weeks=i)
+        week_boundaries[f'week_{i}'] = (week_start, week_start + timedelta(weeks=1))
+
 
     for task_id, task in tasks_data.items():
-        # IMPORTANT: Add a safety check to ensure task is a dictionary
         if not isinstance(task, dict):
             logging.warning(f"Skipping malformed task data for task_id: {task_id}. Data was not a dictionary: {task}")
             continue
@@ -447,20 +471,44 @@ def main(username, group_id):
             'deadline': task.get('deadline', ''),
             'week_category': task.get('week_category', '')
         }
-        # Only show tasks assigned to the current user or a group they are in
-        assigned_to_user = task_info['assigned_to'] == username
-        assigned_to_group_with_user = (
-            task_info['assigned_type'] == 'group' and
-            task_info['assigned_to'] in user_group.get('roles', {}).keys()
-        )
+        logging.info(f"DEBUG: Processing task_id: {task_id}, task_info: {json.dumps(task_info)}")
+        
+        if task.get('completed', False):
+            completed_tasks.append(task_info)
+            logging.info(f"DEBUG: Task {task_id} added to completed_tasks (completed: True).")
+        else:
+            # Check week category
+            if task_info['week_category'] == 'this_week':
+                tasks_this_week.append(task_info)
+                logging.info(f"DEBUG: Task {task_id} added to tasks_this_week (week_category: this_week).")
+            elif task_info['week_category'] == 'next_week':
+                tasks_next_week.append(task_info)
+                logging.info(f"DEBUG: Task {task_id} added to tasks_next_week (week_category: next_week).")
+            else:
+                logging.info(f"DEBUG: Task {task_id} not categorized into this_week/next_week (week_category: {task_info['week_category']}).")
 
-        if assigned_to_user or assigned_to_group_with_user:
-            tasks.append(task_info)
+    logging.info(f"DEBUG: Final tasks_this_week list: {json.dumps(tasks_this_week, indent=2)}")
+    logging.info(f"DEBUG: Final tasks_next_week list: {json.dumps(tasks_next_week, indent=2)}")
+    logging.info(f"DEBUG: Final completed_tasks list: {json.dumps(completed_tasks, indent=2)}")
+    logging.info("------------------------------------------------------------------\n")
+            
+    # Sort tasks within categories (e.g., by priority)
+    priority_order = {'high': 1, 'medium': 2, 'low': 3}
+    tasks_this_week.sort(key=lambda x: priority_order.get(x.get('priority', 'Low').lower(), 4))
+    tasks_next_week.sort(key=lambda x: priority_order.get(x.get('priority', 'Low').lower(), 4))
+    completed_tasks.sort(key=lambda x: x.get('task_name', '')) # Example sort
+
+
+    logging.debug(f"Tasks This Week: {tasks_this_week}")
+    logging.debug(f"Tasks Next Week: {tasks_next_week}")
+    logging.debug(f"Completed tasks: {completed_tasks}")
 
     return render_template('main.html',
                            username=username,
                            group_id=group_id,
-                           tasks=tasks)
+                           tasks_this_week=tasks_this_week, # Pass this data
+                           tasks_next_week=tasks_next_week, # Pass this data
+                           completed_tasks=completed_tasks,)
 
 @app.route('/get_group_members_with_roles/<group_id>', methods=['GET'])
 def get_group_members_with_roles(group_id):
