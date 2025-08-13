@@ -512,7 +512,7 @@
 
     <div id="adminViewModalContainer" class="modal-backdrop" style="display:none;">
         <div class="modal-content">
-            <h3 class="modal-header">Submitted Tasks (Admin View)</h3>
+            <h3 class="modal-header">Submitted Tasks</h3>
             <button class="modal-close-btn" onclick="closeAdminViewModal()">&times;</button>
             <div class="modal-body">
                 <p>All tasks that have been marked as completed:</p>
@@ -540,9 +540,14 @@
                 if (!tasksList) return;
                 tasksList.innerHTML = '';
                 
-                // Directly use the completed_tasks list, as the status property is not available
-                const completedTasks = data.completed_tasks || [];
+                // Corrected logic to handle object or array from Firebase
+                let completedTasks = data.completed_tasks || {};
                 
+                // If completedTasks is an object, convert it to an array of its values
+                if (typeof completedTasks === 'object' && completedTasks !== null) {
+                    completedTasks = Object.values(completedTasks);
+                }
+
                 if (completedTasks.length === 0) {
                     tasksList.innerHTML = `<p>No tasks have been submitted yet.</p>`;
                     return;
