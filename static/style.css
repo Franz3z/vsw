@@ -1373,3 +1373,21 @@ body {
 .task-list-container button:hover {
     background-color: #e64a19;
 }
+
+.styled-button {
+  display: inline-block;
+  padding: 10px 15px; 
+  background-color: #e74c3c;
+  color: #fff; 
+  text-decoration: none; 
+  border: none; 
+  border-radius: 5px;
+  font-family: Arial, sans-serif; 
+  font-size: 16px;
+  cursor: pointer; 
+  transition: background-color 0.3s ease; 
+}
+
+.styled-button:hover {
+  background-color: #c0392b; 
+}
