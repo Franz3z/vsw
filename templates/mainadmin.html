@@ -532,7 +532,8 @@
         if (!modal) return;
         modal.style.display = 'flex';
 
-        fetch(`/get_tasks/${groupId}`)
+        // Call the new backend endpoint for completed tasks
+        fetch(`/get_completed_tasks/${groupId}`)
             .then(response => {
                 if (!response.ok) {
                     throw new Error('Network response was not ok');
@@ -540,19 +541,13 @@
                 return response.json();
             })
             .then(data => {
-                console.log('Admin View: Fetched data from server:', data); // Log the raw data
+                console.log('Admin View: Fetched completed tasks data from server:', data);
                 const tasksList = document.getElementById('submittedTasksList');
                 if (!tasksList) return;
                 tasksList.innerHTML = '';
                 
-                // Corrected logic to handle object or array from Firebase
-                let completedTasks = data.completed_tasks || {};
+                let completedTasks = data.completed_tasks || [];
                 
-                // If completedTasks is an object, convert it to an array of its values
-                if (typeof completedTasks === 'object' && completedTasks !== null) {
-                    completedTasks = Object.values(completedTasks);
-                }
-
                 if (completedTasks.length === 0) {
                     tasksList.innerHTML = `<p>No tasks have been submitted yet.</p>`;
                     return;
@@ -561,8 +556,9 @@
                 completedTasks.forEach(task => {
                     const taskItem = document.createElement('div');
                     taskItem.className = 'submitted-task-item';
+                    const taskTitle = task.task_name || task.description; // Fallback to description if task_name is missing
                     taskItem.innerHTML = `
-                        <h4>${task.task_name}</h4>
+                        <h4>${taskTitle}</h4>
                         <p><strong>Submitted by:</strong> ${task.assigned_to}</p>
                         <p><strong>Progress Notes:</strong> ${task.progress_notes || 'N/A'}</p>
                         <div class="task-buttons">
