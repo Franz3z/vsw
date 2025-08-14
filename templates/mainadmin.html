@@ -560,7 +560,7 @@
                     taskItem.innerHTML = `
                         <h4>${taskTitle}</h4>
                         <p><strong>Submitted by:</strong> ${task.assigned_to}</p>
-                        <p><strong>Progress Notes:</strong> ${task.progress_notes || 'N/A'}</p>
+                        <p><strong>Progress Notes:</strong> ${task.progress || 'N/A'}</p>
                         <div class="task-buttons">
                             ${task.file_name ? `<a href="/download/${task.file_name}" class="download-button" download>Download File</a>` : ''}
                         </div>
