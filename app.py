@@ -1333,6 +1333,25 @@ def submit_progress(username, group_id, task_id):
     
     return 'Progress report submitted successfully!', 200
 
+@app.route('/get_completed_tasks/<group_id>')
+def get_completed_tasks(group_id):
+    if 'username' not in session or not session.get('is_admin'):
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 403
+    
+    try:
+        completed_tasks_ref = db.reference(f'groups/{group_id}/completed_tasks')
+        completed_tasks_data = completed_tasks_ref.get() or {}
+
+        completed_tasks = []
+        for task_id, task in completed_tasks_data.items():
+            task['task_id'] = task_id
+            completed_tasks.append(task)
+        
+        return jsonify({'success': True, 'completed_tasks': completed_tasks})
+    except Exception as e:
+        logging.error(f"Error getting completed tasks: {e}")
+        return jsonify({'success': False, 'message': f'Server error: {e}'}), 500
+
 @app.errorhandler(Exception)
 def handle_exception(e):
     print("UNCAUGHT EXCEPTION:", e, file=sys.stderr)
