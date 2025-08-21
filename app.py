@@ -136,8 +136,17 @@ def dashboard(username):
         return redirect(url_for('login'))
 
     user_groups = db.reference(f'users/{username}/groups').get() or {}
-
-    response = make_response(render_template('dashboard.html', username=username, groups=user_groups))
+    user_data = db.reference(f'users/{username}').get() or {}
+    response = make_response(render_template(
+        'dashboard.html',
+        username=username,
+        groups=user_groups,
+        first_name=user_data.get('first_name', ''),
+        middle_name=user_data.get('middle_name', ''),
+        last_name=user_data.get('last_name', ''),
+        age=user_data.get('age', ''),
+        email=user_data.get('email', '')
+    ))
     response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
     response.headers['Pragma'] = 'no-cache'
     response.headers['Expires'] = '0'
