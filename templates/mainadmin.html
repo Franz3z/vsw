@@ -149,6 +149,10 @@
             <button class="panel-toggle" id="taskPanelToggle">≡</button>
             <div class="task-panel-content">
                 <h3>Group Tasks</h3>
+                    <!-- Containers for JS rendering -->
+                    <div id="tasksThisWeek"></div>
+                    <div id="tasksNextWeek"></div>
+                    <div id="completedTasks"></div>
 
                 <div class="task-section">
                     <div class="collapsible">✅ Done</div>
@@ -555,9 +559,9 @@
             return response.text();
         })
         .then(message => {
-            alert('Progress submitted successfully!');
-            closeSubmitProgressModal();
-            fetchAndRenderTasks();
+                alert('Progress submitted successfully!');
+                closeSubmitModal();
+                fetchAndRenderTasks();
         })
         .catch(error => {
             console.error('Error submitting progress:', error);
