@@ -1225,9 +1225,12 @@ def get_tasks(group_id):
         for task_id, task_data in all_tasks.items():
             # Add task_id to the task data for front-end use
             task_data['task_id'] = task_id
-            
-            # Categorize based on status first
-            if task_data.get('status') == 'completed':
+            # Ensure file_url is present if file_path exists
+            if 'file_path' in task_data:
+                # You may need to adjust this URL based on your static file serving
+                task_data['file_url'] = f"/static/uploads/{task_data['file_name']}" if 'file_name' in task_data else task_data['file_path']
+            # Categorize as completed if status is 'completed' or completed==True
+            if task_data.get('status') == 'completed' or task_data.get('completed', False):
                 completed_tasks.append(task_data)
             else:
                 # Then categorize by deadline for uncompleted tasks
