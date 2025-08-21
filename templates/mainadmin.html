@@ -1082,9 +1082,14 @@ function openAssignExistingTaskModal() {
     fetch(`/get_all_tasks/${groupId}`)
         .then(res => res.json())
         .then(data => {
-            if (data.success && Array.isArray(data.tasks)) { // Data key is 'tasks' not 'available_tasks'
-                existingTasks = data.tasks;
-                populateExistingTaskSelection(existingTasks);
+            if (data.success) {
+                const allTasks = [
+                    ...(data.tasks_this_week || []),
+                    ...(data.tasks_next_week || []),
+                    ...(data.completed_tasks || []),
+                    ...(data.tasks_no_deadline || [])
+                ];
+                populateExistingTaskSelection(allTasks);
                 populateExistingTaskRoleSelection();
                 showAssignPanel('assignTask');
             } else {
