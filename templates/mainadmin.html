@@ -1008,25 +1008,27 @@ function submitProject() {
         const taskId = taskForm.id;
         const taskName = document.getElementById(`${taskId}-name`).value.trim();
         const taskDescription = document.getElementById(`${taskId}-description`).value.trim();
-        const startDate = document.getElementById(`${taskId}-start-date`).value;
-        const deadlineDate = document.getElementById(`${taskId}-deadline-date`).value;
+        // No start-date or deadline-date fields in the form, so use week selection for deadline
+        // We'll use the week selection as a proxy for deadline, or you can add a deadline input if needed
+        // For now, just use the week value as deadline info
+        const weekValue = document.getElementById(`${taskId}-week`).value;
         const taskPriority = document.getElementById(`${taskId}-priority`).value;
         const assigneeType = document.getElementById(`${taskId}-assignee-type`).value;
-        let assignedTo = ''; // Initialize as empty string
+        let assignedTo = '';
 
         if (assigneeType === 'user') {
             assignedTo = document.getElementById(`${taskId}-assignee-user`).value;
         } else if (assigneeType === 'role') {
             assignedTo = document.getElementById(`${taskId}-assignee-role`).value;
         } else if (assigneeType === 'everyone') {
-            assignedTo = 'everyone'; // Explicitly set to 'everyone'
+            assignedTo = 'everyone';
         }
 
-        if (taskName && deadlineDate && (assignedTo || assigneeType === 'everyone')) {
+        if (taskName && weekValue && (assignedTo || assigneeType === 'everyone')) {
             tasks.push({
                 task_name: taskName,
                 description: taskDescription,
-                deadline_date: deadlineDate,
+                week: weekValue,
                 priority: taskPriority,
                 assigned_to_type: assigneeType,
                 assigned_to: assignedTo
