@@ -256,48 +256,31 @@
     }
 
     function renderTasks(containerId, tasks) {
-        const container = document.getElementById(containerId);
-        if (!container) {
-            console.error(`Container element with ID '${containerId}' not found.`);
-            return;
-        }
-        
-        container.innerHTML = '';
-
-        if (tasks.length === 0) {
-            container.innerHTML = `<li class="no-tasks">No tasks available.</li>`;
-            return;
-        }
-
-        tasks.sort((a, b) => new Date(a.start_date) - new Date(b.start_date))
-             .forEach(task => {
-            const taskElement = document.createElement('li');
-            taskElement.className = 'task-card';
-            
-            // Format dates nicely
-            const startDate = new Date(task.start_date).toLocaleDateString();
-            const deadlineDate = new Date(task.deadline_date).toLocaleDateString();
-            
-            let projectName = task.project_name || '';
-            let projectDetails = task.project_description || '';
-            
-            taskElement.innerHTML = `
-                ${projectName ? `<h4>Project: ${projectName}</h4>` : ''}
-                ${projectDetails ? `<p><strong>Project Details:</strong> ${projectDetails}</p>` : ''}
-                <div class="task-title">${task.task_name}</div>
-                <div class="task-meta">
-                    <div class="assignee-info">Assigned to: ${task.assigned_to}</div>
-                    <span class="priority-tag priority-${task.priority.toLowerCase()}">${task.priority}</span>
-                </div>
-                <div class="task-description">${task.description}</div>
-                <div class="task-dates">
-                    <p><strong>Start Date:</strong> ${startDate}</p>
-                    <p><strong>Deadline:</strong> ${deadlineDate}</p>
-                </div>
-            `;
-            container.appendChild(taskElement);
-        });
+    const container = document.getElementById(containerId);
+    if (!container) {
+        console.error(`Container element with ID '${containerId}' not found.`);
+        return;
     }
+    container.innerHTML = '';
+    if (tasks.length === 0) {
+        container.innerHTML = `<li class="no-tasks">No tasks available.</li>`;
+        return;
+    }
+    tasks.forEach(task => {
+        const taskElement = document.createElement('li');
+        taskElement.className = 'task-card';
+        taskElement.innerHTML = `
+            <div class="task-title">${task.task_name}</div>
+            <div class="task-meta">
+                <div class="assignee-info">Assigned to: ${task.assigned_to}</div>
+                <span class="priority-tag priority-${task.priority.toLowerCase()}">${task.priority}</span>
+            </div>
+            <div class="task-description">${task.description}</div>
+            <div><strong>Deadline:</strong> ${task.deadline || 'N/A'}</div>
+        `;
+        container.appendChild(taskElement);
+    });
+}
 
     // --- Submit Progress Modal ---
     function openSubmitModal() {
@@ -305,69 +288,50 @@
         if (!modal) return; // Robust check
         modal.style.display = 'flex';
         
-        // Fetch tasks and populate the dropdown
-        fetch(`/get_tasks/${groupId}`)
-            .then(response => response.json())
-            .then(data => {
-                const taskSelect = document.getElementById('taskSelect');
-                if (!taskSelect) return; // Robust check
-                taskSelect.innerHTML = '';
-                
-                const tasksToReportOn = [...data.tasks_this_week, ...data.tasks_next_week].filter(task => task.assigned_to === username);
-                
-                if (tasksToReportOn.length === 0) {
-                    taskSelect.innerHTML = `<option value="">No tasks available</option>`;
-                    return;
-                }
-
-                tasksToReportOn.forEach(task => {
-                    const option = document.createElement('option');
-                    option.value = task.task_id;
-                    option.textContent = task.task_name;
-                    taskSelect.appendChild(option);
-                });
-            })
-            .catch(error => {
-                console.error('Error fetching tasks for progress modal:', error);
-                alert('Could not load tasks for progress submission.');
+    // Fetch tasks and populate the dropdown
+    fetch(`/get_tasks/${groupId}`)
+        .then(response => response.json())
+        .then(data => {
+            const taskSelect = document.getElementById('taskSelect');
+            if (!taskSelect) return; // Robust check
+            taskSelect.innerHTML = '';
+            data.tasks.forEach(task => {
+                const option = document.createElement('option');
+                option.value = task.id || task.task_id || task._id || task.name;
+                option.textContent = task.task_name;
+                taskSelect.appendChild(option);
             });
-    }
-
-    function closeSubmitModal() {
-        const modal = document.getElementById('submitProgressModalContainer');
-        if (modal) {
-            modal.style.display = 'none';
-        }
-    }
+        })
+        .catch(error => {
+            console.error('Error fetching tasks for modal:', error);
+            const taskSelect = document.getElementById('taskSelect');
+            if (taskSelect) {
+                taskSelect.innerHTML = '<option disabled>Error loading tasks</option>';
+            }
+        });
+}
 
     function submitProgress(event) {
         event.preventDefault();
-
         const taskSelect = document.getElementById('taskSelect');
         const taskId = taskSelect ? taskSelect.value : null;
         const progressText = document.getElementById('progressText');
         const fileInput = document.getElementById('progressFile');
-
         if (!taskId) {
             alert('Please select a task.');
             return;
         }
-
         if (!progressText || (!progressText.value && !fileInput.files[0])) {
             alert('Please provide some progress notes or a file.');
             return;
         }
-
         const formData = new FormData();
         formData.append('progress', progressText.value);
-        // This is the new line of code that sets mark_completed to true
         formData.append('mark_completed', true);
         if (fileInput.files[0]) {
             formData.append('file', fileInput.files[0]);
         }
-
         const url = `/submit_progress/${username}/${groupId}/${taskId}`;
-        
         fetch(url, {
             method: 'POST',
             body: formData,
@@ -390,7 +354,9 @@
     }
 
     // --- Initial Load ---
-    document.addEventListener('DOMContentLoaded', fetchAndRenderTasks);
+    document.addEventListener('DOMContentLoaded', function() {
+        fetchAndRenderTasks();
+    });
 </script>
 
 <div class="right-panel" id="taskPanel">
