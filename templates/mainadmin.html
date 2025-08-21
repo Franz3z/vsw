@@ -35,7 +35,13 @@
                     if (data.success) {
                         const taskSelect = document.getElementById('taskSelect');
                         taskSelect.innerHTML = '';
-                        data.tasks.forEach(task => {
+                        const allTasks = [
+                            ...(data.tasks_this_week || []),
+                            ...(data.tasks_next_week || []),
+                            ...(data.completed_tasks || []),
+                            ...(data.tasks_no_deadline || [])
+                        ];
+                        allTasks.forEach(task => {
                             const option = document.createElement('option');
                             option.value = task.task_id;
                             option.textContent = task.task_name;
