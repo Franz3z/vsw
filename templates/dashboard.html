@@ -27,21 +27,33 @@
 
         <!-- Profile Section -->
 <div id="profile" class="feature-section">
-        <h2>Your Profile</h2>
-        <p><strong>Username:</strong> {{ username }}</p>
-        <p><strong>Credentials:</strong> Student/Administrator based on groups</p>
-        <p>Here are the groups you've joined:</p>
-        <ul class="group-list">
-            {% for group_id, group_info in groups.items() %}
-                <li>
-                    <a href="{{ url_for('group_redirect', username=username, group_id=group_id) }}">
-                        {{ group_info['group_name'] }} - {{ group_info['role'] | capitalize }}
-                    </a>
-                </li>
-            {% endfor %}
-        </ul>
-        <button class="close-button" onclick="closeFeature('profile')">Close</button>
-    </div>
+    <h2>Your Profile</h2>
+    <p><strong>Username:</strong> {{ username }}</p>
+    <p><strong>Credentials:</strong>
+        {% set first_role = None %}
+        {% for group_id, group_info in groups.items() %}
+            {% if not first_role %}
+                {% set first_role = group_info['role'] %}
+            {% endif %}
+        {% endfor %}
+        {% if first_role %}
+            {{ first_role | capitalize }}
+        {% else %}
+            No group/role found
+        {% endif %}
+    </p>
+    <p>Here are the groups you've joined:</p>
+    <ul class="group-list">
+        {% for group_id, group_info in groups.items() %}
+            <li>
+                <a href="{{ url_for('group_redirect', username=username, group_id=group_id) }}">
+                    {{ group_info['group_name'] }} - {{ group_info['role'] | capitalize }}
+                </a>
+            </li>
+        {% endfor %}
+    </ul>
+    <button class="close-button" onclick="closeFeature('profile')">Close</button>
+</div>
 
         <!-- Create Group Section -->
     <div id="createGroup" class="feature-section create-group-container">
