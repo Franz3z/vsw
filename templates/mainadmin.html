@@ -101,49 +101,50 @@
                 <button id="joinBtn">Join Call</button>
                 <button id="leaveBtn" disabled>Leave Call</button>
             </div>
-            <script>
-                // Voice Call Functions
-                async function joinVoiceCall() {
-                    if (!AgoraRTC.checkSystemRequirements()) {
-                        alert("Your browser does not support WebRTC.");
-                        return;
-                    }
-
-                    client = AgoraRTC.createClient({ mode: "rtc", codec: "h264" });
-                    await client.join(APP_ID, CHANNEL, null, UID);
-                    localTrack = await AgoraRTC.createMicrophoneAudioTrack();
-                    await client.publish(localTrack);
-
-                    document.getElementById('joinBtn').disabled = true;
-                    document.getElementById('leaveBtn').disabled = false;
-
-                    client.on("user-published", async (user, mediaType) => {
-                        if (mediaType === "audio") {
-                            await client.subscribe(user, mediaType);
-                            user.audioTrack.play();
-                        }
-                    });
-                    console.log("Joined call.");
-                }
-
-                async function leaveVoiceCall() {
-                    if (localTrack) {
-                        localTrack.close();
-                        localTrack = null;
-                    }
-                    if (client) {
-                        client.leave(() => {
-                            document.getElementById('joinBtn').disabled = false;
-                            document.getElementById('leaveBtn').disabled = true;
-                            console.log("Left call.");
-                        }, err => {
-                            console.error("Leave failed: ", err);
-                        });
-                        client = null;
-                    }
-                }
-            </script>
         </div>
+        
+        <script>
+            // Voice Call Functions
+            async function joinVoiceCall() {
+                if (!AgoraRTC.checkSystemRequirements()) {
+                    alert("Your browser does not support WebRTC.");
+                    return;
+                }
+
+                client = AgoraRTC.createClient({ mode: "rtc", codec: "h264" });
+                await client.join(APP_ID, CHANNEL, null, UID);
+                localTrack = await AgoraRTC.createMicrophoneAudioTrack();
+                await client.publish(localTrack);
+
+                document.getElementById('joinBtn').disabled = true;
+                document.getElementById('leaveBtn').disabled = false;
+
+                client.on("user-published", async (user, mediaType) => {
+                    if (mediaType === "audio") {
+                        await client.subscribe(user, mediaType);
+                        user.audioTrack.play();
+                    }
+                });
+                console.log("Joined call.");
+            }
+
+            async function leaveVoiceCall() {
+                if (localTrack) {
+                    localTrack.close();
+                    localTrack = null;
+                }
+                if (client) {
+                    client.leave(() => {
+                        document.getElementById('joinBtn').disabled = false;
+                        document.getElementById('leaveBtn').disabled = true;
+                        console.log("Left call.");
+                    }, err => {
+                        console.error("Leave failed: ", err);
+                    });
+                    client = null;
+                }
+            }
+        </script>
             
         <div class="right-panel" id="taskPanel">
             <button class="panel-toggle" id="taskPanelToggle">≡</button>
@@ -292,7 +293,6 @@
             try {
                 const response = await fetch(url, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username: username })
                 });
 
@@ -773,67 +773,48 @@
                         <button type="button" class="cancel-button" onclick="deleteCustomRole()">Remove Role</button>
                         `;
 
-                        content.innerHTML = html;
-                    } else {
-                        content.innerHTML = 'Error loading group members or roles.';
-                        console.error('Error from server:', data.message);
-                    }
-                })
-                .catch(err => {
-                    console.error('Error fetching group members:', err);
-                    document.getElementById('roleManagementContent').innerHTML = 'Error loading group members.';
-                });
-        }
+                        taskEntryDiv.innerHTML = `
+                            <h5>Task #${projectIdCounter}</h5>
+                            <label for="${taskId}-name">Task Name:</label>
+                            <input type="text" id="${taskId}-name" placeholder="Task Name" required>
+                            <label for="${taskId}-description">Description:</label>
+                            <textarea id="${taskId}-description" placeholder="Task Description" rows="2"></textarea>
 
-        function createNewRole() {
-            const newRoleName = document.getElementById('newRoleName').value.trim();
-            if (!newRoleName) { alert('Please enter a role name.'); return; }
+                            <label for="${taskId}-start-date">Start Date:</label>
+                            <input type="date" id="${taskId}-start-date" required>
 
-            fetch(`/create_role/${groupId}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ role_name: newRoleName })
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    alert(data.message);
-                    openRoleManagement();
-                } else {
-                    alert('Failed to create role: ' + data.message);
-                }
-            })
-            .catch(err => {
-                console.error('Error creating role:', err);
-                alert('Error creating role.');
-            });
-        }
+                            <label for="${taskId}-deadline-date">Deadline Date:</label>
+                            <input type="date" id="${taskId}-deadline-date" required>
 
-        function deleteCustomRole() {
-            const roleToDelete = document.getElementById('roleToDelete').value;
-            if (!roleToDelete) { alert('Please select a role to remove.'); return; }
+                            <label for="${taskId}-priority">Priority:</label>
+                            <select id="${taskId}-priority">
+                                <option value="High">High</option>
+                                <option value="Medium">Medium</option>
+                                <option value="Low">Low</option>
+                            </select>
 
-            const userConfirmation = confirm(`Are you sure you want to remove the role "${roleToDelete}"? This action cannot be undone.`);
-            if (!userConfirmation) { return; }
+                            <label for="${taskId}-assignee-type">Assign To:</label>
+                            <select id="${taskId}-assignee-type" onchange="toggleProjectTaskAssignee('${taskId}')">
+                                <option value="user">Specific User</option>
+                                <option value="role">Role</option>
+                                <option value="everyone">Everyone in Group</option>
+                            </select>
 
-            fetch(`/delete_role/${groupId}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ role_name: roleToDelete })
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    alert(data.message);
-                    openRoleManagement();
-                } else {
-                    alert('Failed to remove role: ' + data.message);
-                }
-            })
-            .catch(err => {
-                console.error('Error removing role:', err);
-                alert('Error removing role.');
-            });
+                            <div id="${taskId}-user-select-div">
+                                <label for="${taskId}-assignee-user">Select User:</label>
+                                <select id="${taskId}-assignee-user">
+                                    {% for member in members %}
+                                    <option value="{{ member.username }}">{{ member.username }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div id="${taskId}-role-select-div" style="display:none;">
+                                <label for="${taskId}-assignee-role">Select Role:</label>
+                                <select id="${taskId}-assignee-role"></select>
+                            </div>
+
+                            <button type="button" class="cancel-button" onclick="removeProjectTask('${taskId}')">Remove Task</button>
+            `;
         }
 
         function saveRoles() {
@@ -997,7 +978,8 @@
                 const taskId = taskForm.id;
                 const taskName = document.getElementById(`${taskId}-name`).value.trim();
                 const taskDescription = document.getElementById(`${taskId}-description`).value.trim();
-                const taskWeek = document.getElementById(`${taskId}-week`).value;
+                const startDate = document.getElementById(`${taskId}-start-date`).value;
+                const deadlineDate = document.getElementById(`${taskId}-deadline-date`).value;
                 const taskPriority = document.getElementById(`${taskId}-priority`).value;
                 const assigneeType = document.getElementById(`${taskId}-assignee-type`).value;
                 let assignedTo = ''; // Initialize as empty string
@@ -1010,13 +992,14 @@
                     assignedTo = 'everyone'; // Explicitly set to 'everyone'
                 }
 
-                if (taskName && (assignedTo || assigneeType === 'everyone')) { // Ensure assignedTo has a value or is 'everyone'
+                if (taskName && startDate && deadlineDate && (assignedTo || assigneeType === 'everyone')) {
                     tasks.push({
                         task_name: taskName,
                         description: taskDescription,
-                        week_category: taskWeek, // Use week_category to match backend
+                        start_date: startDate,
+                        deadline_date: deadlineDate,
                         priority: taskPriority,
-                        assigned_to_type: assigneeType, // NEW: Send assigneeType
+                        assigned_to_type: assigneeType,
                         assigned_to: assignedTo
                     });
                 } else {
@@ -1142,12 +1125,12 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     task_id: taskId,
-                    assigned_to_type: assigneeType, // NEW: Send assigneeType
+                    assigned_to_type: assigneeType,
                     assigned_to: assignedTo
                 })
             })
-            .then(res => res.json())
-            .then(data => {
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
                 if (data.success) {
                     alert('Task assigned successfully!');
                     closeAssignModal();
@@ -1156,7 +1139,7 @@
                     alert('Failed to assign task: ' + data.message);
                 }
             })
-            .catch(err => {
+            .catch(function(err) {
                 console.error('Error assigning task:', err);
                 alert('Error assigning task.');
             });
@@ -1259,23 +1242,27 @@
                 const body = document.getElementById('completedTasksModalBody');
                 if (body) body.innerHTML = `<p class="error-message">Error loading completed tasks: ${error.message}</p>`;
             });
-    }
-
-    function closeCompletedTasksModal() {
-        const modal = document.getElementById('completedTasksModal');
-        if (modal) modal.style.display = 'none';
+        }
     }
     </script>
+
     <script type="module" src="/static/bundle.js"></script>
-</body>
-    <!-- Completed Tasks Modal -->
     <div id="completedTasksModal" class="modal-backdrop" style="display:none;">
         <div class="modal-content">
             <h3>Completed Tasks</h3>
-            <button class="modal-close-btn" onclick="closeCompletedTasksModal()">&times;</button>
+            <button type="button" class="modal-close-btn" onclick="hideModal('completedTasksModal')">&times;</button>
             <div id="completedTasksModalBody">
                 <!-- Completed tasks will be rendered here by JS -->
             </div>
         </div>
     </div>
+    <script>
+        function hideModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+        window.closeCompletedTasksModal = function() {
+            hideModal('completedTasksModal');
+        };
+    </script>
+</body>
 </html>
