@@ -21,7 +21,7 @@ load_dotenv()
 print("--- VERCEL DEPLOYMENT TEST: app.py started ---")
 
 app = Flask(__name__)
-DROPBOX_ACCESS_TOKEN = "sl.u.AF7eZHZAUU-vaoON1YN3uG7inq-QaLAwJXKAPuCbI-I6ozsjIla6KN4XUvyCOe-C8rAZFxcyrBqbwpKog-E-zDJZ6UZgD5qiGfnyIJS-rJzO3a8Rp_8mumq4Yrji9thTlbyvGyH9sOG2Kye1VFWTwHC4B2dYDUnYJ1HWTj9DND4eKctn_ZV3NQiVLPjHfOxDGRXLMlkA0UnTDAgNeBi7YnAV4bDSWinIzt6RwK3pV61Kq_p6Hi-keDhTZbAWd4HIVkJ1m5blQbgQUlsHW5FSQ4aDq8a56OvlMneGet7u9fszjMqsxUDynSl5h8cG6Eq4niLS6RMt6I_6lo4vK1Yz0Kc_4iSn_BrxrG2g8O71_LtCT13KhujB6D3aWBIbHuahG0-zTpcN3BiEK11hIp3wj6mzNmjov1Il_i9_Ir_Z6CB9O5d6RyY7W7JxcHQXDnMURW7GAfaW8ATgZ9nCrJXZmoqcRAZiQrUF5nPOqYucJ-EQhH13uwtP0pCwQywE0wuL1_UMeGiO-XngZnKg-L85GwRg8SM7BcpRys6Wl-QzDou6_woiXo4-b0LS_ccavfKZxgdHYEWhOrupHD2qRlcDLvELQLgrMlrlYdTmk1ockwPF47zRve6_xKr7m9aXLcDwCcYAm-Q0h7GaQXb-xgpM0DtH3MOg2s2WZa0msR0url9TJozThwBfMyQwC1b05oKp_pIVglNDuV2nNA1JKtfx3yl9NkQrz_neeW5hrkm3rF9xVcXan34uOmPyQnAdwtswmjObAthGbl4RgcdeBbFSAlVHyB4WAdTOZna7q7gwWJHvJZ_VY-9zpJdtqSpddmX9eXZKJ85LtFifFXcMgfZLDB4NkIus7RWkVX42r434t5MiTZ_OX0jzj7bPgLOeJO17e0NTsccbKaAvHjeSPJxohxqFumIs4HRLrEAHi2movzylJg2P8ltNBenIO0q37ZeRH_L3u99X1jiGbVF5-l4iVEE4JUrZtUK7klJGmeftsshkuowLAaMidjUZ0hXL-HB-2fpJczdrsBSI1Vbcg8wFOc9wteOKkzU0YETiXpl9u0cUaIdmrnJrCn38D3UlC__0W7Ye4h-Aie_glEe0TfZoh3qGTIGhBpp1Gbt_MyOm4_36bdZqdGuj8QRvt4tqybPML9Gv-52YUS3LjgDNlYIyqHsJDZ9J5k_JwRevftnoElu2e9_aC-2QBXZmZ2Rid2NQfn4jVL7sTIsesxx0Nq6ztaB-0DjL53i9emof3H5evYEmKgryvFR3pfDBC8swjnnCV-OdMTE2RTDxIsX89qDhXPkuXmstJeHulDP2jx0jW1bmvS5cj_l23cOl0jnkbHp4OzacbpfZWZcqcdIDuc1LnpDXKU8TP5FeBFkOKqJ-NCSA_bIovjAsPWcKhU97wwPe9tIscWhLJ29N6RHXCGLgaoLKOJCCUVxKcWMnrfNg0lXvIZG07aVs1eZMlidyJHP5UxNOePd5dMAJKvslsgqy6JtS"
+DROPBOX_ACCESS_TOKEN = "sl.u.AF6mqFNAy-f98DiZ8Dxv39PbFzRqQdhV7jh_mz-NXS1Ul9qRlpK2Y-GxTH4Vf7Kh1Sr6A_vLCSVTpD8h9Z_raWFLgtxfx4EtHd-yCuLTvsbNqJqK1Y0coPgEfKV3ykbTL1X6Zsy_xUNLjZucpdqU6iOLWRrjgxRXkaQs7TVC0m9z0kky9HIyBfYZn5UfIRTpowC1ZyEO0R9PAaRyuXSDreuQyRDhbill2DLPzW64S0Ban95TOd8mkp228p_z6DHXle18TL_WLIIzle4a9VgWMXRV9xk92iyerTKKUT91sC5aDDWPjcKWNdUhxPmhUEn_E2sKVmc7-OcCjkXdEeID4CMozIXoJomYPz3yQbi1J5BKDOnbClAhQsXNmR5HOzorZW-KyvHIPyBYNwvYX44POrU4ohWfsq3uDYhCcwZJXYYnqG_pCiYf5gQyObouyBcFfpGKw8fjNSzE1VjlNrn8flREO_4HnE-nxgJa6VvJBkk_uo0dmfXT46QkYSwDtjlXP3ccvwabi3JBEGnUF-Ux5LvCfVBV8Xu-W4XYgz_Cm6NoXCwch-iXrCeHo-36KlGYyb1q4_iLDU-dwxc0TVU4yJIl3Kz5b3ZdlcgysC4SulFVn_rgDizIF5I-Y3-EmkwXyEj2JKheeKgTxF47P4Xu29m4qanWq4mf3ZYmgwEUe1jasCvrpjMUPurbQOTR_Op3N8igsPtZDbOW6f4zWbAVoweJAT7-fuPY3eLYyZzgvdgiXig2iKF7FtglsfwVXValwTor5V5HvzQMl9yznI7Zjva20acly_6HEV1Zt1mqVHaR0GCiMOReV1OmR_iJ8Tk7nxFkb64wD52U2erOTuPFqwe07OTizHPfP13cK1S_ETpyE6YWTqQGWWVWhe_I3ZDsDzhNekIcXPpaz4emAS-Eo5tU-Ux5YGGwj9r7jt58yKTGv22pBCVWhapsylJ4hL2Ftaq5iIihzf5GaXT3HSGN3qy_wpjTJziPSOH9QX72sKOaXZ5SVpXnBtjptGkP3-FXQDI7OggZjFOONzdQKFbkph3udx9BCkXByWvfpFtvl_gV4__WE0AfN9uQF74TW2BfSKw_bD3DmYF-jHMOiTmyWtukLBZ8-vOx3TgraBoXT_7x4a4pmK8PunD9bofeU2z9OYyV6PjiBoO8NmQiQE-Lz-3iYsLOyOwE1kXtcb9Ess4AQlayujSow4LS8GqQ0sAmRjaFshxtmmW0z9DDjgIfHbAXcYORKRyBKdY4XUBschY35uCSiCArKqrF6qNuj0do_M1PxOEoTMLf_7ItHFmex3e8bX1t24-dQwcObWv1EmMv_WomzeKMQikonkRLrMjksZLDhNBZBMvcmrwPFDGPgZwiYa910kWT-a2-X6LtwVVaaFoCqQ2QDbxScr2O2_g_5s3HzQu_5JqhehxkC9pZPm2C-pQcMLgsOWokiqrc9A_7p7BSCJlWNv23TlNl6M1EpTY"
 dbx = dropbox.Dropbox(DROPBOX_ACCESS_TOKEN)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'your_super_secret_fallback_key_CHANGE_ME')
 logging.basicConfig(level=logging.DEBUG)
@@ -726,6 +726,17 @@ def create_project_with_tasks(group_id):
                 except ValueError:
                     deadline_date = None # Fallback if week_category is malformed
             
+            # Parse start and deadline dates
+            start_date_str = task_data.get('start_date')
+            deadline_date_str = task_data.get('deadline_date')
+            
+            try:
+                start_date = datetime.fromisoformat(start_date_str) if start_date_str else None
+                deadline_date = datetime.fromisoformat(deadline_date_str) if deadline_date_str else None
+            except ValueError as e:
+                logging.error(f"Invalid date format in task data: {e}")
+                return jsonify({'success': False, 'message': f'Invalid date format: {e}'}), 400
+
             task_entry = {
                 'project_id': project_id, # Link task to project
                 'task_name': task_name,
@@ -735,8 +746,9 @@ def create_project_with_tasks(group_id):
                 'priority': priority,
                 'completed': False,
                 'progress_reports': {},
-                'week_category': week_category, # Store the selected week category
-                'deadline': deadline_date.strftime('%Y-%m-%d') if deadline_date else '' # Store formatted deadline
+                'start_date': start_date.isoformat() if start_date else '',
+                'deadline_date': deadline_date.isoformat() if deadline_date else '',
+                'week_category': get_week_category(start_date_str, deadline_date_str)
             }
             
             new_task_ref = tasks_ref.push(task_entry)
@@ -1155,10 +1167,41 @@ def update_task_details(group_id, task_id):
         if not data:
             return jsonify({'success': False, 'message': 'No data provided.'}), 400
 
+        # If we're updating dates, validate them and recalculate week category
+        start_date = data.get('start_date')
+        deadline_date = data.get('deadline_date')
+
+        if start_date or deadline_date:
+            # Get current task data to merge with new dates
+            task_ref = db.reference(f'groups/{group_id}/tasks/{task_id}')
+            current_task = task_ref.get()
+            if not current_task:
+                return jsonify({'success': False, 'message': 'Task not found.'}), 404
+
+            # Use existing dates if not being updated
+            start_date = start_date or current_task.get('start_date', '')
+            deadline_date = deadline_date or current_task.get('deadline_date', '')
+
+            try:
+                # Validate date formats
+                if start_date:
+                    datetime.fromisoformat(start_date)
+                if deadline_date:
+                    datetime.fromisoformat(deadline_date)
+            except ValueError as e:
+                return jsonify({'success': False, 'message': f'Invalid date format: {e}'}), 400
+
+            # Calculate new week category based on dates
+            data['week_category'] = get_week_category(start_date, deadline_date)
+
         task_ref = db.reference(f'groups/{group_id}/tasks/{task_id}')
         task_ref.update(data)
         
-        return jsonify({'success': True, 'message': 'Task details updated successfully.'})
+        return jsonify({
+            'success': True, 
+            'message': 'Task details updated successfully.',
+            'week_category': data.get('week_category')
+        })
     except Exception as e:
         logging.error(f"Error updating task {task_id}: {e}")
         traceback.print_exc()
@@ -1227,26 +1270,36 @@ def download_file(filename):
     else:
         return 'File not found.', 404
 
-def get_week_category(deadline_str):
-    if not deadline_str:
-        return 'no_deadline'
+def get_week_category(start_date_str, deadline_date_str):
+    if not start_date_str or not deadline_date_str:
+        return 'invalid_date'
 
     try:
-        deadline = datetime.fromisoformat(deadline_str)
+        start_date = datetime.fromisoformat(start_date_str)
+        deadline_date = datetime.fromisoformat(deadline_date_str)
         today = datetime.now()
         
-        # Calculate the difference in days
-        time_difference = deadline.date() - today.date()
+        # Calculate the start of this week and next week
+        start_of_this_week = today - timedelta(days=today.weekday())
+        start_of_this_week = start_of_this_week.replace(hour=0, minute=0, second=0, microsecond=0)
+        start_of_next_week = start_of_this_week + timedelta(days=7)
+        start_of_following_week = start_of_next_week + timedelta(days=7)
         
-        if time_difference.days <= 0:
-            return 'overdue'
-        elif time_difference.days <= 7:
+        # Categorize based on start_date
+        if start_date < start_of_this_week:
+            if deadline_date >= start_of_this_week:
+                return 'this_week'
+            else:
+                return 'overdue'
+        elif start_date < start_of_next_week:
             return 'this_week'
-        else:
+        elif start_date < start_of_following_week:
             return 'next_week'
+        else:
+            return 'following_weeks'
             
     except ValueError:
-        logging.error(f"Invalid deadline format: {deadline_str}")
+        logging.error(f"Invalid date format: start_date={start_date_str}, deadline_date={deadline_date_str}")
         return 'invalid_date'
 
 # --- Backend Routes ---
@@ -1264,36 +1317,63 @@ def get_tasks(group_id):
             return jsonify({
                 "tasks_this_week": [],
                 "tasks_next_week": [],
+                "tasks_following_weeks": [],
                 "completed_tasks": []
             }), 200
 
         tasks_this_week = []
         tasks_next_week = []
+        tasks_following_weeks = []
         completed_tasks = []
 
-        # Assuming task data has a 'deadline' and 'status' key
+        # Calculate week boundaries for debugging
+        today = datetime.now()
+        start_of_this_week = today - timedelta(days=today.weekday())
+        start_of_this_week = start_of_this_week.replace(hour=0, minute=0, second=0, microsecond=0)
+        
+        logging.debug(f"Processing tasks with reference date: today={today.isoformat()}, start_of_this_week={start_of_this_week.isoformat()}")
+
         for task_id, task_data in all_tasks.items():
             # Add task_id to the task data for front-end use
             task_data['task_id'] = task_id
+
             # Ensure file_url is present if file_path exists
             if 'file_path' in task_data:
-                # You may need to adjust this URL based on your static file serving
                 task_data['file_url'] = f"/static/uploads/{task_data['file_name']}" if 'file_name' in task_data else task_data['file_path']
-            # Categorize as completed if status is 'completed' or completed==True
+
+            # Handle completed tasks
             if task_data.get('status') == 'completed' or task_data.get('completed', False):
                 completed_tasks.append(task_data)
-            else:
-                # Then categorize by deadline for uncompleted tasks
-                week_category = get_week_category(task_data.get('deadline'))
-                if week_category == 'this_week' or week_category == 'overdue':
-                    tasks_this_week.append(task_data)
-                elif week_category == 'next_week':
-                    tasks_next_week.append(task_data)
-                # Tasks with no deadline or invalid dates will be ignored for these lists
+                continue
+
+            # Get start and deadline dates
+            start_date = task_data.get('start_date')
+            deadline_date = task_data.get('deadline_date')
+
+            logging.debug(f"Task {task_id} dates: start_date={start_date}, deadline_date={deadline_date}")
+
+            # Categorize tasks by week
+            week_category = get_week_category(start_date, deadline_date)
+            logging.debug(f"Task {task_id} categorized as: {week_category}")
+
+            if week_category == 'this_week' or week_category == 'overdue':
+                tasks_this_week.append(task_data)
+            elif week_category == 'next_week':
+                tasks_next_week.append(task_data)
+            elif week_category == 'following_weeks':
+                tasks_following_weeks.append(task_data)
+
+        # Sort tasks by deadline within each category
+        for task_list in [tasks_this_week, tasks_next_week, tasks_following_weeks]:
+            task_list.sort(key=lambda x: (
+                datetime.fromisoformat(x['deadline_date']) if x.get('deadline_date') else datetime.max,
+                datetime.fromisoformat(x['start_date']) if x.get('start_date') else datetime.max
+            ))
         
         return jsonify({
             "tasks_this_week": tasks_this_week,
             "tasks_next_week": tasks_next_week,
+            "tasks_following_weeks": tasks_following_weeks,
             "completed_tasks": completed_tasks
         }), 200
 
