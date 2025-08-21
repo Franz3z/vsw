@@ -1348,13 +1348,20 @@ def submit_progress(username, group_id, task_id):
             filename = secure_filename(file.filename)
             file_bytes = file.read()
             dropbox_path = f"/{filename}"
-            dbx.files_upload(file_bytes, dropbox_path, mute=True)
+            upload_result = dbx.files_upload(file_bytes, dropbox_path, mute=True)
+            logging.info(f"Dropbox upload result: {upload_result}")
+
             # Create a shared link
             shared_link_metadata = dbx.sharing_create_shared_link_with_settings(dropbox_path)
+            logging.info(f"Dropbox shared link metadata: {shared_link_metadata}")
+
+            # Use direct download link
+            file_url = shared_link_metadata.url.replace('?dl=0', '?dl=1')
             progress_data['file_name'] = filename
-            progress_data['file_url'] = shared_link_metadata.url
+            progress_data['file_url'] = file_url
         except Exception as e:
             logging.error(f"Error uploading file to Dropbox: {e}")
+            logging.error(traceback.format_exc())
             return f"Dropbox upload failed: {e}", 500
 
     progress_ref.set(progress_data)
