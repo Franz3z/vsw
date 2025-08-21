@@ -308,10 +308,27 @@ def mainadmin(username, group_id):
         week_boundaries[f'week_{i}'] = (week_start, week_start + timedelta(weeks=1))
 
 
+    # Fetch all projects for the group
+    projects_ref = group_ref.child('projects')
+    projects_data = projects_ref.get() or {}
+    project_lookup = {}
+    for proj_id, proj in projects_data.items():
+        project_lookup[proj_id] = {
+            'project_name': proj.get('project_name', ''),
+            'project_description': proj.get('description', '')
+        }
+
     for task_id, task in tasks_data.items():
         if not isinstance(task, dict):
             logging.warning(f"Skipping malformed task data for task_id: {task_id}. Data was not a dictionary: {task}")
             continue
+
+        # Attach project info if available
+        project_name = ''
+        project_description = ''
+        if 'project_id' in task and task['project_id'] in project_lookup:
+            project_name = project_lookup[task['project_id']]['project_name']
+            project_description = project_lookup[task['project_id']]['project_description']
 
         task_info = {
             'task_id': task_id,
@@ -322,7 +339,9 @@ def mainadmin(username, group_id):
             'progress_reports': task.get('progress_reports', {}),
             'assigned_type': task.get('assigned_type', 'user'),
             'deadline': task.get('deadline', ''),
-            'week_category': task.get('week_category', '')
+            'week_category': task.get('week_category', ''),
+            'project_name': project_name,
+            'project_description': project_description
         }
         logging.info(f"DEBUG: Processing task_id: {task_id}, task_info: {json.dumps(task_info)}")
         
@@ -455,10 +474,27 @@ def main(username, group_id):
         week_boundaries[f'week_{i}'] = (week_start, week_start + timedelta(weeks=1))
 
 
+    # Fetch all projects for the group
+    projects_ref = group_ref.child('projects')
+    projects_data = projects_ref.get() or {}
+    project_lookup = {}
+    for proj_id, proj in projects_data.items():
+        project_lookup[proj_id] = {
+            'project_name': proj.get('project_name', ''),
+            'project_description': proj.get('description', '')
+        }
+
     for task_id, task in tasks_data.items():
         if not isinstance(task, dict):
             logging.warning(f"Skipping malformed task data for task_id: {task_id}. Data was not a dictionary: {task}")
             continue
+
+        # Attach project info if available
+        project_name = ''
+        project_description = ''
+        if 'project_id' in task and task['project_id'] in project_lookup:
+            project_name = project_lookup[task['project_id']]['project_name']
+            project_description = project_lookup[task['project_id']]['project_description']
 
         task_info = {
             'task_id': task_id,
@@ -469,7 +505,9 @@ def main(username, group_id):
             'progress_reports': task.get('progress_reports', {}),
             'assigned_type': task.get('assigned_type', 'user'),
             'deadline': task.get('deadline', ''),
-            'week_category': task.get('week_category', '')
+            'week_category': task.get('week_category', ''),
+            'project_name': project_name,
+            'project_description': project_description
         }
         logging.info(f"DEBUG: Processing task_id: {task_id}, task_info: {json.dumps(task_info)}")
         
