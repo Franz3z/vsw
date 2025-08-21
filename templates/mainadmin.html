@@ -344,11 +344,8 @@
                 // Filter tasks to show only those assigned to the current user
                 const userTasksThisWeek = data.tasks_this_week.filter(task => task.assigned_to === username);
                 const userTasksNextWeek = data.tasks_next_week.filter(task => task.assigned_to === username);
-                const userCompletedTasks = data.completed_tasks.filter(task => task.assigned_to === username);
-
                 renderTasks('tasksThisWeek', userTasksThisWeek);
                 renderTasks('tasksNextWeek', userTasksNextWeek);
-                renderTasks('completedTasks', userCompletedTasks);
             })
             .catch(error => {
                 console.error('Error fetching tasks:', error);
@@ -361,10 +358,7 @@
                 if (tasksNextWeekContainer) {
                     tasksNextWeekContainer.innerHTML = `<p class="error-message">Error loading tasks: ${error.message}</p>`;
                 }
-                const completedTasksContainer = document.getElementById('completedTasks');
-                if (completedTasksContainer) {
-                    completedTasksContainer.innerHTML = `<p class="error-message">Error loading tasks: ${error.message}</p>`;
-                }
+                // Completed tasks are only shown in the modal now
             });
     }
 
