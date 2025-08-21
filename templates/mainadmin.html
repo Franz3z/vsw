@@ -160,6 +160,11 @@
                                 <span class="priority-tag priority-{{ task.priority|lower }}">{{ task.priority }}</span>
                             </div>
                             <div class="task-description">{{ task.description }}</div>
+                            {% if task.uploaded_file %}
+                            <div class="task-file">
+                                <a href="{{ url_for('uploaded_file', filename=task.uploaded_file) }}" target="_blank">View Uploaded File</a>
+                            </div>
+                            {% endif %}
                         </li>
                         {% else %}
                         <li class="no-tasks">No completed tasks</li>
@@ -181,6 +186,10 @@
                                 <span style="font-weight: bold;">Deadline:</span> {{ task.deadline }}
                             </div>
                             <div class="task-description">{{ task.description }}</div>
+                            <form action="{{ url_for('complete_task', group_id=group_id, task_id=task.task_id) }}" method="post" enctype="multipart/form-data" style="margin-top:10px;">
+                                <input type="file" name="uploaded_file" required>
+                                <button type="submit">Mark as Complete & Upload File</button>
+                            </form>
                         </li>
                         {% else %}
                         <li class="no-tasks">No tasks for this week</li>
