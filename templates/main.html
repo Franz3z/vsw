@@ -336,21 +336,6 @@
                 <h3>Group Tasks</h3>
 
                 <div class="task-section">
-                    <div class="collapsible">✅ Done</div>
-                    <ul id="done-tasks">
-                        {% for task in completed_tasks %}
-                        <li class="task-card">
-                            <div class="task-title">{{ task.task_name }}</div>
-                            <div class="task-meta">
-                                <div class="assignee-info">Assigned to: {{ task.assigned_to }}</div>
-                                <span class="priority-tag priority-{{ task.priority|lower }}">{{ task.priority }}</span>
-                            </div>
-                            <div class="task-description">{{ task.description }}</div>
-                        </li>
-                        {% else %}
-                        <li class="no-tasks">No completed tasks</li>
-                        {% endfor %}
-                    </ul>
                 </div>
 
                 <div class="task-section">
