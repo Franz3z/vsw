@@ -73,7 +73,7 @@
         }
 
         function openSubmitModal() {
-            showModal('submitTaskModal');
+            showModal('submitProgressModalContainer');
         }
 
         function openCompletedTasksModal() {
@@ -216,6 +216,7 @@
                         console.error("Leave failed: ", err);
                     });
                     client = null;
+                }
             }
         </script>
             
@@ -619,7 +620,10 @@ function fetchAndRenderTasks() {
     }
 
     // --- Initial Load ---
-    document.addEventListener('DOMContentLoaded', fetchAndRenderTasks);
+    document.addEventListener('DOMContentLoaded', function() {
+        fetchAndRenderTasks();
+        initCollapsibleSections();
+    });
 </script>
             
     <!-- Assign Modal -->
@@ -1269,7 +1273,6 @@ function submitAssignExistingTask() {
                 const body = document.getElementById('completedTasksModalBody');
                 if (body) body.innerHTML = `<p class="error-message">Error loading completed tasks: ${error.message}</p>`;
             });
-        }
     }
     </script>
 
