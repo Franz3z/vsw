@@ -8,9 +8,6 @@ app.py[cod]
 # Firebase/Google credentials
 firebase.json
 
-# Uploaded user files
-uploads/
-
 # Node.js modules (if using Webpack/Rollup)
 node_modules/
 
