@@ -1220,13 +1220,18 @@
                 completedTasks.forEach(task => {
                     const taskDiv = document.createElement('div');
                     taskDiv.className = 'task-card';
+                    let fileSection = '';
+                    if (task.file_url) {
+                        fileSection = `<a href="${task.file_url}" target="_blank" class="view-btn">View Uploaded File</a> ` +
+                                      `<a href="${task.file_url}" download class="download-btn">Download File</a>`;
+                    }
                     taskDiv.innerHTML = `
                         <h4>${task.task_name}</h4>
                         <p>${task.description}</p>
                         <p><strong>Assigned to:</strong> ${task.assigned_to}</p>
                         <p><strong>Priority:</strong> <span class="priority-${task.priority ? task.priority.toLowerCase() : ''}">${task.priority || ''}</span></p>
                         <p><strong>Deadline:</strong> ${task.deadline || 'N/A'}</p>
-                        ${task.file_url ? `<a href="${task.file_url}" target="_blank">View Uploaded File</a>` : ''}
+                        ${fileSection}
                     `;
                     body.appendChild(taskDiv);
                 });
