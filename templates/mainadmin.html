@@ -1202,4 +1202,14 @@
     </script>
     <script type="module" src="/static/bundle.js"></script>
 </body>
+    <!-- Completed Tasks Modal -->
+    <div id="completedTasksModal" class="modal-backdrop" style="display:none;">
+        <div class="modal-content">
+            <h3>Completed Tasks</h3>
+            <button class="modal-close-btn" onclick="closeCompletedTasksModal()">&times;</button>
+            <div id="completedTasksModalBody">
+                <!-- Completed tasks will be rendered here by JS -->
+            </div>
+        </div>
+    </div>
 </html>
