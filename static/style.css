@@ -1,5 +1,5 @@
 /* Completed Tasks Modal File Buttons */
-.download-btn, .view-btn {
+.download-btn, .view-btn, .open-btn {
     display: inline-block;
     margin: 6px 8px 6px 0;
     padding: 6px 16px;
@@ -12,7 +12,7 @@
     cursor: pointer;
     transition: background 0.2s;
 }
-.download-btn:hover, .view-btn:hover {
+.download-btn:hover, .view-btn:hover, .open-btn:hover {
     background: #1565c0;
     color: #fff;
     text-decoration: underline;
