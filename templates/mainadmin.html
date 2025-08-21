@@ -1238,7 +1238,8 @@
                     if (task.progress_reports) {
                         Object.values(task.progress_reports).forEach(report => {
                             if (report.file_url) {
-                                fileSection += `<br><a href="${report.file_url.replace('?dl=0', '?dl=1')}" class="download-btn">Download Progress File (Dropbox)</a>`;
+                                fileSection += `<br><a href="${report.file_url}" target="_blank" class="view-btn">View Progress File (Dropbox)</a> ` +
+                                                `<a href="${report.file_url.replace('?dl=0', '?dl=1')}" class="download-btn">Download Progress File</a>`;
                             }
                         });
                     }
