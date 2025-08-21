@@ -458,20 +458,15 @@ function fetchAndRenderTasks() {
                     return startDate >= followingMonday || deadlineDate >= followingMonday;
                 });
 
-                // Filter for current user's tasks if not admin
-                const userTasksThisWeek = tasksThisWeek.filter(task => task.assigned_to === username);
-                const userTasksNextWeek = tasksNextWeek.filter(task => task.assigned_to === username);
-                const userTasksFollowingWeeks = tasksFollowingWeeks.filter(task => task.assigned_to === username);
+                // For admin, show all tasks
+                renderTasks('this-week-tasks', tasksThisWeek);
+                renderTasks('next-week-tasks', tasksNextWeek);
 
-                // Render tasks for each section
-                renderTasks('this-week-tasks', userTasksThisWeek);
-                renderTasks('next-week-tasks', userTasksNextWeek);
-                
                 // Add following weeks section if needed
                 const taskPanelContent = document.querySelector('.task-panel-content');
                 let followingWeeksSection = document.getElementById('following-weeks-section');
-                
-                if (userTasksFollowingWeeks.length > 0) {
+
+                if (tasksFollowingWeeks.length > 0) {
                     if (!followingWeeksSection) {
                         const sectionHTML = `
                             <div class="task-section" id="following-weeks-section">
@@ -482,7 +477,7 @@ function fetchAndRenderTasks() {
                         taskPanelContent.insertAdjacentHTML('beforeend', sectionHTML);
                         initCollapsibleSections(); // Reinit collapsible functionality
                     }
-                    renderTasks('following-weeks-tasks', userTasksFollowingWeeks);
+                    renderTasks('following-weeks-tasks', tasksFollowingWeeks);
                 } else if (followingWeeksSection) {
                     followingWeeksSection.remove();
                 }
@@ -542,9 +537,10 @@ function fetchAndRenderTasks() {
                 const taskSelect = document.getElementById('taskSelect');
                 if (!taskSelect) return; // Robust check
                 taskSelect.innerHTML = '';
-                
-                const tasksToReportOn = [...data.tasks_this_week, ...data.tasks_next_week].filter(task => task.assigned_to === username);
-                
+
+                // For admin, show all tasks from both weeks
+                const tasksToReportOn = [...data.tasks_this_week, ...data.tasks_next_week];
+
                 if (tasksToReportOn.length === 0) {
                     taskSelect.innerHTML = `<option value="">No tasks available</option>`;
                     return;
