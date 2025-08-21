@@ -1228,18 +1228,21 @@
                 completedTasks.forEach(task => {
                     const taskDiv = document.createElement('div');
                     taskDiv.className = 'task-card';
-                    let fileSection = '';
-                    // Show main file if present (Dropbox link)
+                    let fileUrl = null;
+                    // Prefer main file, else first progress file
                     if (task.file_url) {
-                        fileSection += `<a href="${task.file_url}" target="_blank" class="open-btn">Open File</a>`;
-                    }
-                    // Show files from progress_reports if present (Dropbox links)
-                    if (task.progress_reports) {
-                        Object.values(task.progress_reports).forEach(report => {
+                        fileUrl = task.file_url;
+                    } else if (task.progress_reports) {
+                        for (const report of Object.values(task.progress_reports)) {
                             if (report.file_url) {
-                                fileSection += `<br><a href="${report.file_url}" target="_blank" class="open-btn">Open Progress File</a>`;
+                                fileUrl = report.file_url;
+                                break;
                             }
-                        });
+                        }
+                    }
+                    let fileSection = '';
+                    if (fileUrl) {
+                        fileSection = `<a href="${fileUrl}" target="_blank" class="open-btn">Open File</a>`;
                     }
                     taskDiv.innerHTML = `
                         <h4>${task.task_name}</h4>
