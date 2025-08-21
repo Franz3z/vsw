@@ -326,6 +326,7 @@
                 <form id="progressForm" onsubmit="submitProgress(event)">
                     <textarea id="progressText" name="progress" placeholder="Enter your progress notes..." required></textarea>
                     <input type="file" id="progressFile" name="file">
+                    <small>Files are stored and served locally by the server.</small>
                     <button type="submit" class="submit-button">Submit Progress</button>
                 </form>
             </div>
@@ -1236,10 +1237,9 @@
                     // Show files from progress_reports if present
                     if (task.progress_reports) {
                         Object.values(task.progress_reports).forEach(report => {
-                            if (report.file_name) {
-                                const url = `/static/uploads/${report.file_name}`;
-                                fileSection += `<br><a href="${url}" target="_blank" class="view-btn">View Progress File</a> ` +
-                                               `<a href="${url}" download class="download-btn">Download Progress File</a>`;
+                            if (report.file_url) {
+                                fileSection += `<br><a href="${report.file_url}" target="_blank" class="view-btn">View Progress File</a> ` +
+                                               `<a href="${report.file_url}" download class="download-btn">Download Progress File</a>`;
                             }
                         });
                     }
