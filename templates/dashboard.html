@@ -28,30 +28,24 @@
         <!-- Profile Section -->
 <div id="profile" class="feature-section">
     <h2>Your Profile</h2>
-    <p><strong>Username:</strong> {{ username }}</p>
-    <p><strong>Credentials:</strong>
-        {% set first_role = None %}
-        {% for group_id, group_info in groups.items() %}
-            {% if not first_role %}
-                {% set first_role = group_info['role'] %}
-            {% endif %}
-        {% endfor %}
-        {% if first_role %}
-            {{ first_role | capitalize }}
-        {% else %}
-            No group/role found
-        {% endif %}
-    </p>
-    <p>Here are the groups you've joined:</p>
-    <ul class="group-list">
-        {% for group_id, group_info in groups.items() %}
-            <li>
-                <a href="{{ url_for('group_redirect', username=username, group_id=group_id) }}">
-                    {{ group_info['group_name'] }} - {{ group_info['role'] | capitalize }}
-                </a>
-            </li>
-        {% endfor %}
-    </ul>
+    <div style="margin-bottom: 20px;">
+        <p><strong>Full Name:</strong> {{ first_name }} {{ middle_name }} {{ last_name }}</p>
+        <p><strong>Age:</strong> {{ age }}</p>
+        <p><strong>Email:</strong> {{ email }}</p>
+        <p><strong>Username:</strong> {{ username }}</p>
+    </div>
+    <div style="background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); padding: 18px; margin-bottom: 20px;">
+        <h3 style="margin-top:0;">Groups You've Joined</h3>
+        <ul class="group-list">
+            {% for group_id, group_info in groups.items() %}
+                <li>
+                    <a href="{{ url_for('group_redirect', username=username, group_id=group_id) }}">
+                        {{ group_info['group_name'] }} - {{ group_info['role'] | capitalize }}
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
     <button class="close-button" onclick="closeFeature('profile')">Close</button>
 </div>
 
