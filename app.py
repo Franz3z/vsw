@@ -1346,16 +1346,10 @@ def submit_progress(username, group_id, task_id):
             file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(file_path)
             progress_data['file_name'] = filename
-            # Upload to Firebase Storage
-            from firebase_admin import storage
-            bucket = storage.bucket()
-            blob = bucket.blob(f"{group_id}/{task_id}/{filename}")
-            blob.upload_from_filename(file_path)
-            blob.make_public()  # Optional: make the file publicly accessible
-            download_url = blob.public_url
-            progress_data['file_url'] = download_url
+            # Use local download route for file_url
+            progress_data['file_url'] = url_for('download_file', filename=filename, _external=True)
         except Exception as e:
-            logging.error(f"Error saving/uploading file: {e}")
+            logging.error(f"Error saving file locally: {e}")
             return f"File upload failed: {e}", 500
 
     progress_ref.set(progress_data)
