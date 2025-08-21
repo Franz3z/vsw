@@ -1199,6 +1199,48 @@
         // Global event listeners and intervals
         window.onload = initAdminInterface;
         setInterval(fetchMessages, 5000); // Fetch messages every 5 seconds
+
+    // --- Completed Tasks Modal ---
+    function openCompletedTasksModal() {
+        const modal = document.getElementById('completedTasksModal');
+        if (!modal) return;
+        modal.style.display = 'flex';
+        // Fetch completed tasks and render them in the modal
+        fetch(`/get_tasks/${groupId}`)
+            .then(response => response.json())
+            .then(data => {
+                const completedTasks = data.completed_tasks || [];
+                const body = document.getElementById('completedTasksModalBody');
+                if (!body) return;
+                if (completedTasks.length === 0) {
+                    body.innerHTML = '<p>No completed tasks.</p>';
+                    return;
+                }
+                body.innerHTML = '';
+                completedTasks.forEach(task => {
+                    const taskDiv = document.createElement('div');
+                    taskDiv.className = 'task-card';
+                    taskDiv.innerHTML = `
+                        <h4>${task.task_name}</h4>
+                        <p>${task.description}</p>
+                        <p><strong>Assigned to:</strong> ${task.assigned_to}</p>
+                        <p><strong>Priority:</strong> <span class="priority-${task.priority ? task.priority.toLowerCase() : ''}">${task.priority || ''}</span></p>
+                        <p><strong>Deadline:</strong> ${task.deadline || 'N/A'}</p>
+                        ${task.file_url ? `<a href="${task.file_url}" target="_blank">View Uploaded File</a>` : ''}
+                    `;
+                    body.appendChild(taskDiv);
+                });
+            })
+            .catch(error => {
+                const body = document.getElementById('completedTasksModalBody');
+                if (body) body.innerHTML = `<p class="error-message">Error loading completed tasks: ${error.message}</p>`;
+            });
+    }
+
+    function closeCompletedTasksModal() {
+        const modal = document.getElementById('completedTasksModal');
+        if (modal) modal.style.display = 'none';
+    }
     </script>
     <script type="module" src="/static/bundle.js"></script>
 </body>
