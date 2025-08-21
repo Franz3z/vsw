@@ -342,6 +342,11 @@ def mainadmin(username, group_id):
             project_name = project_lookup[task['project_id']]['project_name']
             project_description = project_lookup[task['project_id']]['project_description']
 
+        # Use week_category if present, else fallback to week field
+        week_category = task.get('week_category', '')
+        if not week_category and 'week' in task:
+            week_category = task['week']
+
         task_info = {
             'task_id': task_id,
             'task_name': task.get('task_name', 'No Name'),
@@ -351,25 +356,28 @@ def mainadmin(username, group_id):
             'progress_reports': task.get('progress_reports', {}),
             'assigned_type': task.get('assigned_type', 'user'),
             'deadline': task.get('deadline', ''),
-            'week_category': task.get('week_category', ''),
+            'week_category': week_category,
             'project_name': project_name,
             'project_description': project_description
         }
         logging.info(f"DEBUG: Processing task_id: {task_id}, task_info: {json.dumps(task_info)}")
-        
+
         if task.get('completed', False):
             completed_tasks.append(task_info)
             logging.info(f"DEBUG: Task {task_id} added to completed_tasks (completed: True).")
         else:
             # Check week category
-            if task_info['week_category'] == 'this_week':
+            if week_category == 'this_week':
                 tasks_this_week.append(task_info)
                 logging.info(f"DEBUG: Task {task_id} added to tasks_this_week (week_category: this_week).")
-            elif task_info['week_category'] == 'next_week':
+            elif week_category == 'next_week':
                 tasks_next_week.append(task_info)
                 logging.info(f"DEBUG: Task {task_id} added to tasks_next_week (week_category: next_week).")
+            elif week_category.startswith('week_'):
+                # You can add more week buckets if needed
+                pass
             else:
-                logging.info(f"DEBUG: Task {task_id} not categorized into this_week/next_week (week_category: {task_info['week_category']}).")
+                logging.info(f"DEBUG: Task {task_id} not categorized into this_week/next_week (week_category: {week_category}).")
 
     logging.info(f"DEBUG: Final tasks_this_week list: {json.dumps(tasks_this_week, indent=2)}")
     logging.info(f"DEBUG: Final tasks_next_week list: {json.dumps(tasks_next_week, indent=2)}")
