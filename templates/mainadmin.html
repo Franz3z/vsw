@@ -809,6 +809,17 @@ function fetchAndRenderTasks() {
             document.getElementById('assignModal').style.display = 'flex';
             showAssignPanel('main');
         }
+            // Add missing closeAssignModal function
+            function closeAssignModal() {
+                document.getElementById('assignModal').style.display = 'none';
+                // Optionally reset forms if needed
+                const assignExistingRoleForm = document.getElementById('assignExistingRoleForm');
+                if (assignExistingRoleForm) assignExistingRoleForm.reset();
+                const createProjectForm = document.getElementById('createProjectForm');
+                if (createProjectForm) createProjectForm.reset();
+                const assignExistingTaskForm = document.getElementById('assignExistingTaskForm');
+                if (assignExistingTaskForm) assignExistingTaskForm.reset();
+            }
 
         function closeAssignModal() {
             document.getElementById('assignModal').style.display = 'none';
@@ -1399,7 +1410,7 @@ function fetchAndRenderTasks() {
     <div id="completedTasksModal" class="modal-backdrop" style="display:none;">
         <div class="modal-content">
             <h3>Completed Tasks</h3>
-            <button type="button" class="modal-close-btn" onclick="hideModal('completedTasksModal')">×</button>
+            <button type="button" class="modal-close-btn" onclick="hideModal('completedTasksModal')">&#215;</button>
             <div id="completedTasksModalBody">
                 <!-- Completed tasks will be rendered here by JS -->
             </div>
