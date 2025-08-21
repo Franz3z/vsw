@@ -6,6 +6,81 @@
     <title>Admin Collaboration Space</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <script src="https://download.agora.io/sdk/release/AgoraRTC_N.js"></script>
+    <script>
+        // Global variables
+        const username = "{{ username }}";
+        const groupId = "{{ group_id }}";
+
+        // Modal functions
+        function showModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.style.display = 'flex';
+            }
+        }
+
+        function hideModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        function openAssignModal() {
+            showModal('assignModal');
+            // Fetch and populate tasks in the modal
+            fetch(`/get_all_tasks/${groupId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const taskSelect = document.getElementById('taskSelect');
+                        taskSelect.innerHTML = '';
+                        data.tasks.forEach(task => {
+                            const option = document.createElement('option');
+                            option.value = task.task_id;
+                            option.textContent = task.task_name;
+                            taskSelect.appendChild(option);
+                        });
+                    }
+                })
+                .catch(error => console.error('Error fetching tasks:', error));
+        }
+
+        function openApproveRequests() {
+            showModal('pendingRequestsModal');
+            // Fetch pending requests
+            fetch(`/get_pending_requests/${groupId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const requestsList = document.getElementById('pendingRequestsList');
+                        requestsList.innerHTML = '';
+                        data.pending_requests.forEach(request => {
+                            const requestItem = document.createElement('div');
+                            requestItem.className = 'pending-request-item';
+                            requestItem.innerHTML = `
+                                <span>${request.username}</span>
+                                <div class="request-actions">
+                                    <button onclick="approveRequest('${request.username}')">Approve</button>
+                                    <button onclick="denyRequest('${request.username}')">Deny</button>
+                                </div>
+                            `;
+                            requestsList.appendChild(requestItem);
+                        });
+                    }
+                })
+                .catch(error => console.error('Error fetching pending requests:', error));
+        }
+
+        function openSubmitModal() {
+            showModal('submitTaskModal');
+        }
+
+        function openCompletedTasksModal() {
+            showModal('completedTasksModal');
+            // Update completed tasks list here if needed
+        }
+    </script>
     </head>
 <body>
     <div class="container">
@@ -337,41 +412,105 @@
     </div>
 
 <script>
-    function fetchAndRenderTasks() {
-        fetch(`/get_tasks/${groupId}`)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                return response.json();
-            })
-            .then(data => {
-                console.log('Fetched task data:', data);
+    document.addEventListener('DOMContentLoaded', function() {
+    fetchAndRenderTasks();
+    // Set up polling for messages and tasks if needed
+    setInterval(fetchMessages, 5000);
+    setInterval(fetchAndRenderTasks, 30000);
+});
 
-                // Filter tasks to show only those assigned to the current user
-                const userTasksThisWeek = data.tasks_this_week.filter(task => task.assigned_to === username);
-                const userTasksNextWeek = data.tasks_next_week.filter(task => task.assigned_to === username);
-                renderTasks('tasksThisWeek', userTasksThisWeek);
-                renderTasks('tasksNextWeek', userTasksNextWeek);
+function fetchAndRenderTasks() {
+    if (!groupId) {
+        console.error('Group ID is not defined');
+        return;
+    }
+
+    fetch(`/get_tasks/${groupId}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Fetched task data:', data);
+
+                // Get all tasks and sort them by date
+                const allTasks = data.tasks || [];
+                const today = new Date();
+                const monday = new Date(today);
+                monday.setDate(today.getDate() - today.getDay() + 1); // Get Monday of current week
+                
+                const nextMonday = new Date(monday);
+                nextMonday.setDate(monday.getDate() + 7); // Get next Monday
+
+                const followingMonday = new Date(nextMonday);
+                followingMonday.setDate(nextMonday.getDate() + 7); // Get Monday after next
+
+                // Sort tasks into weeks based on start_date and deadline_date
+                const tasksThisWeek = allTasks.filter(task => {
+                    const startDate = new Date(task.start_date);
+                    const deadlineDate = new Date(task.deadline_date);
+                    return startDate >= monday && startDate < nextMonday || 
+                           (deadlineDate >= monday && deadlineDate < nextMonday);
+                });
+
+                const tasksNextWeek = allTasks.filter(task => {
+                    const startDate = new Date(task.start_date);
+                    const deadlineDate = new Date(task.deadline_date);
+                    return startDate >= nextMonday && startDate < followingMonday || 
+                           (deadlineDate >= nextMonday && deadlineDate < followingMonday);
+                });
+
+                const tasksFollowingWeeks = allTasks.filter(task => {
+                    const startDate = new Date(task.start_date);
+                    const deadlineDate = new Date(task.deadline_date);
+                    return startDate >= followingMonday || deadlineDate >= followingMonday;
+                });
+
+                // Filter for current user's tasks if not admin
+                const userTasksThisWeek = tasksThisWeek.filter(task => task.assigned_to === username);
+                const userTasksNextWeek = tasksNextWeek.filter(task => task.assigned_to === username);
+                const userTasksFollowingWeeks = tasksFollowingWeeks.filter(task => task.assigned_to === username);
+
+                // Render tasks for each section
+                renderTasks('this-week-tasks', userTasksThisWeek);
+                renderTasks('next-week-tasks', userTasksNextWeek);
+                
+                // Add following weeks section if needed
+                const taskPanelContent = document.querySelector('.task-panel-content');
+                let followingWeeksSection = document.getElementById('following-weeks-section');
+                
+                if (userTasksFollowingWeeks.length > 0) {
+                    if (!followingWeeksSection) {
+                        const sectionHTML = `
+                            <div class="task-section" id="following-weeks-section">
+                                <div class="collapsible">🗓️ Tasks in Following Weeks</div>
+                                <ul id="following-weeks-tasks"></ul>
+                            </div>
+                        `;
+                        taskPanelContent.insertAdjacentHTML('beforeend', sectionHTML);
+                        initCollapsibleSections(); // Reinit collapsible functionality
+                    }
+                    renderTasks('following-weeks-tasks', userTasksFollowingWeeks);
+                } else if (followingWeeksSection) {
+                    followingWeeksSection.remove();
+                }
             })
             .catch(error => {
                 console.error('Error fetching tasks:', error);
-                // Render an error message to the user, with robust element checking
-                const tasksThisWeekContainer = document.getElementById('tasksThisWeek');
-                if (tasksThisWeekContainer) {
-                    tasksThisWeekContainer.innerHTML = `<p class="error-message">Error loading tasks: ${error.message}</p>`;
-                }
-                const tasksNextWeekContainer = document.getElementById('tasksNextWeek');
-                if (tasksNextWeekContainer) {
-                    tasksNextWeekContainer.innerHTML = `<p class="error-message">Error loading tasks: ${error.message}</p>`;
-                }
-                // Completed tasks are only shown in the modal now
+                const containers = ['this-week-tasks', 'next-week-tasks', 'following-weeks-tasks'];
+                containers.forEach(id => {
+                    const container = document.getElementById(id);
+                    if (container) {
+                        container.innerHTML = `<li class="error-message">Error loading tasks: ${error.message}</li>`;
+                    }
+                });
             });
     }
 
     function renderTasks(containerId, tasks) {
         const container = document.getElementById(containerId);
-        // Add a check to prevent the TypeError if the container element is not found
         if (!container) {
             console.error(`Container element with ID '${containerId}' not found.`);
             return;
@@ -380,26 +519,35 @@
         container.innerHTML = '';
 
         if (tasks.length === 0) {
-            container.innerHTML = `<p>No tasks available.</p>`;
+            container.innerHTML = `<li class="no-tasks">No tasks available.</li>`;
             return;
         }
 
-        tasks.forEach(task => {
-            const taskElement = document.createElement('div');
+        tasks.sort((a, b) => new Date(a.start_date) - new Date(b.start_date))
+             .forEach(task => {
+            const taskElement = document.createElement('li');
             taskElement.className = 'task-card';
-            // Project details (if available)
+            
+            // Format dates nicely
+            const startDate = new Date(task.start_date).toLocaleDateString();
+            const deadlineDate = new Date(task.deadline_date).toLocaleDateString();
+            
             let projectName = task.project_name || '';
             let projectDetails = task.project_description || '';
-            // If not present, try to get from task.project_id (requires backend to provide project info)
-            // For now, show if available
+            
             taskElement.innerHTML = `
                 ${projectName ? `<h4>Project: ${projectName}</h4>` : ''}
                 ${projectDetails ? `<p><strong>Project Details:</strong> ${projectDetails}</p>` : ''}
-                <h5>Task: ${task.task_name}</h5>
-                <p><strong>Task Details:</strong> ${task.description}</p>
-                <p><strong>Priority:</strong> <span class="priority-${task.priority.toLowerCase()}">${task.priority}</span></p>
-                <p><strong>Deadline:</strong> ${task.deadline || 'N/A'}</p>
-                <p><strong>Assigned to:</strong> ${task.assigned_to}</p>
+                <div class="task-title">${task.task_name}</div>
+                <div class="task-meta">
+                    <div class="assignee-info">Assigned to: ${task.assigned_to}</div>
+                    <span class="priority-tag priority-${task.priority.toLowerCase()}">${task.priority}</span>
+                </div>
+                <div class="task-description">${task.description}</div>
+                <div class="task-dates">
+                    <p><strong>Start Date:</strong> ${startDate}</p>
+                    <p><strong>Deadline:</strong> ${deadlineDate}</p>
+                </div>
             `;
             container.appendChild(taskElement);
         });
@@ -816,6 +964,7 @@
                             <button type="button" class="cancel-button" onclick="removeProjectTask('${taskId}')">Remove Task</button>
             `;
         }
+    
 
         function saveRoles() {
             const primaryRoleSelects = document.querySelectorAll('#roleForm select[name^="primary_role_"]');
@@ -1250,7 +1399,7 @@
     <div id="completedTasksModal" class="modal-backdrop" style="display:none;">
         <div class="modal-content">
             <h3>Completed Tasks</h3>
-            <button type="button" class="modal-close-btn" onclick="hideModal('completedTasksModal')">&times;</button>
+            <button type="button" class="modal-close-btn" onclick="hideModal('completedTasksModal')">×</button>
             <div id="completedTasksModalBody">
                 <!-- Completed tasks will be rendered here by JS -->
             </div>
