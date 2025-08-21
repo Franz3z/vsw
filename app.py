@@ -1270,36 +1270,20 @@ def download_file(filename):
     else:
         return 'File not found.', 404
 
-def get_week_category(start_date_str, deadline_date_str):
-    if not start_date_str or not deadline_date_str:
-        return 'invalid_date'
-
+def get_week_category(deadline_str):
+    if not deadline_str:
+        return 'no_deadline'
     try:
-        start_date = datetime.fromisoformat(start_date_str)
-        deadline_date = datetime.fromisoformat(deadline_date_str)
+        deadline = datetime.fromisoformat(deadline_str)
         today = datetime.now()
-        
-        # Calculate the start of this week and next week
-        start_of_this_week = today - timedelta(days=today.weekday())
-        start_of_this_week = start_of_this_week.replace(hour=0, minute=0, second=0, microsecond=0)
-        start_of_next_week = start_of_this_week + timedelta(days=7)
-        start_of_following_week = start_of_next_week + timedelta(days=7)
-        
-        # Categorize based on start_date
-        if start_date < start_of_this_week:
-            if deadline_date >= start_of_this_week:
-                return 'this_week'
-            else:
-                return 'overdue'
-        elif start_date < start_of_next_week:
+        time_difference = (deadline.date() - today.date()).days
+        if time_difference < 0:
+            return 'overdue'
+        elif time_difference <= 7:
             return 'this_week'
-        elif start_date < start_of_following_week:
-            return 'next_week'
         else:
-            return 'following_weeks'
-            
-    except ValueError:
-        logging.error(f"Invalid date format: start_date={start_date_str}, deadline_date={deadline_date_str}")
+            return 'next_week'
+    except Exception:
         return 'invalid_date'
 
 # --- Backend Routes ---
