@@ -1229,17 +1229,16 @@
                     const taskDiv = document.createElement('div');
                     taskDiv.className = 'task-card';
                     let fileSection = '';
-                    // Show main file if present
+                    // Show main file if present (Dropbox link)
                     if (task.file_url) {
-                        fileSection += `<a href="${task.file_url}" target="_blank" class="view-btn">View Uploaded File</a> ` +
-                                      `<a href="${task.file_url}" download class="download-btn">Download File</a>`;
+                        fileSection += `<a href="${task.file_url}" target="_blank" class="view-btn">View Uploaded File (Dropbox)</a> ` +
+                                      `<a href="${task.file_url.replace('?dl=0', '?dl=1')}" class="download-btn">Download File</a>`;
                     }
-                    // Show files from progress_reports if present
+                    // Show files from progress_reports if present (Dropbox links)
                     if (task.progress_reports) {
                         Object.values(task.progress_reports).forEach(report => {
                             if (report.file_url) {
-                                fileSection += `<br><a href="${report.file_url}" target="_blank" class="view-btn">View Progress File</a> ` +
-                                               `<a href="${report.file_url}" download class="download-btn">Download Progress File</a>`;
+                                fileSection += `<br><a href="${report.file_url.replace('?dl=0', '?dl=1')}" class="download-btn">Download Progress File (Dropbox)</a>`;
                             }
                         });
                     }
