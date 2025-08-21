@@ -18,6 +18,20 @@
             <p></p>
         </div>
 
+        <!-- Groups List (always visible) -->
+        <div style="background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); padding: 18px; margin-bottom: 20px;">
+            <h3 style="margin-top:0;">Groups You've Joined</h3>
+            <ul class="group-list">
+                {% for group_id, group_info in groups.items() %}
+                    <li>
+                        <a href="{{ url_for('group_redirect', username=username, group_id=group_id) }}">
+                            {{ group_info['group_name'] }} - {{ group_info['role'] | capitalize }}
+                        </a>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+
         <!-- Menu -->
         <div class="menu">
             <button onclick="showFeature('profile')">Profile</button>
@@ -26,28 +40,16 @@
         </div>
 
         <!-- Profile Section -->
-<div id="profile" class="feature-section">
-    <h2>Your Profile</h2>
-    <div style="margin-bottom: 20px;">
-        <p><strong>Full Name:</strong> {{ first_name }} {{ middle_name }} {{ last_name }}</p>
-        <p><strong>Age:</strong> {{ age }}</p>
-        <p><strong>Email:</strong> {{ email }}</p>
-        <p><strong>Username:</strong> {{ username }}</p>
-    </div>
-    <div style="background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); padding: 18px; margin-bottom: 20px;">
-        <h3 style="margin-top:0;">Groups You've Joined</h3>
-        <ul class="group-list">
-            {% for group_id, group_info in groups.items() %}
-                <li>
-                    <a href="{{ url_for('group_redirect', username=username, group_id=group_id) }}">
-                        {{ group_info['group_name'] }} - {{ group_info['role'] | capitalize }}
-                    </a>
-                </li>
-            {% endfor %}
-        </ul>
-    </div>
-    <button class="close-button" onclick="closeFeature('profile')">Close</button>
-</div>
+        <div id="profile" class="feature-section">
+            <h2>Your Profile</h2>
+            <div style="margin-bottom: 20px;">
+                <p><strong>Full Name:</strong> {{ first_name }} {{ middle_name }} {{ last_name }}</p>
+                <p><strong>Age:</strong> {{ age }}</p>
+                <p><strong>Email:</strong> {{ email }}</p>
+                <p><strong>Username:</strong> {{ username }}</p>
+            </div>
+            <button class="close-button" onclick="closeFeature('profile')">Close</button>
+        </div>
 
         <!-- Create Group Section -->
     <div id="createGroup" class="feature-section create-group-container">
