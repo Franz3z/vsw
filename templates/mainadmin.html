@@ -755,8 +755,8 @@ function fetchAndRenderTasks() {
         let projectTasks = []; // Array to hold tasks for the current project being created
         let existingTasks = []; // Array to hold tasks fetched for 'Assign Existing Task'
 
+        // Single definition for showAssignPanel
         function showAssignPanel(panelName) {
-            // Hide all panels first
             document.getElementById('assignOptionsContainer').style.display = 'none';
             document.getElementById('assignRoleOptionsContainer').style.display = 'none';
             document.getElementById('assignTaskOptionsContainer').style.display = 'none';
@@ -764,8 +764,6 @@ function fetchAndRenderTasks() {
             document.getElementById('createProjectContainer').style.display = 'none';
             document.getElementById('assignExistingTaskContainer').style.display = 'none';
             document.getElementById('roleManagementContainer').style.display = 'none';
-
-            // Show the requested panel
             switch(panelName) {
                 case 'main':
                     document.getElementById('assignOptionsContainer').style.display = 'block';
@@ -794,38 +792,15 @@ function fetchAndRenderTasks() {
             }
         }
 
-        function openAssignModal() {
-            fetch(`/get_group_members_with_roles/${groupId}`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success && Array.isArray(data.available_custom_roles)) {
-                        availableCustomRoles = data.available_custom_roles;
-                    } else {
-                        console.error('Failed to load custom roles on modal open:', data.message);
-                    }
-                })
-                .catch(err => console.error('Error fetching custom roles on modal open:', err));
-
-            document.getElementById('assignModal').style.display = 'flex';
-            showAssignPanel('main');
-        }
-            // Add missing closeAssignModal function
-            function closeAssignModal() {
-                document.getElementById('assignModal').style.display = 'none';
-                // Optionally reset forms if needed
-                const assignExistingRoleForm = document.getElementById('assignExistingRoleForm');
-                if (assignExistingRoleForm) assignExistingRoleForm.reset();
-                const createProjectForm = document.getElementById('createProjectForm');
-                if (createProjectForm) createProjectForm.reset();
-                const assignExistingTaskForm = document.getElementById('assignExistingTaskForm');
-                if (assignExistingTaskForm) assignExistingTaskForm.reset();
-            }
-
+        // Single definition for closeAssignModal
         function closeAssignModal() {
             document.getElementById('assignModal').style.display = 'none';
-            document.getElementById('assignExistingRoleForm').reset();
-            document.getElementById('createProjectForm').reset();
-            document.getElementById('assignExistingTaskForm').reset();
+            const assignExistingRoleForm = document.getElementById('assignExistingRoleForm');
+            if (assignExistingRoleForm) assignExistingRoleForm.reset();
+            const createProjectForm = document.getElementById('createProjectForm');
+            if (createProjectForm) createProjectForm.reset();
+            const assignExistingTaskForm = document.getElementById('assignExistingTaskForm');
+            if (assignExistingTaskForm) assignExistingTaskForm.reset();
         }
 
         // --- Assign Existing Role Modal Functions ---
