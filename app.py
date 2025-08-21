@@ -830,26 +830,91 @@ def create_project_with_tasks(group_id):
 @app.route('/get_all_tasks/<group_id>', methods=['GET'])
 def get_all_tasks(group_id):
     try:
-        tasks_ref = db.reference(f'groups/{group_id}/tasks')
+        group_ref = db.reference(f'groups/{group_id}')
+        tasks_ref = group_ref.child('tasks')
         tasks_data = tasks_ref.get() or {}
-        
-        # Filter out tasks that are marked as completed
-        all_tasks = []
-        for task_id, task_info in tasks_data.items():
-            if not task_info.get('completed', False): # Only include tasks not marked as completed
-                all_tasks.append({
-                    'task_id': task_id,
-                    'task_name': task_info.get('task_name', 'Unnamed Task'),
-                    'description': task_info.get('description', ''),
-                    'assigned_to': task_info.get('assigned_to', 'N/A'),
-                    'priority': task_info.get('priority', 'Low'),
-                    'completed': task_info.get('completed', False),
-                    'assigned_type': task_info.get('assigned_type', 'user'),
-                    'week_category': task_info.get('week_category', ''),
-                    'deadline': task_info.get('deadline', '')
-                })
-        
-        return jsonify({'success': True, 'tasks': all_tasks})
+        projects_ref = group_ref.child('projects')
+        projects_data = projects_ref.get() or {}
+        project_lookup = {proj_id: {
+            'project_name': proj.get('project_name', ''),
+            'project_description': proj.get('description', '')
+        } for proj_id, proj in projects_data.items()}
+
+        tasks_this_week = []
+        tasks_next_week = []
+        completed_tasks = []
+        tasks_no_deadline = []
+
+        for task_id, task in tasks_data.items():
+            if not isinstance(task, dict):
+                continue
+            project_name = ''
+            project_description = ''
+            if 'project_id' in task and task['project_id'] in project_lookup:
+                project_name = project_lookup[task['project_id']]['project_name']
+                project_description = project_lookup[task['project_id']]['project_description']
+
+            week_category = task.get('week_category', '')
+            if not week_category and 'week' in task:
+                week_category = task['week']
+            if not week_category:
+                deadline_str = task.get('deadline_date') or task.get('deadline')
+                if deadline_str:
+                    try:
+                        deadline = datetime.fromisoformat(deadline_str)
+                        today = datetime.now()
+                        days_diff = (deadline.date() - today.date()).days
+                        if days_diff < 0:
+                            week_category = 'overdue'
+                        elif days_diff <= 7:
+                            week_category = 'this_week'
+                        elif days_diff <= 14:
+                            week_category = 'next_week'
+                        else:
+                            week_category = 'following_weeks'
+                    except Exception:
+                        week_category = 'unknown'
+                else:
+                    week_category = 'no_deadline'
+
+            task_info = {
+                'task_id': task_id,
+                'task_name': task.get('task_name', 'No Name'),
+                'description': task.get('description', ''),
+                'assigned_to': task.get('assigned_to', 'N/A'),
+                'priority': task.get('priority', 'Low'),
+                'progress_reports': task.get('progress_reports', {}),
+                'assigned_type': task.get('assigned_type', 'user'),
+                'deadline': task.get('deadline', ''),
+                'week_category': week_category,
+                'project_name': project_name,
+                'project_description': project_description
+            }
+
+            if task.get('completed', False):
+                completed_tasks.append(task_info)
+            else:
+                if week_category == 'this_week':
+                    tasks_this_week.append(task_info)
+                elif week_category == 'next_week':
+                    tasks_next_week.append(task_info)
+                elif week_category == 'no_deadline':
+                    tasks_no_deadline.append(task_info)
+                # Add more categories as needed
+
+        priority_order = {'high': 1, 'medium': 2, 'low': 3}
+        tasks_this_week.sort(key=lambda x: priority_order.get(x.get('priority', 'Low').lower(), 4))
+        tasks_next_week.sort(key=lambda x: priority_order.get(x.get('priority', 'Low').lower(), 4))
+        completed_tasks.sort(key=lambda x: x.get('task_name', ''))
+        tasks_no_deadline.sort(key=lambda x: x.get('task_name', ''))
+
+        return jsonify({
+            'success': True,
+            'tasks_this_week': tasks_this_week,
+            'tasks_next_week': tasks_next_week,
+            'completed_tasks': completed_tasks,
+            'tasks_no_deadline': tasks_no_deadline
+        })
     except Exception as e:
         logging.error(f"Error fetching all tasks for group {group_id}: {e}")
         traceback.print_exc()
