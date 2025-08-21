@@ -7,9 +7,9 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <script src="https://download.agora.io/sdk/release/AgoraRTC_N.js"></script>
     <script>
-        // Global variables
-        const username = "{{ username }}";
-        const groupId = "{{ group_id }}";
+        // Global variables (declare only once)
+    const username = "{{ username }}";
+    const groupId = "{{ group_id }}";
 
         // Modal functions
         function showModal(modalId) {
@@ -151,7 +151,6 @@
                     if (!text) {
                         return;
                     }
-
                     fetch(`/send_message/${groupId}`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
@@ -217,7 +216,6 @@
                         console.error("Leave failed: ", err);
                     });
                     client = null;
-                }
             }
         </script>
             
@@ -437,16 +435,7 @@ function fetchAndRenderTasks() {
 
                 // Get all tasks and sort them by date
                 const allTasks = data.tasks || [];
-                const today = new Date();
-                const monday = new Date(today);
-                monday.setDate(today.getDate() - today.getDay() + 1); // Get Monday of current week
                 
-                const nextMonday = new Date(monday);
-                nextMonday.setDate(monday.getDate() + 7); // Get next Monday
-
-                const followingMonday = new Date(nextMonday);
-                followingMonday.setDate(nextMonday.getDate() + 7); // Get Monday after next
-
                 // Sort tasks into weeks based on start_date and deadline_date
                 const tasksThisWeek = allTasks.filter(task => {
                     const startDate = new Date(task.start_date);
@@ -523,31 +512,17 @@ function fetchAndRenderTasks() {
             return;
         }
 
-        tasks.sort((a, b) => new Date(a.start_date) - new Date(b.start_date))
-             .forEach(task => {
+        tasks.forEach(task => {
             const taskElement = document.createElement('li');
             taskElement.className = 'task-card';
-            
-            // Format dates nicely
-            const startDate = new Date(task.start_date).toLocaleDateString();
-            const deadlineDate = new Date(task.deadline_date).toLocaleDateString();
-            
-            let projectName = task.project_name || '';
-            let projectDetails = task.project_description || '';
-            
             taskElement.innerHTML = `
-                ${projectName ? `<h4>Project: ${projectName}</h4>` : ''}
-                ${projectDetails ? `<p><strong>Project Details:</strong> ${projectDetails}</p>` : ''}
                 <div class="task-title">${task.task_name}</div>
                 <div class="task-meta">
                     <div class="assignee-info">Assigned to: ${task.assigned_to}</div>
                     <span class="priority-tag priority-${task.priority.toLowerCase()}">${task.priority}</span>
                 </div>
                 <div class="task-description">${task.description}</div>
-                <div class="task-dates">
-                    <p><strong>Start Date:</strong> ${startDate}</p>
-                    <p><strong>Deadline:</strong> ${deadlineDate}</p>
-                </div>
+                <div><strong>Deadline:</strong> ${task.deadline || 'N/A'}</div>
             `;
             container.appendChild(taskElement);
         });
@@ -647,638 +622,555 @@ function fetchAndRenderTasks() {
     document.addEventListener('DOMContentLoaded', fetchAndRenderTasks);
 </script>
             
-    <div id="assignModal" class="modal-backdrop" style="display: none;">
-        <div class="modal-content">
-            <button class="modal-close-btn" onclick="closeAssignModal()">×</button>
-            <div id="assignOptionsContainer">
-                <h3>Assign Action</h3>
-                <p>Please choose an action:</p>
-                <button onclick="showAssignPanel('role')">Assign Role</button>
-                <button onclick="showAssignPanel('task')">Assign Task</button>
-            </div>
+    <!-- Assign Modal -->
+<div id="assignModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-content">
+        <button class="modal-close-btn" onclick="closeAssignModal()">×</button>
+        <div id="assignOptionsContainer">
+            <h3>Assign Action</h3>
+            <p>Please choose an action:</p>
+            <button onclick="showAssignPanel('role')">Assign Role</button>
+            <button onclick="showAssignPanel('task')">Assign Task</button>
+        </div>
 
-            <div id="assignRoleOptionsContainer" style="display: none;">
-                <h3>Role Assignment Options</h3>
-                <p>What role action do you want to perform?</p>
-                <button onclick="openRoleManagement()">Manage & Create Roles</button>
-                <button onclick="openAssignExistingRoleModal()">Assign Existing Role to Members</button>
-                <button onclick="showAssignPanel('main')">← Back</button>
-            </div>
+        <div id="assignRoleOptionsContainer" style="display: none;">
+            <h3>Role Assignment Options</h3>
+            <p>What role action do you want to perform?</p>
+            <button onclick="openRoleManagement()">Manage & Create Roles</button>
+            <button onclick="openAssignExistingRoleModal()">Assign Existing Role to Members</button>
+            <button onclick="showAssignPanel('main')">← Back</button>
+        </div>
 
-            <div id="assignTaskOptionsContainer" style="display: none;">
-                <h3>Task Assignment Options</h3>
-                <p>Do you want to create a new project with tasks, or assign an existing task?</p>
-                <button onclick="openCreateProjectModal()">Create Project</button>
-                <button onclick="openAssignExistingTaskModal()">Assign Existing Task</button>
-                <button type="button" class="cancel-button" onclick="showAssignPanel('main')">← Back</button>
-            </div>
+        <div id="assignTaskOptionsContainer" style="display: none;">
+            <h3>Task Assignment Options</h3>
+            <p>Do you want to create a new project with tasks, or assign an existing task?</p>
+            <button onclick="openCreateProjectModal()">Create Project</button>
+            <button onclick="openAssignExistingTaskModal()">Assign Existing Task</button>
+            <button type="button" class="cancel-button" onclick="showAssignPanel('main')">← Back</button>
+        </div>
 
-            <div id="roleManagementContainer" style="display: none;">
-                <h3>Manage & Create Roles</h3>
-                <div id="roleManagementContent">
-                </div>
-                <button onclick="showAssignPanel('role')">← Back</button>
-            </div>
+        <div id="roleManagementContainer" style="display: none;">
+            <h3>Manage & Create Roles</h3>
+            <div id="roleManagementContent"></div>
+            <button onclick="showAssignPanel('role')">← Back</button>
+        </div>
 
-            <div id="assignExistingRoleContainer" style="display: none;">
-                <h3>Assign Existing Role</h3>
-                <form id="assignExistingRoleForm">
-                    <label for="select-role-to-assign">Select Role:</label>
-                    <select id="select-role-to-assign" required></select>
-                    <br>
-                    <label for="select-users-for-role">Select Users (Ctrl/Cmd + click to select multiple):</label>
-                    <select id="select-users-for-role" multiple required>
+        <div id="assignExistingRoleContainer" style="display: none;">
+            <h3>Assign Existing Role</h3>
+            <form id="assignExistingRoleForm">
+                <label for="select-role-to-assign">Select Role:</label>
+                <select id="select-role-to-assign" required></select>
+                <br>
+                <label for="select-users-for-role">Select Users (Ctrl/Cmd + click to select multiple):</label>
+                <select id="select-users-for-role" multiple required>
+                    {% for member in members %}
+                    <option value="{{ member.username }}">{{ member.username }}</option>
+                    {% endfor %}
+                </select>
+                <br>
+                <button type="button" onclick="submitAssignExistingRole()">Assign Role</button>
+                <button type="button" class="cancel-button" onclick="showAssignPanel('role')">← Back</button>
+            </form>
+        </div>
+
+        <div id="createProjectContainer" style="display: none;">
+            <h3>Create New Project</h3>
+            <form id="createProjectForm">
+                <label for="project-name">Project Name:</label>
+                <input type="text" id="project-name" placeholder="Enter project name" required>
+                <label for="project-description">Project Description:</label>
+                <textarea id="project-description" placeholder="Describe the project" rows="3"></textarea>
+                <h4>Project Tasks:</h4>
+                <div id="project-tasks-list"></div>
+                <button type="button" onclick="addProjectTask()">Add Task to Project</button>
+                <br>
+                <button type="button" onclick="submitProject()">Create Project with Tasks</button>
+                <button type="button" class="cancel-button" onclick="showAssignPanel('task')">← Back</button>
+            </form>
+        </div>
+
+        <div id="assignExistingTaskContainer" style="display: none;">
+            <h3>Assign Existing Task</h3>
+            <form id="assignExistingTaskForm">
+                <label for="select-existing-task">Select Task:</label>
+                <select id="select-existing-task" required></select>
+                <br>
+                <label for="assign-task-to-type">Assign To:</label>
+                <select id="assign-task-to-type" onchange="toggleAssignToSelection()">
+                    <option value="user">User</option>
+                    <option value="role">Role</option>
+                    <option value="everyone">Everyone</option>
+                </select>
+                <div id="assign-task-user-selection">
+                    <label for="assign-task-to-user">Select User:</label>
+                    <select id="assign-task-to-user">
                         {% for member in members %}
                         <option value="{{ member.username }}">{{ member.username }}</option>
                         {% endfor %}
                     </select>
-                    <br>
-                    <button type="button" onclick="submitAssignExistingRole()">Assign Role</button>
-                    <button type="button" class="cancel-button" onclick="showAssignPanel('role')">← Back</button>
-                </form>
-            </div>
-
-            <div id="createProjectContainer" style="display: none;">
-                <h3>Create New Project</h3>
-                <form id="createProjectForm">
-                    <label for="project-name">Project Name:</label>
-                    <input type="text" id="project-name" placeholder="Enter project name" required>
-                    <label for="project-description">Project Description:</label>
-                    <textarea id="project-description" placeholder="Describe the project" rows="3"></textarea>
-
-                    <h4>Project Tasks:</h4>
-                    <div id="project-tasks-list"></div>
-                    <button type="button" onclick="addProjectTask()">Add Task to Project</button>
-                    <br>
-                    <button type="button" onclick="submitProject()">Create Project with Tasks</button>
-                    <button type="button" class="cancel-button" onclick="showAssignPanel('task')">← Back</button>
-                </form>
-            </div>
-
-            <div id="assignExistingTaskContainer" style="display: none;">
-                <h3>Assign Existing Task</h3>
-                <form id="assignExistingTaskForm">
-                    <label for="select-existing-task">Select Task:</label>
-                    <select id="select-existing-task" required></select>
-                    <br>
-                    <label for="assign-task-to-type">Assign To:</label>
-                    <select id="assign-task-to-type" onchange="toggleAssignToSelection()">
-                        <option value="user">User</option>
-                        <option value="role">Role</option>
-                        <option value="everyone">Everyone</option>
-                    </select>
-
-                    <div id="assign-task-user-selection">
-                        <label for="assign-task-to-user">Select User:</label>
-                        <select id="assign-task-to-user">
-                            {% for member in members %}
-                            <option value="{{ member.username }}">{{ member.username }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-
-                    <div id="assign-task-role-selection" style="display: none;">
-                        <label for="assign-task-to-role">Select Role:</label>
-                        <select id="assign-task-to-role"></select>
-                    </div>
-                    <br>
-                    <button type="button" onclick="submitAssignExistingTask()">Assign Task</button>
-                    <button type="button" class="cancel-button" onclick="showAssignPanel('task')">← Back</button>
-                </form>
-            </div>
+                </div>
+                <div id="assign-task-role-selection" style="display: none;">
+                    <label for="assign-task-to-role">Select Role:</label>
+                    <select id="assign-task-to-role"></select>
+                </div>
+                <br>
+                <button type="button" onclick="submitAssignExistingTask()">Assign Task</button>
+                <button type="button" class="cancel-button" onclick="showAssignPanel('task')">← Back</button>
+            </form>
         </div>
     </div>
-    <script>
-        // Global for Assign Modal
-        let availableCustomRoles = []; // To store custom roles fetched from the server
-        let projectIdCounter = 0; // To uniquely identify tasks added to a project form
-        let projectTasks = []; // Array to hold tasks for the current project being created
-        let existingTasks = []; // Array to hold tasks fetched for 'Assign Existing Task'
+</div>
+<script>
+// Assign Modal JS
+let availableCustomRoles = [];
+let projectIdCounter = 0;
+let projectTasks = [];
+let existingTasks = [];
+function showAssignPanel(panelName) {
+    document.getElementById('assignOptionsContainer').style.display = 'none';
+    document.getElementById('assignRoleOptionsContainer').style.display = 'none';
+    document.getElementById('assignTaskOptionsContainer').style.display = 'none';
+    document.getElementById('assignExistingRoleContainer').style.display = 'none';
+    document.getElementById('createProjectContainer').style.display = 'none';
+    document.getElementById('assignExistingTaskContainer').style.display = 'none';
+    document.getElementById('roleManagementContainer').style.display = 'none';
+    switch(panelName) {
+        case 'main':
+            document.getElementById('assignOptionsContainer').style.display = 'block';
+            break;
+        case 'role':
+            document.getElementById('assignRoleOptionsContainer').style.display = 'block';
+            break;
+        case 'task':
+            document.getElementById('assignTaskOptionsContainer').style.display = 'block';
+            break;
+        case 'assignRole':
+            document.getElementById('assignExistingRoleContainer').style.display = 'block';
+            break;
+        case 'createProject':
+            document.getElementById('createProjectContainer').style.display = 'block';
+            break;
+        case 'assignTask':
+            document.getElementById('assignExistingTaskContainer').style.display = 'block';
+            break;
+        case 'manageRoles':
+            document.getElementById('roleManagementContainer').style.display = 'block';
+            break;
+        default:
+            document.getElementById('assignOptionsContainer').style.display = 'block';
+            break;
+    }
+}
+function closeAssignModal() {
+    document.getElementById('assignModal').style.display = 'none';
+    const assignExistingRoleForm = document.getElementById('assignExistingRoleForm');
+    if (assignExistingRoleForm) assignExistingRoleForm.reset();
+    const createProjectForm = document.getElementById('createProjectForm');
+    if (createProjectForm) createProjectForm.reset();
+    const assignExistingTaskForm = document.getElementById('assignExistingTaskForm');
+    if (assignExistingTaskForm) assignExistingTaskForm.reset();
+}
 
-        // Single definition for showAssignPanel
-        function showAssignPanel(panelName) {
-            document.getElementById('assignOptionsContainer').style.display = 'none';
-            document.getElementById('assignRoleOptionsContainer').style.display = 'none';
-            document.getElementById('assignTaskOptionsContainer').style.display = 'none';
-            document.getElementById('assignExistingRoleContainer').style.display = 'none';
-            document.getElementById('createProjectContainer').style.display = 'none';
-            document.getElementById('assignExistingTaskContainer').style.display = 'none';
-            document.getElementById('roleManagementContainer').style.display = 'none';
-            switch(panelName) {
-                case 'main':
-                    document.getElementById('assignOptionsContainer').style.display = 'block';
-                    break;
-                case 'role':
-                    document.getElementById('assignRoleOptionsContainer').style.display = 'block';
-                    break;
-                case 'task':
-                    document.getElementById('assignTaskOptionsContainer').style.display = 'block';
-                    break;
-                case 'assignRole':
-                    document.getElementById('assignExistingRoleContainer').style.display = 'block';
-                    break;
-                case 'createProject':
-                    document.getElementById('createProjectContainer').style.display = 'block';
-                    break;
-                case 'assignTask':
-                    document.getElementById('assignExistingTaskContainer').style.display = 'block';
-                    break;
-                case 'manageRoles':
-                    document.getElementById('roleManagementContainer').style.display = 'block';
-                    break;
-                default:
-                    document.getElementById('assignOptionsContainer').style.display = 'block';
-                    break;
-            }
+// --- Assign Existing Role Modal Functions ---
+function openAssignExistingRoleModal() {
+    showAssignPanel('assignRole');
+    populateRoleSelection(availableCustomRoles);
+}
+
+function populateRoleSelection(roles) {
+    const selectRole = document.getElementById('select-role-to-assign');
+    selectRole.innerHTML = '<option value="">-- Select a Role --</option>';
+    if (roles && roles.length > 0) {
+        roles.forEach(role => {
+            const option = document.createElement('option');
+            option.value = role;
+            option.textContent = role;
+            selectRole.appendChild(option);
+        });
+    }
+}
+
+function submitAssignExistingRole() {
+    const selectedRole = document.getElementById('select-role-to-assign').value;
+    const selectedUsersElement = document.getElementById('select-users-for-role');
+    const selectedUsers = Array.from(selectedUsersElement.selectedOptions).map(option => option.value);
+
+    if (!selectedRole) { alert('Please select a role.'); return; }
+    if (selectedUsers.length === 0) { alert('Please select at least one user.'); return; }
+
+    const updates = {};
+    selectedUsers.forEach(user => {
+        updates[user] = { custom_roles_to_assign: [selectedRole] };
+    });
+
+    fetch(`/update_roles/${groupId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            showAssignPanel('role');
+            location.reload();
+        } else {
+            alert('Failed to assign role: ' + data.message);
         }
+    })
+    .catch(err => {
+        console.error('Error assigning role:', err);
+        alert('Error assigning role.');
+    });
+}
 
-        // Single definition for closeAssignModal
-        function closeAssignModal() {
-            document.getElementById('assignModal').style.display = 'none';
-            const assignExistingRoleForm = document.getElementById('assignExistingRoleForm');
-            if (assignExistingRoleForm) assignExistingRoleForm.reset();
-            const createProjectForm = document.getElementById('createProjectForm');
-            if (createProjectForm) createProjectForm.reset();
-            const assignExistingTaskForm = document.getElementById('assignExistingTaskForm');
-            if (assignExistingTaskForm) assignExistingTaskForm.reset();
-        }
-
-        // --- Assign Existing Role Modal Functions ---
-        function openAssignExistingRoleModal() {
-            showAssignPanel('assignRole');
-            populateRoleSelection(availableCustomRoles);
-        }
-
-        function populateRoleSelection(roles) {
-            const selectRole = document.getElementById('select-role-to-assign');
-            selectRole.innerHTML = '<option value="">-- Select a Role --</option>';
-            if (roles && roles.length > 0) {
-                roles.forEach(role => {
-                    const option = document.createElement('option');
-                    option.value = role;
-                    option.textContent = role;
-                    selectRole.appendChild(option);
-                });
-            }
-        }
-
-        function submitAssignExistingRole() {
-            const selectedRole = document.getElementById('select-role-to-assign').value;
-            const selectedUsersElement = document.getElementById('select-users-for-role');
-            const selectedUsers = Array.from(selectedUsersElement.selectedOptions).map(option => option.value);
-
-            if (!selectedRole) { alert('Please select a role.'); return; }
-            if (selectedUsers.length === 0) { alert('Please select at least one user.'); return; }
-
-            const updates = {};
-            selectedUsers.forEach(user => {
-                updates[user] = { custom_roles_to_assign: [selectedRole] };
-            });
-
-            fetch(`/update_roles/${groupId}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(updates)
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    alert(data.message);
-                    showAssignPanel('role');
-                    location.reload();
-                } else {
-                    alert('Failed to assign role: ' + data.message);
-                }
-            })
-            .catch(err => {
-                console.error('Error assigning role:', err);
-                alert('Error assigning role.');
-            });
-        }
-
-        // --- Role Management Functions ---
-        function openRoleManagement() {
-            showAssignPanel('manageRoles');
-            fetch(`/get_group_members_with_roles/${groupId}`)
-                .then(res => res.json())
-                .then(data => {
-                    const content = document.getElementById('roleManagementContent');
-                    if (data.success && Array.isArray(data.members)) {
-                        let html = '<form id="roleForm">';
-                        data.members.forEach(user => {
-                            html += `
-                            <div>
-                                <strong>${user.username}:</strong>
-                                <select name="primary_role_${user.username}" data-username="${user.username}">
-                                    <option value="admin" ${user.primary_role === 'admin' ? 'selected' : ''}>Admin</option>
-                                    <option value="member" ${user.primary_role === 'member' ? 'selected' : ''}>Member</option>
-                                </select>
-                            </div>
-                            <div style="margin-left: 20px;">
-                                Custom Roles:
-                                <select multiple name="custom_roles_${user.username}" data-username="${user.username}" class="custom-role-select">
-                                    ${data.available_custom_roles.map(role => `
-                                        <option value="${role}" ${user.custom_roles && user.custom_roles.includes(role) ? 'selected' : ''}>${role}</option>
-                                    `).join('')}
-                                </select>
-                            </div>
-                            `;
-                        });
-
-                        html += '<button type="button" onclick="saveRoles()">Save Roles</button>';
-                        html += '</form>';
-
-                        html += `
-                        <hr>
-                        <h4>Create New Custom Role</h4>
-                        <input type="text" id="newRoleName" placeholder="New Role Name">
-                        <button type="button" onclick="createNewRole()">Create Role</button>
-                        `;
-
-                        html += `
-                        <hr>
-                        <h4>Remove Custom Role</h4>
-                        <select id="roleToDelete">
-                            <option value="">-- Select Role to Remove --</option>
+// --- Role Management Functions ---
+function openRoleManagement() {
+    showAssignPanel('manageRoles');
+    fetch(`/get_group_members_with_roles/${groupId}`)
+        .then(res => res.json())
+        .then(data => {
+            const content = document.getElementById('roleManagementContent');
+            if (data.success && Array.isArray(data.members)) {
+                let html = '<form id="roleForm">';
+                data.members.forEach(user => {
+                    html += `
+                    <div>
+                        <strong>${user.username}:</strong>
+                        <select name="primary_role_${user.username}" data-username="${user.username}">
+                            <option value="admin" ${user.primary_role === 'admin' ? 'selected' : ''}>Admin</option>
+                            <option value="member" ${user.primary_role === 'member' ? 'selected' : ''}>Member</option>
+                        </select>
+                    </div>
+                    <div style="margin-left: 20px;">
+                        Custom Roles:
+                        <select multiple name="custom_roles_${user.username}" data-username="${user.username}" class="custom-role-select">
                             ${data.available_custom_roles.map(role => `
-                                <option value="${role}">${role}</option>
+                                <option value="${role}" ${user.custom_roles && user.custom_roles.includes(role) ? 'selected' : ''}>${role}</option>
                             `).join('')}
                         </select>
-                        <button type="button" class="cancel-button" onclick="deleteCustomRole()">Remove Role</button>
-                        `;
-
-                        taskEntryDiv.innerHTML = `
-                            <h5>Task #${projectIdCounter}</h5>
-                            <label for="${taskId}-name">Task Name:</label>
-                            <input type="text" id="${taskId}-name" placeholder="Task Name" required>
-                            <label for="${taskId}-description">Description:</label>
-                            <textarea id="${taskId}-description" placeholder="Task Description" rows="2"></textarea>
-
-                            <label for="${taskId}-start-date">Start Date:</label>
-                            <input type="date" id="${taskId}-start-date" required>
-
-                            <label for="${taskId}-deadline-date">Deadline Date:</label>
-                            <input type="date" id="${taskId}-deadline-date" required>
-
-                            <label for="${taskId}-priority">Priority:</label>
-                            <select id="${taskId}-priority">
-                                <option value="High">High</option>
-                                <option value="Medium">Medium</option>
-                                <option value="Low">Low</option>
-                            </select>
-
-                            <label for="${taskId}-assignee-type">Assign To:</label>
-                            <select id="${taskId}-assignee-type" onchange="toggleProjectTaskAssignee('${taskId}')">
-                                <option value="user">Specific User</option>
-                                <option value="role">Role</option>
-                                <option value="everyone">Everyone in Group</option>
-                            </select>
-
-                            <div id="${taskId}-user-select-div">
-                                <label for="${taskId}-assignee-user">Select User:</label>
-                                <select id="${taskId}-assignee-user">
-                                    {% for member in members %}
-                                    <option value="{{ member.username }}">{{ member.username }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div id="${taskId}-role-select-div" style="display:none;">
-                                <label for="${taskId}-assignee-role">Select Role:</label>
-                                <select id="${taskId}-assignee-role"></select>
-                            </div>
-
-                            <button type="button" class="cancel-button" onclick="removeProjectTask('${taskId}')">Remove Task</button>
-            `;
-        }
-    
-
-        function saveRoles() {
-            const primaryRoleSelects = document.querySelectorAll('#roleForm select[name^="primary_role_"]');
-            const customRoleSelects = document.querySelectorAll('#roleForm select[name^="custom_roles_"]');
-            const updates = {};
-
-            primaryRoleSelects.forEach(select => {
-                const username = select.dataset.username;
-                if (!updates[username]) updates[username] = {};
-                updates[username]['primary_role'] = select.value;
-            });
-
-            customRoleSelects.forEach(select => {
-                const username = select.dataset.username;
-                if (!updates[username]) updates[username] = {};
-                const selectedOptions = Array.from(select.selectedOptions).map(option => option.value);
-                const allOptions = Array.from(select.options).map(option => option.value);
-                updates[username]['custom_roles_to_assign'] = selectedOptions;
-                updates[username]['custom_roles_to_unassign'] = allOptions.filter(role => !selectedOptions.includes(role));
-            });
-
-            fetch(`/update_roles/${groupId}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(updates)
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    alert('Roles updated successfully!');
-                    showAssignPanel('role');
-                    location.reload();
-                } else {
-                    alert('Failed to update roles: ' + data.message);
-                }
-            })
-            .catch(err => {
-                console.error('Error:', err);
-                alert('Failed to update roles');
-            });
-        }
-
-        // --- NEW: Create Project Modal Functions ---
-        function openCreateProjectModal() {
-            showAssignPanel('createProject');
-            document.getElementById('createProjectForm').reset();
-            document.getElementById('project-tasks-list').innerHTML = '';
-            projectTasks = [];
-            projectIdCounter = 0;
-        }
-
-        function addProjectTask() {
-            const tasksList = document.getElementById('project-tasks-list');
-            const taskId = `task-${projectIdCounter++}`;
-
-            const taskEntryDiv = document.createElement('div');
-            taskEntryDiv.className = 'task-entry';
-            taskEntryDiv.id = taskId;
-            taskEntryDiv.innerHTML = `
-                <h5>Task #${projectIdCounter}</h5>
-                <label for="${taskId}-name">Task Name:</label>
-                <input type="text" id="${taskId}-name" placeholder="Task Name" required>
-
-                <label for="${taskId}-description">Description:</label>
-                <textarea id="${taskId}-description" placeholder="Task Description" rows="2"></textarea>
-
-                <label for="${taskId}-week">Assign to Week:</label>
-                <select id="${taskId}-week">
-                    <option value="this_week">This Week</option>
-                    <option value="next_week">Next Week</option>
-                    <option value="week_2">Week 2</option>
-                    <option value="week_3">Week 3</option>
-                    <option value="week_4">Week 4</option>
-                </select>
-
-                <label for="${taskId}-priority">Priority:</label>
-                <select id="${taskId}-priority">
-                    <option value="High">High</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Low">Low</option>
-                </select>
-
-                <label for="${taskId}-assignee-type">Assign To:</label>
-                <select id="${taskId}-assignee-type" onchange="toggleProjectTaskAssignee('${taskId}')">
-                    <option value="user">Specific User</option>
-                    <option value="role">Role</option>
-                    <option value="everyone">Everyone in Group</option>
-                </select>
-
-                <div id="${taskId}-user-select-div">
-                    <label for="${taskId}-assignee-user">Select User:</label>
-                    <select id="${taskId}-assignee-user">
-                        {% for member in members %}
-                        <option value="{{ member.username }}">{{ member.username }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div id="${taskId}-role-select-div" style="display:none;">
-                    <label for="${taskId}-assignee-role">Select Role:</label>
-                    <select id="${taskId}-assignee-role"></select>
-                </div>
-
-                <button type="button" class="cancel-button" onclick="removeProjectTask('${taskId}')">Remove Task</button>
-            `;
-            tasksList.appendChild(taskEntryDiv);
-
-            populateProjectTaskRoles(taskId);
-            toggleProjectTaskAssignee(taskId);
-        }
-
-        function populateProjectTaskRoles(taskId) {
-            const selectRole = document.getElementById(`${taskId}-assignee-role`);
-            selectRole.innerHTML = '';
-            if (availableCustomRoles && availableCustomRoles.length > 0) {
-                availableCustomRoles.forEach(role => {
-                    const option = document.createElement('option');
-                    option.value = role;
-                    option.textContent = role;
-                    selectRole.appendChild(option);
+                    </div>
+                    `;
                 });
+
+                html += '<button type="button" onclick="saveRoles()">Save Roles</button>';
+                html += '</form>';
+
+                html += `
+                <hr>
+                <h4>Create New Custom Role</h4>
+                <input type="text" id="newRoleName" placeholder="New Role Name">
+                <button type="button" onclick="createNewRole()">Create Role</button>
+                `;
+
+                html += `
+                <hr>
+                <h4>Remove Custom Role</h4>
+                <select id="roleToDelete">
+                    <option value="">-- Select Role to Remove --</option>
+                    ${data.available_custom_roles.map(role => `
+                        <option value="${role}">${role}</option>
+                    `).join('')}
+                </select>
+                <button type="button" class="cancel-button" onclick="deleteCustomRole()">Remove Role</button>
+                `;
+
+                content.innerHTML = html;
             } else {
-                selectRole.innerHTML = '<option value="">No custom roles available</option>';
+                const content = document.getElementById('roleManagementContent');
+                content.innerHTML = '<p class="error-message">Error loading role management data.</p>';
             }
+        })
+        .catch(err => {
+            console.error('Error fetching group members:', err);
+            const content = document.getElementById('roleManagementContent');
+            content.innerHTML = '<p class="error-message">Error loading role management data.</p>';
+        });
+}
+
+// --- NEW: Create Project Modal Functions ---
+function openCreateProjectModal() {
+    showAssignPanel('createProject');
+    document.getElementById('createProjectForm').reset();
+    document.getElementById('project-tasks-list').innerHTML = '';
+    projectTasks = [];
+    projectIdCounter = 0;
+}
+
+function addProjectTask() {
+    const tasksList = document.getElementById('project-tasks-list');
+    const taskId = `task-${projectIdCounter++}`;
+
+    const taskEntryDiv = document.createElement('div');
+    taskEntryDiv.className = 'task-entry';
+    taskEntryDiv.id = taskId;
+    taskEntryDiv.innerHTML = `
+        <h5>Task #${projectIdCounter}</h5>
+        <label for="${taskId}-name">Task Name:</label>
+        <input type="text" id="${taskId}-name" placeholder="Task Name" required>
+
+        <label for="${taskId}-description">Description:</label>
+        <textarea id="${taskId}-description" placeholder="Task Description" rows="2"></textarea>
+
+        <label for="${taskId}-week">Assign to Week:</label>
+        <select id="${taskId}-week">
+            <option value="this_week">This Week</option>
+            <option value="next_week">Next Week</option>
+            <option value="week_2">Week 2</option>
+            <option value="week_3">Week 3</option>
+            <option value="week_4">Week 4</option>
+        </select>
+
+        <label for="${taskId}-priority">Priority:</label>
+        <select id="${taskId}-priority">
+            <option value="High">High</option>
+            <option value="Medium">Medium</option>
+            <option value="Low">Low</option>
+        </select>
+
+        <label for="${taskId}-assignee-type">Assign To:</label>
+        <select id="${taskId}-assignee-type" onchange="toggleProjectTaskAssignee('${taskId}')">
+            <option value="user">Specific User</option>
+            <option value="role">Role</option>
+            <option value="everyone">Everyone in Group</option>
+        </select>
+
+        <div id="${taskId}-user-select-div">
+            <label for="${taskId}-assignee-user">Select User:</label>
+            <select id="${taskId}-assignee-user">
+                {% for member in members %}
+                <option value="{{ member.username }}">{{ member.username }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div id="${taskId}-role-select-div" style="display:none;">
+            <label for="${taskId}-assignee-role">Select Role:</label>
+            <select id="assign-task-to-role"></select>
+        </div>
+
+        <button type="button" class="cancel-button" onclick="removeProjectTask('${taskId}')">Remove Task</button>
+    `;
+    tasksList.appendChild(taskEntryDiv);
+
+    populateProjectTaskRoles(taskId);
+    toggleProjectTaskAssignee(taskId);
+}
+
+function populateProjectTaskRoles(taskId) {
+    const selectRole = document.getElementById(`${taskId}-assignee-role`);
+    selectRole.innerHTML = '';
+    if (availableCustomRoles && availableCustomRoles.length > 0) {
+        availableCustomRoles.forEach(role => {
+            const option = document.createElement('option');
+            option.value = role;
+            option.textContent = role;
+            selectRole.appendChild(option);
+        });
+    } else {
+        selectRole.innerHTML = '<option value="">No custom roles available</option>';
+    }
+}
+
+function removeProjectTask(taskId) {
+    const taskEntry = document.getElementById(taskId);
+    if (taskEntry) {
+        taskEntry.remove();
+    }
+}
+
+function toggleProjectTaskAssignee(taskId) {
+    const assigneeType = document.getElementById(`${taskId}-assignee-type`).value;
+    const userSelectDiv = document.getElementById(`${taskId}-user-select-div`);
+    const roleSelectDiv = document.getElementById(`${taskId}-role-select-div`);
+
+    userSelectDiv.style.display = 'none';
+    roleSelectDiv.style.display = 'none';
+
+    if (assigneeType === 'user') {
+        userSelectDiv.style.display = 'block';
+    } else if (assigneeType === 'role') {
+        roleSelectDiv.style.display = 'block';
+    }
+}
+
+// CORRECTED: submitProject function
+function submitProject() {
+    const projectName = document.getElementById('project-name').value.trim();
+    const projectDescription = document.getElementById('project-description').value.trim();
+    if (!projectName) { alert('Please enter a project name.'); return; }
+
+    const taskForms = document.querySelectorAll('.task-entry');
+    if (taskForms.length === 0) { alert('Please add at least one task to the project.'); return; }
+
+    const tasks = [];
+    let allTasksValid = true;
+    taskForms.forEach(taskForm => {
+        const taskId = taskForm.id;
+        const taskName = document.getElementById(`${taskId}-name`).value.trim();
+        const taskDescription = document.getElementById(`${taskId}-description`).value.trim();
+        const startDate = document.getElementById(`${taskId}-start-date`).value;
+        const deadlineDate = document.getElementById(`${taskId}-deadline-date`).value;
+        const taskPriority = document.getElementById(`${taskId}-priority`).value;
+        const assigneeType = document.getElementById(`${taskId}-assignee-type`).value;
+        let assignedTo = ''; // Initialize as empty string
+
+        if (assigneeType === 'user') {
+            assignedTo = document.getElementById(`${taskId}-assignee-user`).value;
+        } else if (assigneeType === 'role') {
+            assignedTo = document.getElementById(`${taskId}-assignee-role`).value;
+        } else if (assigneeType === 'everyone') {
+            assignedTo = 'everyone'; // Explicitly set to 'everyone'
         }
 
-        function removeProjectTask(taskId) {
-            const taskEntry = document.getElementById(taskId);
-            if (taskEntry) {
-                taskEntry.remove();
-            }
-        }
-
-        function toggleProjectTaskAssignee(taskId) {
-            const assigneeType = document.getElementById(`${taskId}-assignee-type`).value;
-            const userSelectDiv = document.getElementById(`${taskId}-user-select-div`);
-            const roleSelectDiv = document.getElementById(`${taskId}-role-select-div`);
-
-            userSelectDiv.style.display = 'none';
-            roleSelectDiv.style.display = 'none';
-
-            if (assigneeType === 'user') {
-                userSelectDiv.style.display = 'block';
-            } else if (assigneeType === 'role') {
-                roleSelectDiv.style.display = 'block';
-            }
-        }
-
-        // CORRECTED: submitProject function
-        function submitProject() {
-            const projectName = document.getElementById('project-name').value.trim();
-            const projectDescription = document.getElementById('project-description').value.trim();
-            if (!projectName) { alert('Please enter a project name.'); return; }
-
-            const taskForms = document.querySelectorAll('.task-entry');
-            if (taskForms.length === 0) { alert('Please add at least one task to the project.'); return; }
-
-            const tasks = [];
-            let allTasksValid = true;
-            taskForms.forEach(taskForm => {
-                const taskId = taskForm.id;
-                const taskName = document.getElementById(`${taskId}-name`).value.trim();
-                const taskDescription = document.getElementById(`${taskId}-description`).value.trim();
-                const startDate = document.getElementById(`${taskId}-start-date`).value;
-                const deadlineDate = document.getElementById(`${taskId}-deadline-date`).value;
-                const taskPriority = document.getElementById(`${taskId}-priority`).value;
-                const assigneeType = document.getElementById(`${taskId}-assignee-type`).value;
-                let assignedTo = ''; // Initialize as empty string
-
-                if (assigneeType === 'user') {
-                    assignedTo = document.getElementById(`${taskId}-assignee-user`).value;
-                } else if (assigneeType === 'role') {
-                    assignedTo = document.getElementById(`${taskId}-assignee-role`).value;
-                } else if (assigneeType === 'everyone') {
-                    assignedTo = 'everyone'; // Explicitly set to 'everyone'
-                }
-
-                if (taskName && startDate && deadlineDate && (assignedTo || assigneeType === 'everyone')) {
-                    tasks.push({
-                        task_name: taskName,
-                        description: taskDescription,
-                        start_date: startDate,
-                        deadline_date: deadlineDate,
-                        priority: taskPriority,
-                        assigned_to_type: assigneeType,
-                        assigned_to: assignedTo
-                    });
-                } else {
-                    alert('Please fill in all task details and select an assignee for each task.');
-                    allTasksValid = false;
-                    return;
-                }
+        if (taskName && deadlineDate && (assignedTo || assigneeType === 'everyone')) {
+            tasks.push({
+                task_name: taskName,
+                description: taskDescription,
+                deadline_date: deadlineDate,
+                priority: taskPriority,
+                assigned_to_type: assigneeType,
+                assigned_to: assignedTo
             });
-
-            if (!allTasksValid) { return; }
-
-            const projectData = {
-                project_name: projectName,
-                description: projectDescription,
-                tasks: tasks
-            };
-
-            // CORRECTED FETCH URL for creating project
-            fetch(`/create_project_with_tasks/${groupId}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(projectData)
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    alert('Project and tasks created successfully!');
-                    closeAssignModal();
-                    location.reload();
-                } else {
-                    alert('Failed to create project: ' + data.message);
-                }
-            })
-            .catch(err => {
-                console.error('Error creating project:', err);
-                alert('Error creating project.');
-            });
+        } else {
+            alert('Please fill in all task details and select an assignee for each task.');
+            allTasksValid = false;
+            return;
         }
+    });
 
-        // --- Assign Existing Task Modal Functions ---
-        // CORRECTED: openAssignExistingTaskModal function
-        function openAssignExistingTaskModal() {
-            // CORRECTED FETCH URL for getting all tasks
-            fetch(`/get_all_tasks/${groupId}`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success && Array.isArray(data.tasks)) { // Data key is 'tasks' not 'available_tasks'
-                        existingTasks = data.tasks;
-                        populateExistingTaskSelection(existingTasks);
-                        populateExistingTaskRoleSelection();
-                        showAssignPanel('assignTask');
-                    } else {
-                        console.error('Failed to fetch available tasks:', data.message);
-                        alert('Failed to load tasks. ' + data.message);
-                    }
-                })
-                .catch(err => {
-                    console.error('Error fetching tasks:', err);
-                    alert('Error loading tasks.');
-                });
+    if (!allTasksValid) { return; }
+
+    const projectData = {
+        project_name: projectName,
+        description: projectDescription,
+        tasks: tasks
+    };
+
+    // CORRECTED FETCH URL for creating project
+    fetch(`/create_project_with_tasks/${groupId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(projectData)
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert('Project and tasks created successfully!');
+            closeAssignModal();
+            location.reload();
+        } else {
+            alert('Failed to create project: ' + data.message);
         }
+    })
+    .catch(err => {
+        console.error('Error creating project:', err);
+        alert('Error creating project.');
+    });
+}
 
-        function populateExistingTaskSelection(tasks) {
-            const selectTask = document.getElementById('select-existing-task');
-            selectTask.innerHTML = '<option value="">-- Select a Task --</option>';
-            if (tasks && tasks.length > 0) {
-                tasks.forEach(task => {
-                    const option = document.createElement('option');
-                    option.value = task.task_id;
-                    option.textContent = task.task_name;
-                    selectTask.appendChild(option);
-                });
-            }
-        }
-
-        function populateExistingTaskRoleSelection() {
-            const selectRole = document.getElementById('assign-task-to-role');
-            selectRole.innerHTML = '';
-            if (availableCustomRoles && availableCustomRoles.length > 0) {
-                availableCustomRoles.forEach(role => {
-                    const option = document.createElement('option');
-                    option.value = role;
-                    option.textContent = role;
-                    selectRole.appendChild(option);
-                });
+// --- Assign Existing Task Modal Functions ---
+function openAssignExistingTaskModal() {
+    // CORRECTED FETCH URL for getting all tasks
+    fetch(`/get_all_tasks/${groupId}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.success && Array.isArray(data.tasks)) { // Data key is 'tasks' not 'available_tasks'
+                existingTasks = data.tasks;
+                populateExistingTaskSelection(existingTasks);
+                populateExistingTaskRoleSelection();
+                showAssignPanel('assignTask');
             } else {
-                selectRole.innerHTML = '<option value="">No custom roles available</option>';
+                console.error('Failed to fetch available tasks:', data.message);
+                alert('Failed to load tasks. ' + data.message);
             }
+        })
+        .catch(err => {
+            console.error('Error fetching tasks:', err);
+            alert('Error loading tasks.');
+        });
+}
+
+function populateExistingTaskSelection(tasks) {
+    const selectTask = document.getElementById('select-existing-task');
+    selectTask.innerHTML = '<option value="">-- Select a Task --</option>';
+    if (tasks && tasks.length > 0) {
+        tasks.forEach(task => {
+            const option = document.createElement('option');
+            option.value = task.task_id;
+            option.textContent = task.task_name;
+            selectTask.appendChild(option);
+        });
+    }
+}
+
+function populateExistingTaskRoleSelection() {
+    const selectRole = document.getElementById('assign-task-to-role');
+    selectRole.innerHTML = '';
+    if (availableCustomRoles && availableCustomRoles.length > 0) {
+        availableCustomRoles.forEach(role => {
+            const option = document.createElement('option');
+            option.value = role;
+            option.textContent = role;
+            selectRole.appendChild(option);
+        });
+    } else {
+        selectRole.innerHTML = '<option value="">No custom roles available</option>';
+    }
+}
+
+function toggleAssignToSelection() {
+    const assigneeType = document.getElementById('assign-task-to-type').value;
+    const userSelectDiv = document.getElementById('assign-task-user-selection');
+    const roleSelectDiv = document.getElementById('assign-task-role-selection');
+    userSelectDiv.style.display = assigneeType === 'user' ? 'block' : 'none';
+    roleSelectDiv.style.display = assigneeType === 'role' ? 'block' : 'none';
+}
+
+// CORRECTED: submitAssignExistingTask function
+function submitAssignExistingTask() {
+    const taskId = document.getElementById('select-existing-task').value;
+    const assigneeType = document.getElementById('assign-task-to-type').value;
+    let assignedTo = '';
+
+    if (!taskId) { alert('Please select a task.'); return; }
+
+    if (assigneeType === 'user') {
+        assignedTo = document.getElementById('assign-task-to-user').value;
+    } else if (assigneeType === 'role') {
+        assignedTo = document.getElementById('assign-task-to-role').value;
+    } else if (assigneeType === 'everyone') {
+        assignedTo = 'everyone';
+    }
+
+    if (!assignedTo && assigneeType !== 'everyone') {
+        alert('Please select an assignee.');
+        return;
+    }
+
+    fetch(`/assign_existing_task/${groupId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            task_id: taskId,
+            assigned_to_type: assigneeType,
+            assigned_to: assignedTo
+        })
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        if (data.success) {
+            alert('Task assigned successfully!');
+            closeAssignModal();
+            location.reload();
+        } else {
+            alert('Failed to assign task: ' + data.message);
         }
-
-        function toggleAssignToSelection() {
-            const assigneeType = document.getElementById('assign-task-to-type').value;
-            const userSelectDiv = document.getElementById('assign-task-user-selection');
-            const roleSelectDiv = document.getElementById('assign-task-role-selection');
-            userSelectDiv.style.display = assigneeType === 'user' ? 'block' : 'none';
-            roleSelectDiv.style.display = assigneeType === 'role' ? 'block' : 'none';
-        }
-
-        // CORRECTED: submitAssignExistingTask function
-        function submitAssignExistingTask() {
-            const taskId = document.getElementById('select-existing-task').value;
-            const assigneeType = document.getElementById('assign-task-to-type').value;
-            let assignedTo = ''; // Initialize as empty string
-
-            if (!taskId) { alert('Please select a task.'); return; }
-
-            if (assigneeType === 'user') {
-                assignedTo = document.getElementById('assign-task-to-user').value;
-            } else if (assigneeType === 'role') {
-                assignedTo = document.getElementById('assign-task-to-role').value;
-            } else if (assigneeType === 'everyone') {
-                assignedTo = 'everyone'; // Explicitly set to 'everyone'
-            }
-
-            if (!assignedTo && assigneeType !== 'everyone') { // Ensure assignedTo has a value unless type is 'everyone'
-                alert('Please select an assignee.');
-                return;
-            }
-
-            // CORRECTED FETCH URL and BODY for assigning existing task
-            fetch(`/assign_existing_task/${groupId}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    task_id: taskId,
-                    assigned_to_type: assigneeType,
-                    assigned_to: assignedTo
-                })
-            })
-            .then(function(res) { return res.json(); })
-            .then(function(data) {
-                if (data.success) {
-                    alert('Task assigned successfully!');
-                    closeAssignModal();
-                    location.reload();
-                } else {
-                    alert('Failed to assign task: ' + data.message);
-                }
-            })
-            .catch(function(err) {
-                console.error('Error assigning task:', err);
-                alert('Error assigning task.');
-            });
-        }
+    })
+    .catch(function(err) {
+        console.error('Error assigning task:', err);
+        alert('Error assigning task.');
+    });
+}
     </script>
 
   <div id="whiteboardModal"
@@ -1302,8 +1194,6 @@ function fetchAndRenderTasks() {
 
     <script>
         // Admin credentials and API configuration (global constants)
-        const username = "{{ username }}";
-        const groupId = "{{ group_id }}";
         const APP_ID = "8f0029e7fd2047339fe6822ab5b59abd";
         const CHANNEL = "{{ group_id }}";
         const UID = Math.floor(Math.random() * 10000);
@@ -1390,3 +1280,6 @@ function fetchAndRenderTasks() {
                 <!-- Completed tasks will be rendered here by JS -->
             </div>
         </div>
+    </div>
+</body>
+</html>
