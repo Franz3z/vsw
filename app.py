@@ -342,10 +342,29 @@ def mainadmin(username, group_id):
             project_name = project_lookup[task['project_id']]['project_name']
             project_description = project_lookup[task['project_id']]['project_description']
 
-        # Use week_category if present, else fallback to week field
+        # Robust week category detection
         week_category = task.get('week_category', '')
         if not week_category and 'week' in task:
             week_category = task['week']
+
+        # Fallback: categorize by deadline date if no week info
+        if not week_category:
+            deadline_str = task.get('deadline_date') or task.get('deadline')
+            if deadline_str:
+                try:
+                    deadline = datetime.fromisoformat(deadline_str)
+                    today = datetime.now()
+                    days_diff = (deadline.date() - today.date()).days
+                    if days_diff < 0:
+                        week_category = 'overdue'
+                    elif days_diff <= 7:
+                        week_category = 'this_week'
+                    elif days_diff <= 14:
+                        week_category = 'next_week'
+                    else:
+                        week_category = 'following_weeks'
+                except Exception:
+                    week_category = 'unknown'
 
         task_info = {
             'task_id': task_id,
@@ -375,6 +394,12 @@ def mainadmin(username, group_id):
                 logging.info(f"DEBUG: Task {task_id} added to tasks_next_week (week_category: next_week).")
             elif week_category.startswith('week_'):
                 # You can add more week buckets if needed
+                pass
+            elif week_category == 'overdue':
+                # Optionally add to a separate overdue list
+                pass
+            elif week_category == 'following_weeks':
+                # Optionally add to a following weeks list
                 pass
             else:
                 logging.info(f"DEBUG: Task {task_id} not categorized into this_week/next_week (week_category: {week_category}).")
