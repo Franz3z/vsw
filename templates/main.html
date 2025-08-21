@@ -225,12 +225,17 @@
         tasks.forEach(task => {
             const taskElement = document.createElement('div');
             taskElement.className = 'task-card';
+            // Project details (if available)
+            let projectName = task.project_name || '';
+            let projectDetails = task.project_description || '';
             taskElement.innerHTML = `
-                <h4>${task.task_name}</h4>
-                <p>${task.description}</p>
-                <p><strong>Assigned to:</strong> ${task.assigned_to}</p>
+                ${projectName ? `<h4>Project: ${projectName}</h4>` : ''}
+                ${projectDetails ? `<p><strong>Project Details:</strong> ${projectDetails}</p>` : ''}
+                <h5>Task: ${task.task_name}</h5>
+                <p><strong>Task Details:</strong> ${task.description}</p>
                 <p><strong>Priority:</strong> <span class="priority-${task.priority.toLowerCase()}">${task.priority}</span></p>
                 <p><strong>Deadline:</strong> ${task.deadline || 'N/A'}</p>
+                <p><strong>Assigned to:</strong> ${task.assigned_to}</p>
             `;
             container.appendChild(taskElement);
         });
