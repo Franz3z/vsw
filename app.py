@@ -4,6 +4,7 @@ from firebase_admin import credentials, db, initialize_app
 from flask import session
 from flask import make_response
 import os
+import dropbox
 from flask import send_from_directory
 from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
@@ -20,6 +21,8 @@ load_dotenv()
 print("--- VERCEL DEPLOYMENT TEST: app.py started ---")
 
 app = Flask(__name__)
+DROPBOX_ACCESS_TOKEN = "sl.u.AF6mqFNAy-f98DiZ8Dxv39PbFzRqQdhV7jh_mz-NXS1Ul9qRlpK2Y-GxTH4Vf7Kh1Sr6A_vLCSVTpD8h9Z_raWFLgtxfx4EtHd-yCuLTvsbNqJqK1Y0coPgEfKV3ykbTL1X6Zsy_xUNLjZucpdqU6iOLWRrjgxRXkaQs7TVC0m9z0kky9HIyBfYZn5UfIRTpowC1ZyEO0R9PAaRyuXSDreuQyRDhbill2DLPzW64S0Ban95TOd8mkp228p_z6DHXle18TL_WLIIzle4a9VgWMXRV9xk92iyerTKKUT91sC5aDDWPjcKWNdUhxPmhUEn_E2sKVmc7-OcCjkXdEeID4CMozIXoJomYPz3yQbi1J5BKDOnbClAhQsXNmR5HOzorZW-KyvHIPyBYNwvYX44POrU4ohWfsq3uDYhCcwZJXYYnqG_pCiYf5gQyObouyBcFfpGKw8fjNSzE1VjlNrn8flREO_4HnE-nxgJa6VvJBkk_uo0dmfXT46QkYSwDtjlXP3ccvwabi3JBEGnUF-Ux5LvCfVBV8Xu-W4XYgz_Cm6NoXCwch-iXrCeHo-36KlGYyb1q4_iLDU-dwxc0TVU4yJIl3Kz5b3ZdlcgysC4SulFVn_rgDizIF5I-Y3-EmkwXyEj2JKheeKgTxF47P4Xu29m4qanWq4mf3ZYmgwEUe1jasCvrpjMUPurbQOTR_Op3N8igsPtZDbOW6f4zWbAVoweJAT7-fuPY3eLYyZzgvdgiXig2iKF7FtglsfwVXValwTor5V5HvzQMl9yznI7Zjva20acly_6HEV1Zt1mqVHaR0GCiMOReV1OmR_iJ8Tk7nxFkb64wD52U2erOTuPFqwe07OTizHPfP13cK1S_ETpyE6YWTqQGWWVWhe_I3ZDsDzhNekIcXPpaz4emAS-Eo5tU-Ux5YGGwj9r7jt58yKTGv22pBCVWhapsylJ4hL2Ftaq5iIihzf5GaXT3HSGN3qy_wpjTJziPSOH9QX72sKOaXZ5SVpXnBtjptGkP3-FXQDI7OggZjFOONzdQKFbkph3udx9BCkXByWvfpFtvl_gV4__WE0AfN9uQF74TW2BfSKw_bD3DmYF-jHMOiTmyWtukLBZ8-vOx3TgraBoXT_7x4a4pmK8PunD9bofeU2z9OYyV6PjiBoO8NmQiQE-Lz-3iYsLOyOwE1kXtcb9Ess4AQlayujSow4LS8GqQ0sAmRjaFshxtmmW0z9DDjgIfHbAXcYORKRyBKdY4XUBschY35uCSiCArKqrF6qNuj0do_M1PxOEoTMLf_7ItHFmex3e8bX1t24-dQwcObWv1EmMv_WomzeKMQikonkRLrMjksZLDhNBZBMvcmrwPFDGPgZwiYa910kWT-a2-X6LtwVVaaFoCqQ2QDbxScr2O2_g_5s3HzQu_5JqhehxkC9pZPm2C-pQcMLgsOWokiqrc9A_7p7BSCJlWNv23TlNl6M1EpTY"
+dbx = dropbox.Dropbox(DROPBOX_ACCESS_TOKEN)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'your_super_secret_fallback_key_CHANGE_ME')
 logging.basicConfig(level=logging.DEBUG)
 
@@ -1343,14 +1346,16 @@ def submit_progress(username, group_id, task_id):
     if file:
         try:
             filename = secure_filename(file.filename)
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(file_path)
+            file_bytes = file.read()
+            dropbox_path = f"/{filename}"
+            dbx.files_upload(file_bytes, dropbox_path, mute=True)
+            # Create a shared link
+            shared_link_metadata = dbx.sharing_create_shared_link_with_settings(dropbox_path)
             progress_data['file_name'] = filename
-            # Use local download route for file_url
-            progress_data['file_url'] = url_for('download_file', filename=filename, _external=True)
+            progress_data['file_url'] = shared_link_metadata.url
         except Exception as e:
-            logging.error(f"Error saving file locally: {e}")
-            return f"File upload failed: {e}", 500
+            logging.error(f"Error uploading file to Dropbox: {e}")
+            return f"Dropbox upload failed: {e}", 500
 
     progress_ref.set(progress_data)
     
