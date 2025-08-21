@@ -885,7 +885,6 @@ def get_all_tasks(group_id):
                 'priority': task.get('priority', 'Low'),
                 'progress_reports': task.get('progress_reports', {}),
                 'assigned_type': task.get('assigned_type', 'user'),
-                'deadline': task.get('deadline', ''),
                 'week_category': week_category,
                 'project_name': project_name,
                 'project_description': project_description
