@@ -1270,19 +1270,23 @@ def download_file(filename):
     else:
         return 'File not found.', 404
 
-def get_week_category(deadline_str):
-    if not deadline_str:
+def get_week_category(start_date_str, deadline_str):
+    # Use deadline_str for categorization, fallback to start_date_str if needed
+    date_str = deadline_str or start_date_str
+    if not date_str:
         return 'no_deadline'
     try:
-        deadline = datetime.fromisoformat(deadline_str)
+        date_obj = datetime.fromisoformat(date_str)
         today = datetime.now()
-        time_difference = (deadline.date() - today.date()).days
+        time_difference = (date_obj.date() - today.date()).days
         if time_difference < 0:
             return 'overdue'
         elif time_difference <= 7:
             return 'this_week'
-        else:
+        elif time_difference <= 14:
             return 'next_week'
+        else:
+            return 'following_weeks'
     except Exception:
         return 'invalid_date'
 
