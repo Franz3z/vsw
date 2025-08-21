@@ -160,6 +160,9 @@
                                 <span class="priority-tag priority-{{ task.priority|lower }}">{{ task.priority }}</span>
                             </div>
                             <div>
+                                <span style="font-weight: bold;">Project:</span> {{ task.project_name }}
+                            </div>
+                            <div>
                                 <span style="font-weight: bold;">Deadline:</span> {{ task.deadline }}
                             </div>
                             <div class="task-description">{{ task.description }}</div>
@@ -179,6 +182,9 @@
                             <div class="task-meta">
                                 <div class="assignee-info">Assigned to: {{ task.assigned_to }}</div>
                                 <span class="priority-tag priority-{{ task.priority|lower }}">{{ task.priority }}</span>
+                            </div>
+                            <div>
+                                <span style="font-weight: bold;">Project:</span> {{ task.project_name }}
                             </div>
                             <div class="task-description">{{ task.description }}</div>
                         </li>
