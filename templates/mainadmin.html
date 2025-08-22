@@ -417,81 +417,34 @@
     </div>
 
 <script>
+
     document.addEventListener('DOMContentLoaded', function() {
-    fetchAndRenderTasks();
-    // Set up polling for messages and tasks if needed
-    setInterval(fetchMessages, 5000);
-    setInterval(fetchAndRenderTasks, 30000);
-});
+        fetchAndRenderTasksPanel();
+        setInterval(fetchMessages, 5000);
+        setInterval(fetchAndRenderTasksPanel, 30000);
+    });
 
-function fetchAndRenderTasks() {
-    if (!groupId) {
-        console.error('Group ID is not defined');
-        return;
-    }
+    function fetchAndRenderTasksPanel() {
+        if (!groupId) {
+            console.error('Group ID is not defined');
+            return;
+        }
+        fetch(`/get_all_tasks/${groupId}`)
+            .then(response => response.json())
+            .then(data => {
+                // Merge all categories
+                const tasksThisWeek = data.tasks_this_week || [];
+                const tasksNextWeek = data.tasks_next_week || [];
+                const completedTasks = data.completed_tasks || [];
+                const tasksNoDeadline = data.tasks_no_deadline || [];
 
-    fetch(`/get_tasks/${groupId}`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
-        .then(data => {
-            console.log('Fetched task data:', data);
-
-                // Get all tasks and sort them by date
-                const allTasks = data.tasks || [];
-                
-                // Sort tasks into weeks based on start_date and deadline_date
-                const tasksThisWeek = allTasks.filter(task => {
-                    const startDate = new Date(task.start_date);
-                    const deadlineDate = new Date(task.deadline_date);
-                    return startDate >= monday && startDate < nextMonday || 
-                           (deadlineDate >= monday && deadlineDate < nextMonday);
-                });
-
-                const tasksNextWeek = allTasks.filter(task => {
-                    const startDate = new Date(task.start_date);
-                    const deadlineDate = new Date(task.deadline_date);
-                    return startDate >= nextMonday && startDate < followingMonday || 
-                           (deadlineDate >= nextMonday && deadlineDate < followingMonday);
-                });
-
-                const tasksFollowingWeeks = allTasks.filter(task => {
-                    const startDate = new Date(task.start_date);
-                    const deadlineDate = new Date(task.deadline_date);
-                    return startDate >= followingMonday || deadlineDate >= followingMonday;
-                });
-
-                // For admin, show all tasks
-                renderTasks('this-week-tasks', tasksThisWeek);
-                renderTasks('next-week-tasks', tasksNextWeek);
-
-                // Add following weeks section if needed
-                const taskPanelContent = document.querySelector('.task-panel-content');
-                let followingWeeksSection = document.getElementById('following-weeks-section');
-
-                if (tasksFollowingWeeks.length > 0) {
-                    if (!followingWeeksSection) {
-                        const sectionHTML = `
-                            <div class="task-section" id="following-weeks-section">
-                                <div class="collapsible">🗓️ Tasks in Following Weeks</div>
-                                <ul id="following-weeks-tasks"></ul>
-                            </div>
-                        `;
-                        taskPanelContent.insertAdjacentHTML('beforeend', sectionHTML);
-                        initCollapsibleSections(); // Reinit collapsible functionality
-                    }
-                    renderTasks('following-weeks-tasks', tasksFollowingWeeks);
-                } else if (followingWeeksSection) {
-                    followingWeeksSection.remove();
-                }
+                renderTasksPanel('this-week-tasks', tasksThisWeek);
+                renderTasksPanel('next-week-tasks', tasksNextWeek);
+                // Optionally, you can add completed and no-deadline tasks to a separate section if needed
             })
             .catch(error => {
-                console.error('Error fetching tasks:', error);
-                const containers = ['this-week-tasks', 'next-week-tasks', 'following-weeks-tasks'];
-                containers.forEach(id => {
+                console.error('Error fetching tasks for right panel:', error);
+                ['this-week-tasks', 'next-week-tasks'].forEach(id => {
                     const container = document.getElementById(id);
                     if (container) {
                         container.innerHTML = `<li class="error-message">Error loading tasks: ${error.message}</li>`;
@@ -500,20 +453,17 @@ function fetchAndRenderTasks() {
             });
     }
 
-    function renderTasks(containerId, tasks) {
+    function renderTasksPanel(containerId, tasks) {
         const container = document.getElementById(containerId);
         if (!container) {
             console.error(`Container element with ID '${containerId}' not found.`);
             return;
         }
-        
         container.innerHTML = '';
-
         if (tasks.length === 0) {
             container.innerHTML = `<li class="no-tasks">No tasks available.</li>`;
             return;
         }
-
         tasks.forEach(task => {
             const taskElement = document.createElement('li');
             taskElement.className = 'task-card';
@@ -521,10 +471,11 @@ function fetchAndRenderTasks() {
                 <div class="task-title">${task.task_name}</div>
                 <div class="task-meta">
                     <div class="assignee-info">Assigned to: ${task.assigned_to}</div>
-                    <span class="priority-tag priority-${task.priority.toLowerCase()}">${task.priority}</span>
+                    <span class="priority-tag priority-${task.priority ? task.priority.toLowerCase() : ''}">${task.priority || ''}</span>
                 </div>
-                <div class="task-description">${task.description}</div>
+                <div><strong>Project:</strong> ${task.project_name || ''}</div>
                 <div><strong>Deadline:</strong> ${task.deadline || 'N/A'}</div>
+                <div class="task-description">${task.description || ''}</div>
             `;
             container.appendChild(taskElement);
         });
