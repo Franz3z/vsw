@@ -998,8 +998,19 @@ function submitProject() {
             // Calculate the deadline based on the selected week
             const today = new Date();
             const selectedWeek = parseInt(weekValue);
-            const deadline = new Date(today);
-            deadline.setDate(today.getDate() + (selectedWeek * 7) + (6 - today.getDay())); // Move to Saturday of the selected week
+            
+            // Calculate the start of the current week (Sunday)
+            const startOfWeek = new Date(today);
+            startOfWeek.setDate(today.getDate() - today.getDay());
+            
+            // Calculate the deadline (Saturday of the selected week)
+            const deadline = new Date(startOfWeek);
+            deadline.setDate(startOfWeek.getDate() + (selectedWeek * 7) + 6);
+            
+            // Format the date as YYYY-MM-DD
+            const deadlineStr = deadline.getFullYear() + '-' + 
+                String(deadline.getMonth() + 1).padStart(2, '0') + '-' + 
+                String(deadline.getDate()).padStart(2, '0');
 
             tasks.push({
                 task_name: taskName,
@@ -1008,7 +1019,7 @@ function submitProject() {
                 priority: taskPriority,
                 assigned_to_type: assigneeType,
                 assigned_to: assignedTo,
-                deadline: deadline.toISOString().split('T')[0] // Format as YYYY-MM-DD
+                deadline: deadlineStr
             });
         } else {
             alert('Please fill in all task details and select an assignee for each task.');
