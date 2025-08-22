@@ -170,86 +170,110 @@
 
 <script>
     function fetchAndRenderTasks() {
-        fetch(`/get_all_tasks/${groupId}`)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                return response.json();
-            })
-            .then(data => {
-                console.log('Fetched task data:', data);
+    fetch(`/get_all_tasks/${groupId}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Fetched task data:', data);
 
-                // Get all categories from the backend
-                const tasksThisWeek = (data.tasks_this_week || []).filter(task => task.assigned_to === username);
-                const tasksNextWeek = (data.tasks_next_week || []).filter(task => task.assigned_to === username);
-                const completedTasks = (data.completed_tasks || []).filter(task => task.assigned_to === username);
-                const tasksNoDeadline = (data.tasks_no_deadline || []).filter(task => task.assigned_to === username);
+            // Get only this week and next week tasks
+            const tasksThisWeek = (data.tasks_this_week || []).filter(task => task.assigned_to === username);
+            const tasksNextWeek = (data.tasks_next_week || []).filter(task => task.assigned_to === username);
 
-                // Render tasks for each section
-                renderTasks('this-week-tasks', tasksThisWeek);
-                renderTasks('next-week-tasks', tasksNextWeek);
-                
-                // Add following weeks section if needed
-                const taskPanelContent = document.querySelector('.task-panel-content');
-                let followingWeeksSection = document.getElementById('following-weeks-section');
-                
-                if (userTasksFollowingWeeks.length > 0) {
-                    if (!followingWeeksSection) {
-                        const sectionHTML = `
-                            <div class="task-section" id="following-weeks-section">
-                                <div class="collapsible">🗓️ Tasks in Following Weeks</div>
-                                <ul id="following-weeks-tasks"></ul>
-                            </div>
-                        `;
-                        taskPanelContent.insertAdjacentHTML('beforeend', sectionHTML);
-                        initCollapsibleSections(); // Reinit collapsible functionality
-                    }
-                    renderTasks('following-weeks-tasks', userTasksFollowingWeeks);
-                } else if (followingWeeksSection) {
-                    followingWeeksSection.remove();
-                }
-            })
-            .catch(error => {
-                console.error('Error fetching tasks:', error);
-                const containers = ['this-week-tasks', 'next-week-tasks', 'following-weeks-tasks'];
-                containers.forEach(id => {
-                    const container = document.getElementById(id);
-                    if (container) {
-                        container.innerHTML = `<li class="error-message">Error loading tasks: ${error.message}</li>`;
-                    }
-                });
+            // Clear and rebuild the task panel content
+            const taskPanelContent = document.querySelector('.task-panel-content');
+            taskPanelContent.innerHTML = '<h3>My Tasks</h3>';
+
+            // Create and render sections
+            const sections = [
+                { id: 'this-week-tasks', title: '🎯 Tasks This Week', tasks: tasksThisWeek },
+                { id: 'next-week-tasks', title: '🗓️ Tasks Next Week', tasks: tasksNextWeek }
+            ];
+
+            sections.forEach(section => {
+                const sectionHTML = `
+                    <div class="task-section">
+                        <div class="collapsible">${section.title}</div>
+                        <ul id="${section.id}"></ul>
+                    </div>
+                `;
+                taskPanelContent.insertAdjacentHTML('beforeend', sectionHTML);
+                renderTasks(section.id, section.tasks);
             });
-    }
 
-    function renderTasks(containerId, tasks) {
+            // Initialize collapsible functionality
+            initCollapsibleSections();
+        })
+        .catch(error => {
+            console.error('Error fetching tasks:', error);
+            const taskPanelContent = document.querySelector('.task-panel-content');
+            taskPanelContent.innerHTML = `
+                <h3>My Tasks</h3>
+                <div class="error-message">Error loading tasks: ${error.message}</div>
+            `;
+        });
+}
+
+   function renderTasks(containerId, tasks) {
     const container = document.getElementById(containerId);
     if (!container) {
         console.error(`Container element with ID '${containerId}' not found.`);
         return;
     }
     container.innerHTML = '';
-    if (tasks.length === 0) {
+    if (!Array.isArray(tasks) || tasks.length === 0) {
         container.innerHTML = `<li class="no-tasks">No tasks available.</li>`;
         return;
     }
-    tasks.forEach(task => {
-        const taskElement = document.createElement('li');
-        taskElement.className = 'task-card';
-        taskElement.innerHTML = `
-            <div class="task-title">${task.task_name}</div>
-            <div class="task-meta">
-                <div class="assignee-info">Assigned to: ${task.assigned_to}</div>
-                <span class="priority-tag priority-${task.priority ? task.priority.toLowerCase() : ''}">${task.priority || ''}</span>
+    
+    // Group tasks by project
+    const tasksByProject = tasks.reduce((acc, task) => {
+        const projectName = task.project_name || 'Uncategorized';
+        if (!acc[projectName]) {
+            acc[projectName] = [];
+        }
+        acc[projectName].push(task);
+        return acc;
+    }, {});
+
+    // Render tasks grouped by project
+    Object.entries(tasksByProject).forEach(([projectName, projectTasks]) => {
+        const projectElement = document.createElement('li');
+        projectElement.className = 'project-group';
+        
+        // Get project description from the first task
+        const projectDescription = projectTasks[0].project_description || '';
+
+        let projectContent = `
+            <div class="project-header">
+                <div class="project-name"><strong>Project:</strong> ${projectName}</div>
+                <div class="project-description">${projectDescription}</div>
             </div>
-            <div><strong>Project:</strong> ${task.project_name || ''}</div>
-            <div><strong>Deadline:</strong> ${task.deadline || 'N/A'}</div>
-            <div class="task-description">${task.description || ''}</div>
         `;
-        container.appendChild(taskElement);
+
+        projectTasks.forEach(task => {
+            if (!task) return; // Skip null or undefined tasks
+            
+            projectContent += `
+                <div class="task-card">
+                    <div class="task-name"><strong>Task:</strong> ${task.task_name || 'Untitled Task'}</div>
+                    <div class="task-description">${task.description || 'No description provided.'}</div>
+                    <div class="task-meta">
+                        <div class="assignee-info">Assigned to: ${task.assigned_to || 'Unassigned'}</div>
+                        <div class="deadline-info">Deadline: ${task.deadline || 'N/A'}</div>
+                    </div>
+                </div>
+            `;
+        });
+
+        projectElement.innerHTML = projectContent;
+        container.appendChild(projectElement);
     });
 }
-
     // --- Submit Progress Modal ---
     function openSubmitModal() {
         const modal = document.getElementById('submitProgressModalContainer');
@@ -346,57 +370,8 @@
 <div class="right-panel" id="taskPanel">
             <button class="panel-toggle" id="taskPanelToggle">≡</button>
             <div class="task-panel-content">
-                <h3>Group Tasks</h3>
-
-                <div class="task-section">
-                    <div class="collapsible">🎯 Tasks This Week</div>
-                    <ul id="this-week-tasks">
-                        {% for task in tasks_this_week %}
-                        <li class="task-card">
-                            <div class="task-title">{{ task.task_name }}</div>
-                            <div class="task-meta">
-                                <div class="assignee-info">Assigned to: {{ task.assigned_to }}</div>
-                                <span class="priority-tag priority-{{ task.priority|lower }}">{{ task.priority }}</span>
-                            </div>
-                            <div>
-                                <span style="font-weight: bold;">Project:</span> {{ task.project_name }}
-                            </div>
-                            <div class="task-dates">
-                                <p><strong>Start Date:</strong> {{ task.start_date }}</p>
-                                <p><strong>Deadline:</strong> {{ task.deadline_date }}</p>
-                            </div>
-                            <div class="task-description">{{ task.description }}</div>
-                        </li>
-                        {% else %}
-                        <li class="no-tasks">No tasks for this week</li>
-                        {% endfor %}
-                    </ul>
-                </div>
-
-                <div class="task-section">
-                    <div class="collapsible">🗓️ Tasks Next Week</div>
-                    <ul id="next-week-tasks">
-                        {% for task in tasks_next_week %}
-                        <li class="task-card">
-                            <div class="task-title">{{ task.task_name }}</div>
-                            <div class="task-meta">
-                                <div class="assignee-info">Assigned to: {{ task.assigned_to }}</div>
-                                <span class="priority-tag priority-{{ task.priority|lower }}">{{ task.priority }}</span>
-                            </div>
-                            <div>
-                                <span style="font-weight: bold;">Project:</span> {{ task.project_name }}
-                            </div>
-                            <div class="task-dates">
-                                <p><strong>Start Date:</strong> {{ task.start_date }}</p>
-                                <p><strong>Deadline:</strong> {{ task.deadline_date }}</p>
-                            </div>
-                            <div class="task-description">{{ task.description }}</div>
-                        </li>
-                        {% else %}
-                        <li class="no-tasks">No tasks for next week</li>
-                        {% endfor %}
-                    </ul>
-                </div>
+                <h3>My Tasks</h3>
+                <!-- Task sections will be dynamically inserted here by JavaScript -->
             </div>
         </div>
         <script>
