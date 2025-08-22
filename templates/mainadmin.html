@@ -415,12 +415,10 @@
                 const taskPanelContent = document.querySelector('.task-panel-content');
                 taskPanelContent.innerHTML = '<h3>Group Tasks</h3>';
 
-                // Create and render all sections
+                // Create and render only this week and next week sections
                 const sections = [
                     { id: 'this-week-tasks', title: '🎯 Tasks This Week', tasks: allTasks.this_week },
-                    { id: 'next-week-tasks', title: '🗓️ Tasks Next Week', tasks: allTasks.next_week },
-                    { id: 'no-deadline-tasks', title: '📋 Tasks Without Deadline', tasks: allTasks.no_deadline },
-                    { id: 'completed-tasks', title: '✅ Completed Tasks', tasks: allTasks.completed }
+                    { id: 'next-week-tasks', title: '🗓️ Tasks Next Week', tasks: allTasks.next_week }
                 ];
 
                 sections.forEach(section => {
@@ -471,17 +469,19 @@
             const taskElement = document.createElement('li');
             taskElement.className = 'task-card';
             taskElement.innerHTML = `
-                <div class="task-title">${task.task_name || 'Untitled Task'}</div>
+                <div class="project-section">
+                    <div class="project-name"><strong>Project:</strong> ${task.project_name || 'N/A'}</div>
+                    <div class="project-description">${task.project_description || 'No project description.'}</div>
+                </div>
+                <div class="task-section">
+                    <div class="task-title"><strong>Task:</strong> ${task.task_name || 'Untitled Task'}</div>
+                    <div class="task-description">${task.description || 'No description provided.'}</div>
+                </div>
                 <div class="task-meta">
                     <div class="assignee-info">Assigned to: ${task.assigned_to || 'Unassigned'}</div>
+                    <div class="deadline-info">Deadline: ${task.deadline || 'N/A'}</div>
                     <span class="priority-tag priority-${task.priority ? task.priority.toLowerCase() : 'normal'}">${task.priority || 'Normal'}</span>
                 </div>
-                <div><strong>Project:</strong> ${task.project_name || 'N/A'}</div>
-                <div class="task-dates">
-                    <p><strong>Start Date:</strong> ${task.start_date || 'N/A'}</p>
-                    <p><strong>Deadline:</strong> ${task.deadline || 'N/A'}</p>
-                </div>
-                <div class="task-description">${task.description || 'No description provided.'}</div>
             `;
             container.appendChild(taskElement);
         });
@@ -995,13 +995,20 @@ function submitProject() {
         }
 
         if (taskName && weekValue && (assignedTo || assigneeType === 'everyone')) {
+            // Calculate the deadline based on the selected week
+            const today = new Date();
+            const selectedWeek = parseInt(weekValue);
+            const deadline = new Date(today);
+            deadline.setDate(today.getDate() + (selectedWeek * 7) + (6 - today.getDay())); // Move to Saturday of the selected week
+
             tasks.push({
                 task_name: taskName,
                 description: taskDescription,
                 week: weekValue,
                 priority: taskPriority,
                 assigned_to_type: assigneeType,
-                assigned_to: assignedTo
+                assigned_to: assignedTo,
+                deadline: deadline.toISOString().split('T')[0] // Format as YYYY-MM-DD
             });
         } else {
             alert('Please fill in all task details and select an assignee for each task.');
