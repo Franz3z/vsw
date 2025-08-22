@@ -232,47 +232,12 @@
                 <h3>Group Tasks</h3>
                 <div class="task-section">
                     <div class="collapsible">🎯 To Be Done This Week</div>
-                    <ul id="this-week-tasks">
-                        {% for task in tasks_this_week %}
-                        <li class="task-card">
-                            <div class="task-title">{{ task.task_name }}</div>
-                            <div class="task-meta">
-                                <div class="assignee-info">Assigned to: {{ task.assigned_to }}</div>
-                                <span class="priority-tag priority-{{ task.priority|lower }}">{{ task.priority }}</span>
-                            </div>
-                            <div>
-                                <span style="font-weight: bold;">Project:</span> {{ task.project_name }}
-                            </div>
-                            <div>
-                                <span style="font-weight: bold;">Deadline:</span> {{ task.deadline }}
-                            </div>
-                            <div class="task-description">{{ task.description }}</div>
-                        </li>
-                        {% else %}
-                        <li class="no-tasks">No tasks for this week</li>
-                        {% endfor %}
-                    </ul>
+                    <ul id="this-week-tasks"></ul>
                 </div>
 
                 <div class="task-section">
                     <div class="collapsible">🗓️ Tasks Next Week</div>
-                    <ul id="next-week-tasks">
-                        {% for task in tasks_next_week %}
-                        <li class="task-card">
-                            <div class="task-title">{{ task.task_name }}</div>
-                            <div class="task-meta">
-                                <div class="assignee-info">Assigned to: {{ task.assigned_to }}</div>
-                                <span class="priority-tag priority-{{ task.priority|lower }}">{{ task.priority }}</span>
-                            </div>
-                            <div>
-                                <span style="font-weight: bold;">Project:</span> {{ task.project_name }}
-                            </div>
-                            <div class="task-description">{{ task.description }}</div>
-                        </li>
-                        {% else %}
-                        <li class="no-tasks">No tasks for next week</li>
-                        {% endfor %}
-                    </ul>
+                    <ul id="next-week-tasks"></ul>
                 </div>
             </div>
         </div>
@@ -1248,4 +1213,3 @@ function submitAssignExistingTask() {
     </div>
 </body>
 </html>
-
