@@ -537,29 +537,36 @@ function fetchAndRenderTasks() {
         modal.style.display = 'flex';
         
         // Fetch tasks and populate the dropdown
-        fetch(`/get_tasks/${groupId}`)
+        fetch(`/get_all_tasks/${groupId}`)
             .then(response => response.json())
             .then(data => {
                 const taskSelect = document.getElementById('taskSelect');
                 if (!taskSelect) return; // Robust check
                 taskSelect.innerHTML = '';
 
-                // For admin, show all tasks from both weeks
-                const tasksToReportOn = [...data.tasks_this_week, ...data.tasks_next_week];
+                // Merge all categories
+                var tasksToReportOn = [];
+                if (Array.isArray(data.tasks_this_week)) tasksToReportOn = tasksToReportOn.concat(data.tasks_this_week);
+                if (Array.isArray(data.tasks_next_week)) tasksToReportOn = tasksToReportOn.concat(data.tasks_next_week);
+                if (Array.isArray(data.completed_tasks)) tasksToReportOn = tasksToReportOn.concat(data.completed_tasks);
+                if (Array.isArray(data.tasks_no_deadline)) tasksToReportOn = tasksToReportOn.concat(data.tasks_no_deadline);
 
                 if (tasksToReportOn.length === 0) {
-                    taskSelect.innerHTML = `<option value="">No tasks available</option>`;
+                    var opt = document.createElement('option');
+                    opt.value = '';
+                    opt.textContent = 'No tasks available';
+                    taskSelect.appendChild(opt);
                     return;
                 }
 
-                tasksToReportOn.forEach(task => {
-                    const option = document.createElement('option');
+                tasksToReportOn.forEach(function(task) {
+                    var option = document.createElement('option');
                     option.value = task.task_id;
                     option.textContent = task.task_name;
                     taskSelect.appendChild(option);
                 });
             })
-            .catch(error => {
+            .catch(function(error) {
                 console.error('Error fetching tasks for progress modal:', error);
                 alert('Could not load tasks for progress submission.');
             });
@@ -1082,14 +1089,9 @@ function openAssignExistingTaskModal() {
     fetch(`/get_all_tasks/${groupId}`)
         .then(res => res.json())
         .then(data => {
-            if (data.success) {
-                const allTasks = [
-                    ...(data.tasks_this_week || []),
-                    ...(data.tasks_next_week || []),
-                    ...(data.completed_tasks || []),
-                    ...(data.tasks_no_deadline || [])
-                ];
-                populateExistingTaskSelection(allTasks);
+            if (data.success && Array.isArray(data.tasks)) { // Data key is 'tasks' not 'available_tasks'
+                existingTasks = data.tasks;
+                populateExistingTaskSelection(existingTasks);
                 populateExistingTaskRoleSelection();
                 showAssignPanel('assignTask');
             } else {
