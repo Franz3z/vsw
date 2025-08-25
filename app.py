@@ -627,42 +627,7 @@ def get_group_members(group_id):
         traceback.print_exc()
         return jsonify({'success': False, 'message': f'Error fetching group members: {str(e)}'}), 500
 def get_group_members_with_roles(group_id):
-    try:
-        # Fetch group members
-        members_ref = db.reference(f'groups/{group_id}/members')
-        members_data = members_ref.get() or {}
-
-        members_list = []
-        for username, member_info in members_data.items():
-            # Ensure roles exist and are handled correctly
-            primary_role = member_info.get('primary_role', 'member') # Default to 'member'
-            custom_roles_dict = member_info.get('roles', {}) # 'roles' is where custom roles are stored
-            
-            # Convert custom_roles_dict to a list of role names
-            custom_roles = [role_name for role_name, is_assigned in custom_roles_dict.items() if is_assigned]
-
-            members_list.append({
-                'username': username,
-                'primary_role': primary_role,
-                'custom_roles': custom_roles
-            })
-
-        # Fetch available custom roles for the group
-        custom_roles_ref = db.reference(f'groups/{group_id}/custom_roles')
-        available_custom_roles_dict = custom_roles_ref.get() or {}
-        available_custom_roles = [role_name for role_name, is_active in available_custom_roles_dict.items() if is_active]
-
-
-        return jsonify({
-            'success': True,
-            'members': members_list,
-            'available_custom_roles': available_custom_roles
-        }), 200
-
-    except Exception as e:
-        logging.error(f"Error fetching group members and roles for group {group_id}: {e}")
-        traceback.print_exc() # Print full traceback to console for debugging
-        return jsonify({'success': False, 'message': f'Error fetching group members and roles: {str(e)}'}), 500
+    pass
 
 
 @app.route('/create_role/<group_id>', methods=['POST'])
