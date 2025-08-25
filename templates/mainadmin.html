@@ -621,6 +621,56 @@
         });
     }
 
+    // Function to create a new custom role
+    function createNewRole() {
+        const newRoleInput = document.getElementById('newRoleName');
+        const roleName = newRoleInput.value.trim();
+        
+        if (!roleName) {
+            alert('Please enter a role name');
+            return;
+        }
+
+        // Disable the input and button while processing
+        newRoleInput.disabled = true;
+        const createButton = document.querySelector('button[onclick="createNewRole()"]');
+        const originalText = createButton.textContent;
+        createButton.disabled = true;
+        createButton.textContent = 'Creating...';
+
+        fetch(`/create_custom_role/${groupId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                role_name: roleName
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Role created successfully!');
+                // Clear the input
+                newRoleInput.value = '';
+                // Refresh the role management panel
+                openRoleManagement();
+            } else {
+                alert('Failed to create role: ' + (data.message || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error creating role:', error);
+            alert('Error creating role. Please try again.');
+        })
+        .finally(() => {
+            // Re-enable the input and button
+            newRoleInput.disabled = false;
+            createButton.disabled = false;
+            createButton.textContent = originalText;
+        });
+    }
+
     // --- Initial Load ---
     document.addEventListener('DOMContentLoaded', function() {
         fetchAndRenderTasksPanel();
