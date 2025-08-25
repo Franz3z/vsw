@@ -185,21 +185,29 @@
             taskPanelContent.innerHTML = '<h3>My Tasks</h3>';
 
             // Create and render sections
-            const sections = [
-                { id: 'this-week-tasks', title: '🎯 Tasks This Week', tasks: tasksThisWeek },
-                { id: 'next-week-tasks', title: '🗓️ Tasks Next Week', tasks: tasksNextWeek }
-            ];
+                const sections = [
+                    { id: 'this-week-tasks', title: '🎯 Tasks This Week', tasks: tasksThisWeek },
+                    { id: 'next-week-tasks', title: '🗓️ Tasks Next Week', tasks: tasksNextWeek }
+                ];
 
-            sections.forEach(section => {
-                const sectionHTML = `
-                    <div class="task-section">
-                        <div class="collapsible">${section.title}</div>
-                        <ul id="${section.id}"></ul>
-                    </div>
-                `;
-                taskPanelContent.insertAdjacentHTML('beforeend', sectionHTML);
-                renderTasks(section.id, section.tasks);
-            });
+                sections.forEach(section => {
+                    const sectionHTML = `
+                        <div class="task-section">
+                            <div class="collapsible">${section.title}</div>
+                            <ul id="${section.id}"></ul>
+                        </div>
+                    `;
+                    taskPanelContent.insertAdjacentHTML('beforeend', sectionHTML);
+                    // If tasks array is empty, show a message
+                    if (!Array.isArray(section.tasks) || section.tasks.length === 0) {
+                        const container = document.getElementById(section.id);
+                        if (container) {
+                            container.innerHTML = '<li class="no-tasks">No tasks available.</li>';
+                        }
+                    } else {
+                        renderTasks(section.id, section.tasks);
+                    }
+                });
 
             // Initialize collapsible functionality
             initCollapsibleSections();
