@@ -767,18 +767,23 @@ def create_project_with_tasks(group_id):
             deadline_date = None
             today = datetime.now()
             if week_category == 'this_week':
-                # Monday of current week + 6 days (to make it Sunday of current week)
                 deadline_date = today - timedelta(days=today.weekday()) + timedelta(days=6)
             elif week_category == 'next_week':
-                # Monday of next week + 6 days
                 deadline_date = today - timedelta(days=today.weekday()) + timedelta(weeks=1, days=6)
             elif week_category.startswith('week_'):
                 try:
                     week_num = int(week_category.replace('week_', ''))
-                    # Monday of that specific week + 6 days
+                    # Clamp week_num to duration_weeks if set
+                    duration_weeks_val = None
+                    try:
+                        duration_weeks_val = int(duration_weeks)
+                    except Exception:
+                        duration_weeks_val = None
+                    if duration_weeks_val and week_num > duration_weeks_val:
+                        week_num = duration_weeks_val
                     deadline_date = today - timedelta(days=today.weekday()) + timedelta(weeks=week_num -1, days=6)
                 except ValueError:
-                    deadline_date = None # Fallback if week_category is malformed
+                    deadline_date = None
             
             # Parse start and deadline dates
             start_date_str = task_data.get('start_date')
