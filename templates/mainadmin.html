@@ -1070,8 +1070,8 @@ function addProjectTask() {
     const durationInput = document.getElementById('project-duration-weeks');
     let durationWeeks = parseInt(durationInput && durationInput.value ? durationInput.value : '2');
     if (isNaN(durationWeeks) || durationWeeks < 1) durationWeeks = 2;
-    let weekOptions = '<option value="this_week">This Week</option><option value="next_week">Next Week</option>';
-    for (let i = 2; i <= durationWeeks; i++) {
+    let weekOptions = '';
+    for (let i = 1; i <= durationWeeks; i++) {
         weekOptions += `<option value="week_${i}">Week ${i}</option>`;
     }
     taskEntryDiv.innerHTML = `
@@ -1122,6 +1122,7 @@ function addProjectTask() {
 
 function populateProjectTaskRoles(taskId) {
     const selectRole = document.getElementById(`${taskId}-assignee-role`);
+    if (!selectRole) return;
     selectRole.innerHTML = '';
     if (availableCustomRoles && availableCustomRoles.length > 0) {
         availableCustomRoles.forEach(role => {
