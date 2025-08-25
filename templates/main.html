@@ -176,12 +176,12 @@
         .then(data => {
             console.log('Fetched task data:', data);
 
-            // Combine all tasks assigned to the user from all week categories
+            // Combine all tasks from all week categories (no filter by assignee)
             const allTasks = [
                 ...(data.tasks_this_week || []),
                 ...(data.tasks_next_week || []),
                 ...(data.tasks_following_weeks || [])
-            ].filter(task => task.assigned_to === username);
+            ];
 
             // Group tasks by week number
             const weekTasks = {};
