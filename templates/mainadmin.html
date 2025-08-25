@@ -638,7 +638,7 @@
         createButton.disabled = true;
         createButton.textContent = 'Creating...';
 
-        fetch(`/create_custom_role/${groupId}`, {
+        fetch(`/create_role/${groupId}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
