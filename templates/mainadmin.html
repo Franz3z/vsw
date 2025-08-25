@@ -422,9 +422,8 @@
                 const taskPanelContent = document.querySelector('.task-panel-content');
                 taskPanelContent.innerHTML = '<h3>Group Tasks</h3>';
 
-                // Group tasks by week number
+                // Group all tasks by week number (no filter by assignee)
                 const weekTasks = {};
-                // Combine all tasks from this_week, next_week, and following weeks
                 const combinedTasks = [...allTasks.this_week, ...allTasks.next_week, ...(allTasks.following_weeks || [])];
                 combinedTasks.forEach(task => {
                     let weekNum = 1;
