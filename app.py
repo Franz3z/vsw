@@ -627,7 +627,46 @@ def get_group_members(group_id):
         traceback.print_exc()
         return jsonify({'success': False, 'message': f'Error fetching group members: {str(e)}'}), 500
 def get_group_members_with_roles(group_id):
-    pass
+        try:
+            group_ref = db.reference(f'groups/{group_id}')
+            members_data_raw = group_ref.child('members').get() or {}
+            members = []
+            if not isinstance(members_data_raw, dict):
+                logging.error(f"members_data_raw is not a dictionary! Type: {type(members_data_raw)}, Value: {members_data_raw}")
+                members_data_raw = {}
+
+            for member_username, member_info in members_data_raw.items():
+                primary_role = 'member'
+                custom_roles = {}
+                if isinstance(member_info, dict):
+                    primary_role = member_info.get('role', 'member')
+                    custom_roles = member_info.get('roles', {})
+                elif isinstance(member_info, str):
+                    primary_role = member_info
+                    custom_roles = {member_info: True}
+                else:
+                    logging.error(f"Unexpected member data type for {member_username}: {type(member_info)} - {member_info}. Skipping.")
+                    continue
+                members.append({
+                    'username': member_username,
+                    'primary_role': primary_role,
+                    'custom_roles': list(custom_roles.keys())
+                })
+
+            # Get available custom roles
+            custom_roles_ref = db.reference(f'groups/{group_id}/custom_roles')
+            all_available_custom_roles_data = custom_roles_ref.get() or {}
+            available_custom_roles_list = list(all_available_custom_roles_data.keys())
+
+            return jsonify({
+                'success': True,
+                'members': members,
+                'available_custom_roles': available_custom_roles_list
+            }), 200
+        except Exception as e:
+            logging.error(f"Error fetching group members with roles for group {group_id}: {e}")
+            traceback.print_exc()
+            return jsonify({'success': False, 'message': f'Error fetching group members with roles: {str(e)}'}), 500
 
 
 @app.route('/create_role/<group_id>', methods=['POST'])
