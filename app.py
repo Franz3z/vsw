@@ -604,7 +604,6 @@ def get_available_roles(group_id):
         logging.error(f"Error fetching available roles for group {group_id}: {e}")
         traceback.print_exc()
         return jsonify({'success': False, 'message': f'Error fetching available roles: {str(e)}'}), 500
-    
 @app.route('/get_group_members/<group_id>', methods=['GET'])
 def get_group_members(group_id):
     try:
