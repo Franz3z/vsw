@@ -240,8 +240,14 @@
     // Render each task in requested format
     tasks.forEach(task => {
         if (!task) return;
-        const assigneeRole = task.assigned_to_type === 'role' && task.assigned_to ? `(${task.assigned_to})` : '';
-        const assigneeDisplay = `${task.assigned_to || 'Unassigned'}${assigneeRole}`;
+        let assigneeDisplay = 'Unassigned';
+        if (task.assigned_to) {
+            if (task.assigned_to_type === 'role') {
+                assigneeDisplay = `${task.assigned_to} (role)`;
+            } else {
+                assigneeDisplay = `${task.assigned_to}`;
+            }
+        }
         const taskElement = document.createElement('li');
         taskElement.className = 'task-card';
         taskElement.innerHTML = `
@@ -249,7 +255,7 @@
             <div><strong>Description:</strong> ${task.description || 'No description provided.'}</div>
             <div><strong>Assigned to:</strong> ${assigneeDisplay}</div>
             <div><strong>Priority:</strong> ${task.priority || 'Normal'}</div>
-            <div><strong>Deadline:</strong> ${task.deadline || 'N/A'}</div>
+            <div><strong>Deadline:</strong> ${task.deadline_date || 'N/A'}</div>
         `;
         container.appendChild(taskElement);
     });
