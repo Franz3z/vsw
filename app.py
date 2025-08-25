@@ -636,17 +636,16 @@ def get_group_members_with_roles(group_id):
                 members_data_raw = {}
 
             for member_username, member_info in members_data_raw.items():
-                primary_role = 'member'
-                custom_roles = {}
+                # Always include username
                 if isinstance(member_info, dict):
                     primary_role = member_info.get('role', 'member')
                     custom_roles = member_info.get('roles', {})
                 elif isinstance(member_info, str):
                     primary_role = member_info
-                    custom_roles = {member_info: True}
+                    custom_roles = {}
                 else:
-                    logging.error(f"Unexpected member data type for {member_username}: {type(member_info)} - {member_info}. Skipping.")
-                    continue
+                    primary_role = 'member'
+                    custom_roles = {}
                 members.append({
                     'username': member_username,
                     'primary_role': primary_role,
