@@ -671,69 +671,56 @@ def create_role(group_id):
         data = request.get_json()
         if not data or 'role_name' not in data:
             return jsonify({'success': False, 'message': 'Role name is required.'}), 400
-            
         role_name = data['role_name'].strip()
         if not role_name:
             return jsonify({'success': False, 'message': 'Role name cannot be empty.'}), 400
 
-        ref = db.reference(f'groups/{group_id}/custom_roles') 
-        
-        # Check if role already exists
-        if ref.child(role_name).get():
-            return jsonify({'success': False, 'message': f'Role "{role_name}" already exists.'}), 409 # 409 Conflict
-        
-        ref.child(role_name).set(True)  # Store role as key with a boolean value
+        # Reference to custom_roles in Firebase
+        custom_roles_ref = db.reference(f'groups/{group_id}/custom_roles')
+        custom_roles_data = custom_roles_ref.get() or {}
 
-        return jsonify({
-            'success': True,
-            'message': f'Role "{role_name}" created successfully!'
-        }), 201 # 201 Created
+        # If role already exists and is active, return error
+        if role_name in custom_roles_data and custom_roles_data[role_name]:
+            return jsonify({'success': False, 'message': 'Role already exists.'}), 409
 
+        # Add or update the role as active
+        custom_roles_ref.update({role_name: True})
+
+        return jsonify({'success': True, 'message': f'Role "{role_name}" created successfully.'}), 200
     except Exception as e:
         logging.error(f"Error creating role for group {group_id}: {e}")
-        traceback.print_exc() # Print full traceback to console
+        traceback.print_exc()
         return jsonify({'success': False, 'message': f'Error creating role: {str(e)}'}), 500
 
-@app.route('/delete_role/<group_id>', methods=['POST'])
-def delete_role(group_id):
+def get_group_members_with_roles(group_id):
+    """
+    Returns a list of group members with their primary role and custom roles for the given group_id.
+    """
     try:
-        data = request.get_json()
-        if not data or 'role_name' not in data:
-            return jsonify({'success': False, 'message': 'Role name is required.'}), 400
-        
-        role_name = data['role_name'].strip()
-        if not role_name:
-            return jsonify({'success': False, 'message': 'Role name cannot be empty.'}), 400
-
-        # Check if the role exists
-        role_ref = db.reference(f'groups/{group_id}/custom_roles/{role_name}')
-        if not role_ref.get():
-            return jsonify({'success': False, 'message': f'Role "{role_name}" does not exist.'}), 404
-
-        # Remove the role from the group's custom_roles
-        role_ref.delete()
-
-        # Iterate through all members and remove this role if they have it
         members_ref = db.reference(f'groups/{group_id}/members')
         members_data = members_ref.get() or {}
-        
+        members_list = []
         for username, member_info in members_data.items():
-            if 'roles' in member_info and role_name in member_info['roles']:
-                db.reference(f'groups/{group_id}/members/{username}/roles/{role_name}').delete()
-            
-            # Also update the user's personal group entry
-            user_group_roles_ref = db.reference(f'users/{username}/groups/{group_id}/roles')
-            user_roles_data = user_group_roles_ref.get() or {}
-            if role_name in user_roles_data:
-                user_group_roles_ref.child(role_name).delete()
-
-
+            primary_role = member_info.get('primary_role', member_info.get('role', 'member'))
+            custom_roles_dict = member_info.get('roles', {})
+            custom_roles = [role_name for role_name, is_assigned in custom_roles_dict.items() if is_assigned]
+            members_list.append({
+                'username': username,
+                'primary_role': primary_role,
+                'custom_roles': custom_roles
+            })
+        custom_roles_ref = db.reference(f'groups/{group_id}/custom_roles')
+        available_custom_roles_dict = custom_roles_ref.get() or {}
+        available_custom_roles = [role_name for role_name, is_active in available_custom_roles_dict.items() if is_active]
         return jsonify({
             'success': True,
-            'message': f'Role "{role_name}" removed successfully from group and all members.'
+            'members': members_list,
+            'available_custom_roles': available_custom_roles
         }), 200
-
     except Exception as e:
+        logging.error(f"Error fetching group members and roles for group {group_id}: {e}")
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'Error fetching group members and roles: {str(e)}'}), 500
         logging.error(f"Error deleting role for group {group_id}: {e}")
         traceback.print_exc()
         return jsonify({'success': False, 'message': f'Error deleting role: {str(e)}'}), 500
