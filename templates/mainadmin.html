@@ -930,11 +930,12 @@ function submitAssignExistingRole() {
     if (!selectedRole) { alert('Please select a role.'); return; }
     if (selectedUsers.length === 0) { alert('Please select at least one user.'); return; }
 
+    // Build updates payload for backend
     const updates = {};
     selectedUsers.forEach(user => {
-        updates[user] = { 
+        updates[user] = {
             custom_roles_to_assign: [selectedRole],
-            username: user  // Include username for server-side validation
+            username: user
         };
     });
 
@@ -951,17 +952,21 @@ function submitAssignExistingRole() {
     })
     .then(res => res.json())
     .then(data => {
+        submitButton.disabled = false;
+        submitButton.textContent = originalText;
         if (data.success) {
-            alert(data.message);
+            alert(data.message || 'Role assigned successfully!');
             showAssignPanel('role');
             location.reload();
         } else {
-            alert('Failed to assign role: ' + data.message);
+            alert('Failed to assign role: ' + (data.message || 'Unknown error'));
         }
     })
     .catch(err => {
+        submitButton.disabled = false;
+        submitButton.textContent = originalText;
         console.error('Error assigning role:', err);
-        alert('Error assigning role.');
+        alert('Error assigning role. Please try again.');
     });
 }
 
