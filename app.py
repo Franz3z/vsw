@@ -763,27 +763,27 @@ def create_project_with_tasks(group_id):
             priority = task_data.get('priority', 'Low')
             week_category = task_data.get('week_category', 'upcoming') # Default to 'upcoming'
             
-            # Determine deadline based on week_category for consistent storage
+            # Use deadline from frontend if provided, else calculate as last day (Sunday) of assigned week
             deadline_date = None
-            today = datetime.now()
-            if week_category == 'this_week':
-                deadline_date = today - timedelta(days=today.weekday()) + timedelta(days=6)
-            elif week_category == 'next_week':
-                deadline_date = today - timedelta(days=today.weekday()) + timedelta(weeks=1, days=6)
-            elif week_category.startswith('week_'):
+            deadline_str = task_data.get('deadline')
+            if deadline_str:
                 try:
-                    week_num = int(week_category.replace('week_', ''))
-                    # Clamp week_num to duration_weeks if set
-                    duration_weeks_val = None
-                    try:
-                        duration_weeks_val = int(duration_weeks)
-                    except Exception:
-                        duration_weeks_val = None
-                    if duration_weeks_val and week_num > duration_weeks_val:
-                        week_num = duration_weeks_val
-                    deadline_date = today - timedelta(days=today.weekday()) + timedelta(weeks=week_num -1, days=6)
-                except ValueError:
+                    deadline_date = datetime.fromisoformat(deadline_str)
+                except Exception:
                     deadline_date = None
+            else:
+                today = datetime.now()
+                if week_category.startswith('week_'):
+                    try:
+                        week_num = int(week_category.replace('week_', ''))
+                        start_of_week = today - timedelta(days=today.weekday())
+                        deadline_date = start_of_week + timedelta(weeks=week_num, days=-1)
+                    except Exception:
+                        deadline_date = None
+                else:
+                    # Fallback: use current week's Sunday
+                    start_of_week = today - timedelta(days=today.weekday())
+                    deadline_date = start_of_week + timedelta(days=6)
             
             # Parse start and deadline dates
             start_date_str = task_data.get('start_date')
