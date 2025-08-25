@@ -14,7 +14,6 @@
             <div class="buttons">
                 <a href="{{ url_for('dashboard', username=username) }}" class="styled-button">←</a>
                 <button onclick="openSubmitModal()">Submit</button>
-                <button onclick="openSubmitProgressModal()">Submit Progress</button>
             </div>
 
             <div class="chatbox">
@@ -152,7 +151,7 @@
     <div id="submitProgressModalContainer" class="modal-backdrop" style="display:none;">
         <div class="modal-content">
             <h3 class="modal-header">Submit Progress</h3>
-            <button class="modal-close-btn" onclick="closeSubmitModal()">&times;</button>
+            <button class="modal-close-btn" onclick="closeSubmitProgressModal()">&times;</button>
             <div class="modal-body">
                 <p>Select a task and provide a progress report.</p>
                 <select id="taskSelect" class="task-dropdown"></select>
@@ -161,9 +160,6 @@
                     <input type="file" id="progressFile" name="file">
                     <button type="submit" class="submit-button">Submit Progress</button>
                 </form>
-            </div>
-            <div class="modal-footer">
-                <button onclick="closeSubmitModal()" class="cancel-button">Close</button>
             </div>
         </div>
     </div>
@@ -332,6 +328,16 @@
                 }
             });
 }
+
+    function closeSubmitProgressModal() {
+        const modal = document.getElementById('submitProgressModalContainer');
+        if (modal) {
+            modal.style.display = 'none';
+            // Reset the form
+            const form = document.getElementById('progressForm');
+            if (form) form.reset();
+        }
+    }
 
     function submitProgress(event) {
         event.preventDefault();
