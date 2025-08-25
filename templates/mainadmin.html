@@ -979,22 +979,25 @@ function openRoleManagement() {
             const content = document.getElementById('roleManagementContent');
             // Debug: log backend response
             console.log('Role management backend response:', data);
-            if (data && data.success && Array.isArray(data.members)) {
+            // Defensive: ensure members and available_custom_roles are arrays
+            const members = Array.isArray(data.members) ? data.members : [];
+            const availableCustomRoles = Array.isArray(data.available_custom_roles) ? data.available_custom_roles : [];
+            if (data && data.success && members.length > 0) {
                 let html = '<form id="roleForm">';
-                data.members.forEach(user => {
+                members.forEach(user => {
                     html += `
                     <div>
-                        <strong>${user.username}:</strong>
-                        <select name="primary_role_${user.username}" data-username="${user.username}">
-                            <option value="admin" ${user.primary_role === 'admin' ? 'selected' : ''}>Admin</option>
-                            <option value="member" ${user.primary_role === 'member' ? 'selected' : ''}>Member</option>
+                        <strong>${user.username || ''}:</strong>
+                        <select name="primary_role_${user.username || ''}" data-username="${user.username || ''}">
+                            <option value="admin" ${(user.primary_role === 'admin') ? 'selected' : ''}>Admin</option>
+                            <option value="member" ${(user.primary_role === 'member') ? 'selected' : ''}>Member</option>
                         </select>
                     </div>
                     <div style="margin-left: 20px;">
                         Custom Roles:
-                        <select multiple name="custom_roles_${user.username}" data-username="${user.username}" class="custom-role-select">
-                            ${(Array.isArray(data.available_custom_roles) ? data.available_custom_roles : []).map(role => `
-                                <option value="${role}" ${user.custom_roles && user.custom_roles.includes(role) ? 'selected' : ''}>${role}</option>
+                        <select multiple name="custom_roles_${user.username || ''}" data-username="${user.username || ''}" class="custom-role-select">
+                            ${availableCustomRoles.map(role => `
+                                <option value="${role}" ${(Array.isArray(user.custom_roles) && user.custom_roles.includes(role)) ? 'selected' : ''}>${role}</option>
                             `).join('')}
                         </select>
                     </div>
@@ -1016,7 +1019,7 @@ function openRoleManagement() {
                 <h4>Remove Custom Role</h4>
                 <select id="roleToDelete">
                     <option value="">-- Select Role to Remove --</option>
-                    ${(Array.isArray(data.available_custom_roles) ? data.available_custom_roles : []).map(role => `
+                    ${availableCustomRoles.map(role => `
                         <option value="${role}">${role}</option>
                     `).join('')}
                 </select>
