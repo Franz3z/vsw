@@ -638,29 +638,31 @@ def get_group_members_with_roles(group_id):
 
             for member_key, member_info in members_data_raw.items():
                 # Always include username, prefer explicit username field
-                username = member_info.get('username', member_key) if isinstance(member_info, dict) else member_key
-                # Prefer primary_role, fallback to role, then 'member'
+                username = member_key
+                primary_role = 'member'
+                custom_roles = []
+                status = None
+                # Handle dict structure
                 if isinstance(member_info, dict):
+                    username = member_info.get('username', member_key)
                     primary_role = member_info.get('primary_role') or member_info.get('role', 'member')
+                    status = member_info.get('status', None)
                     roles_field = member_info.get('roles', {})
-                    custom_roles = []
                     if isinstance(roles_field, dict):
                         custom_roles = [r for r, v in roles_field.items() if v]
                     elif isinstance(roles_field, list):
                         custom_roles = roles_field
-                    else:
-                        custom_roles = []
                 elif isinstance(member_info, str):
                     primary_role = member_info
-                    custom_roles = []
-                else:
-                    primary_role = 'member'
-                    custom_roles = []
-                members.append({
+                # Build member dict
+                member_dict = {
                     'username': username,
                     'primary_role': primary_role,
                     'custom_roles': custom_roles
-                })
+                }
+                if status:
+                    member_dict['status'] = status
+                members.append(member_dict)
 
             # Get available custom roles
             custom_roles_ref = db.reference(f'groups/{group_id}/custom_roles')
