@@ -390,24 +390,29 @@ def mainadmin(username, group_id):
         if not week_category and 'week' in task:
             week_category = task['week']
 
-        # Fallback: categorize by deadline date if no week info
+        # Always assign week_# category if missing
         if not week_category:
             deadline_str = task.get('deadline_date') or task.get('deadline')
-            if deadline_str:
+            project_start_str = None
+            project_duration_weeks = None
+            if 'project_id' in task and task['project_id'] in project_lookup:
+                project_info = project_lookup[task['project_id']]
+                project_start_str = project_info.get('start_date')
+                project_duration_weeks = project_info.get('duration_weeks')
+            if deadline_str and project_start_str and project_duration_weeks:
                 try:
                     deadline = datetime.fromisoformat(deadline_str)
-                    today = datetime.now()
-                    days_diff = (deadline.date() - today.date()).days
-                    if days_diff < 0:
-                        week_category = 'overdue'
-                    elif days_diff <= 7:
-                        week_category = 'this_week'
-                    elif days_diff <= 14:
-                        week_category = 'next_week'
-                    else:
-                        week_category = 'following_weeks'
+                    project_start = datetime.fromisoformat(project_start_str)
+                    days_diff = (deadline.date() - project_start.date()).days
+                    week_num = max(1, (days_diff // 7) + 1)
+                    if week_num > project_duration_weeks:
+                        week_num = project_duration_weeks
+                    week_category = f"week_{week_num}"
                 except Exception:
-                    week_category = 'unknown'
+                    week_category = "week_1"
+            else:
+                # If no project info, default to week_1
+                week_category = "week_1"
 
         task_info = {
             'task_id': task_id,
