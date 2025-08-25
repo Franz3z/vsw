@@ -969,10 +969,17 @@ function submitAssignExistingRole() {
 function openRoleManagement() {
     showAssignPanel('manageRoles');
     fetch(`/get_group_members_with_roles/${groupId}`)
-        .then(res => res.json())
+        .then(res => {
+            if (!res.ok) {
+                return res.text().then(text => { throw new Error(text); });
+            }
+            return res.json();
+        })
         .then(data => {
             const content = document.getElementById('roleManagementContent');
-            if (data.success && Array.isArray(data.members)) {
+            // Debug: log backend response
+            console.log('Role management backend response:', data);
+            if (data && data.success && Array.isArray(data.members)) {
                 let html = '<form id="roleForm">';
                 data.members.forEach(user => {
                     html += `
@@ -986,7 +993,7 @@ function openRoleManagement() {
                     <div style="margin-left: 20px;">
                         Custom Roles:
                         <select multiple name="custom_roles_${user.username}" data-username="${user.username}" class="custom-role-select">
-                            ${data.available_custom_roles.map(role => `
+                            ${(Array.isArray(data.available_custom_roles) ? data.available_custom_roles : []).map(role => `
                                 <option value="${role}" ${user.custom_roles && user.custom_roles.includes(role) ? 'selected' : ''}>${role}</option>
                             `).join('')}
                         </select>
@@ -1009,7 +1016,7 @@ function openRoleManagement() {
                 <h4>Remove Custom Role</h4>
                 <select id="roleToDelete">
                     <option value="">-- Select Role to Remove --</option>
-                    ${data.available_custom_roles.map(role => `
+                    ${(Array.isArray(data.available_custom_roles) ? data.available_custom_roles : []).map(role => `
                         <option value="${role}">${role}</option>
                     `).join('')}
                 </select>
@@ -1018,14 +1025,19 @@ function openRoleManagement() {
 
                 content.innerHTML = html;
             } else {
-                const content = document.getElementById('roleManagementContent');
-                content.innerHTML = '<p class="error-message">Error loading role management data.</p>';
+                // Show backend error message if available
+                let errorMsg = 'Error loading role management data.';
+                if (data && data.message) {
+                    errorMsg += ` Backend message: ${data.message}`;
+                }
+                content.innerHTML = `<p class="error-message">${errorMsg}</p>`;
+                console.error('Role management error:', data);
             }
         })
         .catch(err => {
-            console.error('Error fetching group members:', err);
+            console.error('Error fetching group members (role management):', err);
             const content = document.getElementById('roleManagementContent');
-            content.innerHTML = '<p class="error-message">Error loading role management data.</p>';
+            content.innerHTML = `<p class="error-message">Error loading role management data. ${err && err.message ? err.message : ''}</p>`;
         });
 }
 
