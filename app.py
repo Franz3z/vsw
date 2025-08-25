@@ -593,8 +593,6 @@ def main(username, group_id):
                            tasks_next_week=tasks_next_week, # Pass this data
                            completed_tasks=completed_tasks,)
 
-@app.route('/get_group_members_with_roles/<group_id>', methods=['GET'])
-@app.route('/get_group_members/<group_id>', methods=['GET'])
 @app.route('/get_available_roles/<group_id>', methods=['GET'])
 def get_available_roles(group_id):
     try:
@@ -722,39 +720,6 @@ def create_role(group_id):
         logging.error(f"Error creating role for group {group_id}: {e}")
         traceback.print_exc()
         return jsonify({'success': False, 'message': f'Error creating role: {str(e)}'}), 500
-
-def get_group_members_with_roles(group_id):
-    """
-    Returns a list of group members with their primary role and custom roles for the given group_id.
-    """
-    try:
-        members_ref = db.reference(f'groups/{group_id}/members')
-        members_data = members_ref.get() or {}
-        members_list = []
-        for username, member_info in members_data.items():
-            primary_role = member_info.get('primary_role', member_info.get('role', 'member'))
-            custom_roles_dict = member_info.get('roles', {})
-            custom_roles = [role_name for role_name, is_assigned in custom_roles_dict.items() if is_assigned]
-            members_list.append({
-                'username': username,
-                'primary_role': primary_role,
-                'custom_roles': custom_roles
-            })
-        custom_roles_ref = db.reference(f'groups/{group_id}/custom_roles')
-        available_custom_roles_dict = custom_roles_ref.get() or {}
-        available_custom_roles = [role_name for role_name, is_active in available_custom_roles_dict.items() if is_active]
-        return jsonify({
-            'success': True,
-            'members': members_list,
-            'available_custom_roles': available_custom_roles
-        }), 200
-    except Exception as e:
-        logging.error(f"Error fetching group members and roles for group {group_id}: {e}")
-        traceback.print_exc()
-        return jsonify({'success': False, 'message': f'Error fetching group members and roles: {str(e)}'}), 500
-        logging.error(f"Error deleting role for group {group_id}: {e}")
-        traceback.print_exc()
-        return jsonify({'success': False, 'message': f'Error deleting role: {str(e)}'}), 500
 
 # NEW: Endpoint for creating a project with multiple tasks
 @app.route('/create_project_with_tasks/<group_id>', methods=['POST'])
