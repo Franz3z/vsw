@@ -1212,22 +1212,33 @@ function submitProject() {
 
 // --- Assign Existing Task Modal Functions ---
 function openAssignExistingTaskModal() {
-    // CORRECTED FETCH URL for getting all tasks
     fetch(`/get_all_tasks/${groupId}`)
-        .then(res => res.json())
+        .then(res => {
+            if (!res.ok) {
+                return res.text().then(text => { throw new Error(text); });
+            }
+            return res.json();
+        })
         .then(data => {
-            if (data.success && Array.isArray(data.tasks)) { // Data key is 'tasks' not 'available_tasks'
-                existingTasks = data.tasks;
+            if (data.success) {
+                // Combine all tasks from all categories
+                const allTasks = [
+                    ...(data.tasks_this_week || []),
+                    ...(data.tasks_next_week || []),
+                    ...(data.completed_tasks || []),
+                    ...(data.tasks_no_deadline || [])
+                ];
+                existingTasks = allTasks;
                 populateExistingTaskSelection(existingTasks);
                 populateExistingTaskRoleSelection();
                 showAssignPanel('assignTask');
             } else {
                 console.error('Failed to fetch available tasks:', data.message);
-                alert('Failed to load tasks. ' + data.message);
+                alert('Failed to load tasks. ' + (data.message || 'Unknown error'));
             }
         })
         .catch(err => {
-            console.error('Error fetching tasks:', err);
+            console.error('Error fetching tasks:', err.message || err);
             alert('Error loading tasks.');
         });
 }
