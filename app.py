@@ -604,6 +604,7 @@ def get_available_roles(group_id):
         logging.error(f"Error fetching available roles for group {group_id}: {e}")
         traceback.print_exc()
         return jsonify({'success': False, 'message': f'Error fetching available roles: {str(e)}'}), 500
+    
 @app.route('/get_group_members/<group_id>', methods=['GET'])
 def get_group_members(group_id):
     try:
@@ -744,11 +745,13 @@ def create_project_with_tasks(group_id):
         project_ref = db.reference(f'groups/{group_id}/projects').push() # Create a new project entry
         project_id = project_ref.key
 
+        duration_weeks = data.get('duration_weeks')
         project_ref.set({
             'project_name': project_name,
             'description': project_description,
             'created_at': datetime.now().isoformat(),
-            'tasks_count': len(tasks)
+            'tasks_count': len(tasks),
+            'duration_weeks': duration_weeks
         })
 
         tasks_ref = db.reference(f'groups/{group_id}/tasks')
@@ -855,7 +858,8 @@ def get_all_tasks(group_id):
         projects_data = projects_ref.get() or {}
         project_lookup = {proj_id: {
             'project_name': proj.get('project_name', ''),
-            'project_description': proj.get('description', '')
+            'project_description': proj.get('description', ''),
+            'duration_weeks': proj.get('duration_weeks', '')
         } for proj_id, proj in projects_data.items()}
 
         tasks_this_week = []
@@ -868,9 +872,11 @@ def get_all_tasks(group_id):
                 continue
             project_name = ''
             project_description = ''
+            duration_weeks = ''
             if 'project_id' in task and task['project_id'] in project_lookup:
                 project_name = project_lookup[task['project_id']]['project_name']
                 project_description = project_lookup[task['project_id']]['project_description']
+                duration_weeks = project_lookup[task['project_id']].get('duration_weeks', '')
 
             week_category = task.get('week_category', '')
             if not week_category and 'week' in task:
@@ -897,6 +903,9 @@ def get_all_tasks(group_id):
 
             task_info = {
                 'task_id': task_id,
+                'project_name': project_name,
+                'project_description': project_description,
+                'duration_weeks': duration_weeks,
                 'task_name': task.get('task_name', 'No Name'),
                 'description': task.get('description', ''),
                 'assigned_to': task.get('assigned_to', 'N/A'),
