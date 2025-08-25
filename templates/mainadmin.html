@@ -503,22 +503,39 @@
         fetch(`/get_all_tasks/${groupId}`)
             .then(response => response.json())
             .then(data => {
+                console.log('Fetched tasks for submit modal:', data); // Debug log
                 const taskSelect = document.getElementById('taskSelect');
                 if (!taskSelect) return; // Robust check
                 taskSelect.innerHTML = '';
 
-                // Get only this week and next week tasks assigned to the current user
+                // Get all tasks assigned to the current user
                 var tasksToReportOn = [];
-                if (Array.isArray(data.tasks_this_week)) {
-                    tasksToReportOn = tasksToReportOn.concat(
-                        data.tasks_this_week.filter(task => task.assigned_to === username)
-                    );
-                }
-                if (Array.isArray(data.tasks_next_week)) {
-                    tasksToReportOn = tasksToReportOn.concat(
-                        data.tasks_next_week.filter(task => task.assigned_to === username)
-                    );
-                }
+
+                // Helper function to filter and add tasks
+                const addTasksIfValid = (taskArray) => {
+                    if (Array.isArray(taskArray)) {
+                        const userTasks = taskArray.filter(task => 
+                            task && 
+                            task.assigned_to === username && 
+                            task.status !== 'completed'
+                        );
+                        tasksToReportOn = tasksToReportOn.concat(userTasks);
+                    }
+                };
+
+                // Add tasks from all relevant categories
+                addTasksIfValid(data.tasks_this_week);
+                addTasksIfValid(data.tasks_next_week);
+                addTasksIfValid(data.tasks_no_deadline);
+                
+                // Sort tasks by deadline
+                tasksToReportOn.sort((a, b) => {
+                    if (!a.deadline) return 1;
+                    if (!b.deadline) return -1;
+                    return new Date(a.deadline) - new Date(b.deadline);
+                });
+
+                console.log('Filtered tasks to report on:', tasksToReportOn); // Debug log
 
                 if (tasksToReportOn.length === 0) {
                     var opt = document.createElement('option');
@@ -528,18 +545,17 @@
                     return;
                 }
 
-                // Sort tasks by deadline
-                tasksToReportOn.sort((a, b) => {
-                    const dateA = a.deadline ? new Date(a.deadline) : new Date(9999, 11, 31);
-                    const dateB = b.deadline ? new Date(b.deadline) : new Date(9999, 11, 31);
-                    return dateA - dateB;
-                });
-
+                // Add tasks to dropdown
                 tasksToReportOn.forEach(function(task) {
                     var option = document.createElement('option');
                     option.value = task.task_id;
+                    
+                    // Format the task name with all relevant information
                     const deadlineText = task.deadline ? ` (Due: ${task.deadline})` : '';
-                    option.textContent = `${task.project_name}: ${task.task_name}${deadlineText}`;
+                    const projectText = task.project_name ? `[${task.project_name}] ` : '';
+                    const statusText = task.status ? ` (${task.status})` : '';
+                    
+                    option.textContent = `${projectText}${task.task_name}${deadlineText}${statusText}`;
                     taskSelect.appendChild(option);
                 });
             })
