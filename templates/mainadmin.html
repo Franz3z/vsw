@@ -402,7 +402,32 @@
                 // Debug: log raw backend response
                 console.log('Raw backend task data:', data);
 
-                // Defensive: ensure all categories are arrays
+                // If week_tasks is present, use it for rendering
+                if (data.week_tasks && typeof data.week_tasks === 'object' && Object.keys(data.week_tasks).length > 0) {
+                    const taskPanelContent = document.querySelector('.task-panel-content');
+                    taskPanelContent.innerHTML = '<h3>Group Tasks</h3>';
+                    // Render each week section
+                    Object.keys(data.week_tasks).sort((a, b) => {
+                        // Sort by week number
+                        const numA = parseInt(a.replace('week_', ''));
+                        const numB = parseInt(b.replace('week_', ''));
+                        return numA - numB;
+                    }).forEach(weekKey => {
+                        const weekNum = weekKey.replace('week_', '');
+                        const sectionHTML = `
+                            <div class="task-section">
+                                <div class="collapsible">Week ${weekNum}</div>
+                                <ul id="week-${weekNum}-tasks"></ul>
+                            </div>
+                        `;
+                        taskPanelContent.insertAdjacentHTML('beforeend', sectionHTML);
+                        renderTasksPanel(`week-${weekNum}-tasks`, data.week_tasks[weekKey]);
+                    });
+                    initCollapsibleSections();
+                    return;
+                }
+
+                // Fallback: Defensive, ensure all categories are arrays
                 const allTasks = {
                     this_week: Array.isArray(data.tasks_this_week) ? data.tasks_this_week : (data.tasks_this_week ? [data.tasks_this_week] : []),
                     next_week: Array.isArray(data.tasks_next_week) ? data.tasks_next_week : (data.tasks_next_week ? [data.tasks_next_week] : []),
