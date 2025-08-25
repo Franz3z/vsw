@@ -422,29 +422,31 @@
                 const taskPanelContent = document.querySelector('.task-panel-content');
                 taskPanelContent.innerHTML = '<h3>Group Tasks</h3>';
 
-                // Create and render only this week and next week sections
-                const sections = [
-                    { id: 'this-week-tasks', title: '🎯 Tasks This Week', tasks: allTasks.this_week },
-                    { id: 'next-week-tasks', title: '🗓️ Tasks Next Week', tasks: allTasks.next_week }
-                ];
+                // Group tasks by week number
+                const weekTasks = {};
+                // Combine all tasks from this_week, next_week, and following weeks
+                const combinedTasks = [...allTasks.this_week, ...allTasks.next_week, ...(allTasks.following_weeks || [])];
+                combinedTasks.forEach(task => {
+                    let weekNum = 1;
+                    if (task.week_category && task.week_category.startsWith('week_')) {
+                        weekNum = parseInt(task.week_category.replace('week_', ''));
+                    } else if (task.week && task.week.startsWith('week_')) {
+                        weekNum = parseInt(task.week.replace('week_', ''));
+                    }
+                    if (!weekTasks[weekNum]) weekTasks[weekNum] = [];
+                    weekTasks[weekNum].push(task);
+                });
 
-                sections.forEach(section => {
+                // Render each week section
+                Object.keys(weekTasks).sort((a,b)=>a-b).forEach(weekNum => {
                     const sectionHTML = `
                         <div class="task-section">
-                            <div class="collapsible">${section.title}</div>
-                            <ul id="${section.id}"></ul>
+                            <div class="collapsible">Week ${weekNum}</div>
+                            <ul id="week-${weekNum}-tasks"></ul>
                         </div>
                     `;
                     taskPanelContent.insertAdjacentHTML('beforeend', sectionHTML);
-                    // If tasks array is empty, show a message
-                    if (!Array.isArray(section.tasks) || section.tasks.length === 0) {
-                        const container = document.getElementById(section.id);
-                        if (container) {
-                            container.innerHTML = '<li class="no-tasks">No tasks available in this category.</li>';
-                        }
-                    } else {
-                        renderTasksPanel(section.id, section.tasks);
-                    }
+                    renderTasksPanel(`week-${weekNum}-tasks`, weekTasks[weekNum]);
                 });
 
                 // Reinitialize collapsible functionality
@@ -475,26 +477,19 @@
             return;
         }
 
-        // Render each task
+        // Render each task in requested format
         tasks.forEach(task => {
-            if (!task) return; // Skip null or undefined tasks
-            
+            if (!task) return;
+            const assigneeRole = task.assigned_to_type === 'role' && task.assigned_to ? `(${task.assigned_to})` : '';
+            const assigneeDisplay = `${task.assigned_to || 'Unassigned'}${assigneeRole}`;
             const taskElement = document.createElement('li');
             taskElement.className = 'task-card';
             taskElement.innerHTML = `
-                <div class="project-section">
-                    <div class="project-name"><strong>Project:</strong> ${task.project_name || 'N/A'}</div>
-                    <div class="project-description">${task.project_description || 'No project description.'}</div>
-                </div>
-                <div class="task-section">
-                    <div class="task-title"><strong>Task:</strong> ${task.task_name || 'Untitled Task'}</div>
-                    <div class="task-description">${task.description || 'No description provided.'}</div>
-                </div>
-                <div class="task-meta">
-                    <div class="assignee-info">Assigned to: ${task.assigned_to || 'Unassigned'}</div>
-                    <div class="deadline-info">Deadline: ${task.deadline || 'N/A'}</div>
-                    <span class="priority-tag priority-${task.priority ? task.priority.toLowerCase() : 'normal'}">${task.priority || 'Normal'}</span>
-                </div>
+                <div><strong>Task:</strong> ${task.task_name || 'Untitled Task'} (${task.project_name || 'N/A'})</div>
+                <div><strong>Description:</strong> ${task.description || 'No description provided.'}</div>
+                <div><strong>Assigned to:</strong> ${assigneeDisplay}</div>
+                <div><strong>Priority:</strong> ${task.priority || 'Normal'}</div>
+                <div><strong>Deadline:</strong> ${task.deadline || 'N/A'}</div>
             `;
             container.appendChild(taskElement);
         });
