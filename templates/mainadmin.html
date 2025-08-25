@@ -837,8 +837,8 @@ function openAssignExistingRoleModal() {
     showAssignPanel('assignRole');
     // First populate roles
     populateRoleSelection();
-    // Then fetch and populate users
-    fetch(`/get_group_members/${groupId}`)
+    // Then fetch and populate users with roles
+    fetch(`/get_group_members_with_roles/${groupId}`)
         .then(response => {
             if (!response.ok) {
                 return response.text().then(text => { throw new Error(text); });
@@ -852,22 +852,28 @@ function openAssignExistingRoleModal() {
                 data.members.forEach(member => {
                     const option = document.createElement('option');
                     option.value = member.username;
-                    option.textContent = member.username;
+                    let rolesText = '';
+                    if (member.primary_role) {
+                        rolesText += `[${member.primary_role}]`;
+                    }
+                    if (Array.isArray(member.custom_roles) && member.custom_roles.length > 0) {
+                        rolesText += ` (${member.custom_roles.join(', ')})`;
+                    }
+                    option.textContent = `${member.username} ${rolesText}`;
                     userSelect.appendChild(option);
                 });
             } else {
-                console.error('Failed to fetch members:', data.message);
-                alert('Failed to fetch members: ' + (data.message || 'No members found'));
                 userSelect.innerHTML = '<option value="">No members available</option>';
+                alert('No members found or failed to fetch members.');
             }
         })
         .catch(error => {
             console.error('Error fetching members:', error.message || error);
-            alert('Error fetching members: ' + (error.message || error));
             const userSelect = document.getElementById('select-users-for-role');
             if (userSelect) {
                 userSelect.innerHTML = '<option value="">Error loading members</option>';
             }
+            alert('Error fetching members: ' + (error.message || error));
         });
 }
 
