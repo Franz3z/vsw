@@ -245,6 +245,20 @@ def group_redirect(username, group_id):
 
 @app.route('/mainadmin/<username>/<group_id>')
 def mainadmin(username, group_id):
+    # --- Fetch Tasks Data ---
+    tasks_ref = db.reference(f'groups/{group_id}/tasks')
+    tasks_data = tasks_ref.get() or {}
+
+    # --- Fetch all projects for the group ---
+    projects_ref = db.reference(f'groups/{group_id}/projects')
+    projects_data = projects_ref.get() or {}
+    project_lookup = {}
+    for proj_id, proj in projects_data.items():
+        project_lookup[proj_id] = {
+            'project_name': proj.get('project_name', ''),
+            'project_description': proj.get('description', '')
+        }
+
     # --- Group tasks by week number for right panel ---
     week_tasks = {}
     for task_id, task in tasks_data.items():
