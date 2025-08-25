@@ -21,7 +21,7 @@ load_dotenv()
 print("--- VERCEL DEPLOYMENT TEST: app.py started ---")
 
 app = Flask(__name__)
-DROPBOX_ACCESS_TOKEN = "sl.u.AF5ggBT3VPn8NyH1rnP7n615VnXgJmrg5aH0bVnkj13WMUT1lKgYyHeSWKLU1pyKyrahcIrIqqXyiHsP4_vijk4ooiji_cW7bUjYaSV7dd64XmkLO5eeixbrdYKCJC-crCSTHFDTNawo-nXFjrCpWnZIzyhaEkZsNN0BubuJJSD6QkABEMNA3N-MlRGvHGYGmhjgRDx32Zq6yrRxlBSNHlTBBZSnGud4yHW1RYRn_5wQiPufEXpwVhtgdBt5QL9k-p2X2a-uYDid2RCPljaQ_0WiAesrHNisEsml10V3IQn27loBdrTNj1Hv2YuEw6Si8RM73u2fYUUeSJh1HTrIOjkx1S-DMm84gksu4YI2luHU2IcpyXv8IIwtA_HEzRbxd-cPZIlGlBBY_4kQfpJfTfFYYTlL7k_fr72gqNOj_fLNgEbo2gIxMtkuSknUlriDB3AtWlAplUAu4HJbsQHw5pBROa-dd_Pda42X41RcBzGWRj7hDqeGG8Gf1_8t8Z7TqZpox6LDmTS1TMtjS1NQfmAv3WJvpGhVZL5cQI3JRISI1RrUhQ_rBTXefa_h5kUujYmoyppRUToluGPtgTnx4hNiFHW2kEXYoirFyHUE62T44ooLYXiFXWsh7UAZ4sOHEoaMdWEBrBlatCefX4PyhV-peSei7maYG6env1jsywN7Q_XqFyANrn6bKTCsgpyQbeg5dVz8kVrvAodBkEdeA3yAEBbMYllHn8WecR4YqKg5NqEeZb5NU3XYLgMTH0LkXXVkRdr6uz6Y9CZxeNxLt1riLaULz78j0MkFTaWwwigTyZrwnPawawwTT2QsFVvSqf7xwju7L0xG8mm-WHFLaWy46SF0tJVQIXxeW--wsjo3nc65J0JS7wZ8wro0Wk0TYzlp3VurYDWj2JMeae_k28vdfmdBFO3y2bM1mRVIVpAkNNvJnbiHHDfHtS8ZV4xiQ3YwAuVkMgtb1Q7WMjnTJPfcpOJI0pM-QU_pbWNv6hDhY1Ki7EcjGgQyyGSAP5555euoB5Rj1KSAwRNmKAJaU5RZYlcF-wTRQZrzGpv6nJcIZug2x4ttxqWV4XyTikNon036e8cIo5eDk6bTLKpNmjPGVxxJxFoT_j1qZZHqixo83vUwCXFdMui_2HD1Hwye37IFN2UMO4AM9PALGiteg8_87eDVKJ15xU4cWje0soQRUTOKM4Ov2ex1YmiN2PzhF-gFcybNUlu6QutCuKqDTSOLMc94ocDqnM87BJ9z5Png2KRNMWc8cdx1FFguJi37c_MnjESh5_wcguNiv4LI-ZcstOu1Bzbjy_NI1TzUV8Ym_tq8q6w8BFZWyVIpUlM_2o4_Fn_YbHewDAjojGC1qdwucfj7d0C6Hws3_rnK_FGauSgeMaV89OVwfZRbU-NQCV0IKHZhWwm8fMMSW-NEB_YuVdasXJ1X5w321lx__7ozW0Lng4QO3f-1_wxKLL0UOdvw_qvCu4-Icjjrj4eZv6Ir"
+DROPBOX_ACCESS_TOKEN = "sl.u.AF6mqFNAy-f98DiZ8Dxv39PbFzRqQdhV7jh_mz-NXS1Ul9qRlpK2Y-GxTH4Vf7Kh1Sr6A_vLCSVTpD8h9Z_raWFLgtxfx4EtHd-yCuLTvsbNqJqK1Y0coPgEfKV3ykbTL1X6Zsy_xUNLjZucpdqU6iOLWRrjgxRXkaQs7TVC0m9z0kky9HIyBfYZn5UfIRTpowC1ZyEO0R9PAaRyuXSDreuQyRDhbill2DLPzW64S0Ban95TOd8mkp228p_z6DHXle18TL_WLIIzle4a9VgWMXRV9xk92iyerTKKUT91sC5aDDWPjcKWNdUhxPmhUEn_E2sKVmc7-OcCjkXdEeID4CMozIXoJomYPz3yQbi1J5BKDOnbClAhQsXNmR5HOzorZW-KyvHIPyBYNwvYX44POrU4ohWfsq3uDYhCcwZJXYYnqG_pCiYf5gQyObouyBcFfpGKw8fjNSzE1VjlNrn8flREO_4HnE-nxgJa6VvJBkk_uo0dmfXT46QkYSwDtjlXP3ccvwabi3JBEGnUF-Ux5LvCfVBV8Xu-W4XYgz_Cm6NoXCwch-iXrCeHo-36KlGYyb1q4_iLDU-dwxc0TVU4yJIl3Kz5b3ZdlcgysC4SulFVn_rgDizIF5I-Y3-EmkwXyEj2JKheeKgTxF47P4Xu29m4qanWq4mf3ZYmgwEUe1jasCvrpjMUPurbQOTR_Op3N8igsPtZDbOW6f4zWbAVoweJAT7-fuPY3eLYyZzgvdgiXig2iKF7FtglsfwVXValwTor5V5HvzQMl9yznI7Zjva20acly_6HEV1Zt1mqVHaR0GCiMOReV1OmR_iJ8Tk7nxFkb64wD52U2erOTuPFqwe07OTizHPfP13cK1S_ETpyE6YWTqQGWWVWhe_I3ZDsDzhNekIcXPpaz4emAS-Eo5tU-Ux5YGGwj9r7jt58yKTGv22pBCVWhapsylJ4hL2Ftaq5iIihzf5GaXT3HSGN3qy_wpjTJziPSOH9QX72sKOaXZ5SVpXnBtjptGkP3-FXQDI7OggZjFOONzdQKFbkph3udx9BCkXByWvfpFtvl_gV4__WE0AfN9uQF74TW2BfSKw_bD3DmYF-jHMOiTmyWtukLBZ8-vOx3TgraBoXT_7x4a4pmK8PunD9bofeU2z9OYyV6PjiBoO8NmQiQE-Lz-3iYsLOyOwE1kXtcb9Ess4AQlayujSow4LS8GqQ0sAmRjaFshxtmmW0z9DDjgIfHbAXcYORKRyBKdY4XUBschY35uCSiCArKqrF6qNuj0do_M1PxOEoTMLf_7ItHFmex3e8bX1t24-dQwcObWv1EmMv_WomzeKMQikonkRLrMjksZLDhNBZBMvcmrwPFDGPgZwiYa910kWT-a2-X6LtwVVaaFoCqQ2QDbxScr2O2_g_5s3HzQu_5JqhehxkC9pZPm2C-pQcMLgsOWokiqrc9A_7p7BSCJlWNv23TlNl6M1EpTY"
 dbx = dropbox.Dropbox(DROPBOX_ACCESS_TOKEN)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'your_super_secret_fallback_key_CHANGE_ME')
 logging.basicConfig(level=logging.DEBUG)
@@ -594,6 +594,27 @@ def main(username, group_id):
                            completed_tasks=completed_tasks,)
 
 @app.route('/get_group_members_with_roles/<group_id>', methods=['GET'])
+@app.route('/get_group_members/<group_id>', methods=['GET'])
+def get_group_members(group_id):
+    try:
+        # Fetch group members
+        members_ref = db.reference(f'groups/{group_id}/members')
+        members_data = members_ref.get() or {}
+
+        members_list = []
+        for username, member_info in members_data.items():
+            members_list.append({
+                'username': username
+            })
+
+        return jsonify({
+            'success': True,
+            'members': members_list
+        }), 200
+    except Exception as e:
+        logging.error(f"Error fetching group members for group {group_id}: {e}")
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'Error fetching group members: {str(e)}'}), 500
 def get_group_members_with_roles(group_id):
     try:
         # Fetch group members
