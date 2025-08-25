@@ -817,8 +817,13 @@ def create_project_with_tasks(group_id):
             assigned_to_type = task_data.get('assigned_to_type', 'user')
             assigned_to = task_data.get('assigned_to')
             priority = task_data.get('priority', 'Low')
-            week_category = task_data.get('week_category', 'upcoming') # Default to 'upcoming'
-            
+            # Always set week_category based on assigned_week if provided
+            assigned_week = task_data.get('assigned_week')
+            if assigned_week:
+                week_category = f"week_{assigned_week}"
+            else:
+                week_category = task_data.get('week_category', '') or "week_1"
+
             # Use deadline from frontend if provided, else calculate as last day (Sunday) of assigned week
             deadline_date = None
             deadline_str = task_data.get('deadline')
@@ -911,6 +916,7 @@ def create_project_with_tasks(group_id):
 
 @app.route('/get_all_tasks/<group_id>', methods=['GET'])
 def get_all_tasks(group_id):
+    week_tasks = {}
     try:
         group_ref = db.reference(f'groups/{group_id}')
         tasks_ref = group_ref.child('tasks')
@@ -939,28 +945,12 @@ def get_all_tasks(group_id):
                 project_description = project_lookup[task['project_id']]['project_description']
                 duration_weeks = project_lookup[task['project_id']].get('duration_weeks', '')
 
-            week_category = task.get('week_category', '')
-            if not week_category and 'week' in task:
-                week_category = task['week']
-            if not week_category:
-                deadline_str = task.get('deadline_date') or task.get('deadline')
-                if deadline_str:
-                    try:
-                        deadline = datetime.fromisoformat(deadline_str)
-                        today = datetime.now()
-                        days_diff = (deadline.date() - today.date()).days
-                        if days_diff < 0:
-                            week_category = 'overdue'
-                        elif days_diff <= 7:
-                            week_category = 'this_week'
-                        elif days_diff <= 14:
-                            week_category = 'next_week'
-                        else:
-                            week_category = 'following_weeks'
-                    except Exception:
-                        week_category = 'unknown'
-                else:
-                    week_category = 'no_deadline'
+            # Always set week_category based on assigned_week if provided
+            assigned_week = task.get('assigned_week')
+            if assigned_week:
+                week_category = f"week_{assigned_week}"
+            else:
+                week_category = task.get('week_category', '') or task.get('week', '') or "week_1"
 
             task_info = {
                 'task_id': task_id,
@@ -981,24 +971,23 @@ def get_all_tasks(group_id):
             if task.get('completed', False):
                 completed_tasks.append(task_info)
             else:
-                if week_category == 'this_week':
-                    tasks_this_week.append(task_info)
-                elif week_category == 'next_week':
-                    tasks_next_week.append(task_info)
+                # Only group by week number (week_1, week_2, ...)
+                if week_category.startswith('week_'):
+                    if week_category not in week_tasks:
+                        week_tasks[week_category] = []
+                    week_tasks[week_category].append(task_info)
                 elif week_category == 'no_deadline':
                     tasks_no_deadline.append(task_info)
-                # Add more categories as needed
 
         priority_order = {'high': 1, 'medium': 2, 'low': 3}
-        tasks_this_week.sort(key=lambda x: priority_order.get(x.get('priority', 'Low').lower(), 4))
-        tasks_next_week.sort(key=lambda x: priority_order.get(x.get('priority', 'Low').lower(), 4))
+        for week in week_tasks:
+            week_tasks[week].sort(key=lambda x: priority_order.get(x.get('priority', 'Low').lower(), 4))
         completed_tasks.sort(key=lambda x: x.get('task_name', ''))
         tasks_no_deadline.sort(key=lambda x: x.get('task_name', ''))
 
         return jsonify({
             'success': True,
-            'tasks_this_week': tasks_this_week,
-            'tasks_next_week': tasks_next_week,
+            'week_tasks': week_tasks,
             'completed_tasks': completed_tasks,
             'tasks_no_deadline': tasks_no_deadline
         })
