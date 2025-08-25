@@ -636,16 +636,16 @@ def get_group_members_with_roles(group_id):
                 logging.error(f"members_data_raw is not a dictionary! Type: {type(members_data_raw)}, Value: {members_data_raw}")
                 members_data_raw = {}
 
-            for member_username, member_info in members_data_raw.items():
-                # Always include username, default to 'member' and [] if missing
-                primary_role = 'member'
-                custom_roles = []
+            for member_key, member_info in members_data_raw.items():
+                # Always include username, prefer explicit username field
+                username = member_info.get('username', member_key) if isinstance(member_info, dict) else member_key
+                # Prefer primary_role, fallback to role, then 'member'
                 if isinstance(member_info, dict):
-                    primary_role = member_info.get('role', 'member')
-                    # Accept both dict and list for custom roles
+                    primary_role = member_info.get('primary_role') or member_info.get('role', 'member')
                     roles_field = member_info.get('roles', {})
+                    custom_roles = []
                     if isinstance(roles_field, dict):
-                        custom_roles = [r for r in roles_field.keys() if roles_field[r]]
+                        custom_roles = [r for r, v in roles_field.items() if v]
                     elif isinstance(roles_field, list):
                         custom_roles = roles_field
                     else:
@@ -657,7 +657,7 @@ def get_group_members_with_roles(group_id):
                     primary_role = 'member'
                     custom_roles = []
                 members.append({
-                    'username': member_username,
+                    'username': username,
                     'primary_role': primary_role,
                     'custom_roles': custom_roles
                 })
