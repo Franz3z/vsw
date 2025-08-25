@@ -866,7 +866,6 @@ function openAssignExistingRoleModal() {
                 });
             } else {
                 userSelect.innerHTML = '<option value="">No members available</option>';
-                alert('No members found or failed to fetch members.');
             }
         })
         .catch(error => {
@@ -875,7 +874,6 @@ function openAssignExistingRoleModal() {
             if (userSelect) {
                 userSelect.innerHTML = '<option value="">Error loading members</option>';
             }
-            alert('Error fetching members: ' + (error.message || error));
         });
 }
 
