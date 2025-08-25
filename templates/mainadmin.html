@@ -399,20 +399,24 @@
                 return response.json();
             })
             .then(data => {
-                console.log('Fetched task data:', {
-                    thisWeek: data.tasks_this_week || [],
-                    nextWeek: data.tasks_next_week || [],
-                    completed: data.completed_tasks || [],
-                    noDeadline: data.tasks_no_deadline || [],
-                    rawData: data
-                });
-                // Get all categories from the backend
+                // Debug: log raw backend response
+                console.log('Raw backend task data:', data);
+
+                // Defensive: ensure all categories are arrays
                 const allTasks = {
-                    this_week: Array.isArray(data.tasks_this_week) ? data.tasks_this_week : [],
-                    next_week: Array.isArray(data.tasks_next_week) ? data.tasks_next_week : [],
-                    completed: Array.isArray(data.completed_tasks) ? data.completed_tasks : [],
-                    no_deadline: Array.isArray(data.tasks_no_deadline) ? data.tasks_no_deadline : []
+                    this_week: Array.isArray(data.tasks_this_week) ? data.tasks_this_week : (data.tasks_this_week ? [data.tasks_this_week] : []),
+                    next_week: Array.isArray(data.tasks_next_week) ? data.tasks_next_week : (data.tasks_next_week ? [data.tasks_next_week] : []),
+                    completed: Array.isArray(data.completed_tasks) ? data.completed_tasks : (data.completed_tasks ? [data.completed_tasks] : []),
+                    no_deadline: Array.isArray(data.tasks_no_deadline) ? data.tasks_no_deadline : (data.tasks_no_deadline ? [data.tasks_no_deadline] : [])
                 };
+
+                // If all arrays are empty, show a warning
+                const hasAnyTasks = Object.values(allTasks).some(arr => Array.isArray(arr) && arr.length > 0);
+                if (!hasAnyTasks) {
+                    const taskPanelContent = document.querySelector('.task-panel-content');
+                    taskPanelContent.innerHTML = '<h3>Group Tasks</h3><div class="no-tasks">No tasks found in any category. Please check backend data.</div>';
+                    return;
+                }
 
                 // Clear and rebuild the task panel content
                 const taskPanelContent = document.querySelector('.task-panel-content');
@@ -436,7 +440,7 @@
                     if (!Array.isArray(section.tasks) || section.tasks.length === 0) {
                         const container = document.getElementById(section.id);
                         if (container) {
-                            container.innerHTML = '<li class="no-tasks">No tasks available.</li>';
+                            container.innerHTML = '<li class="no-tasks">No tasks available in this category.</li>';
                         }
                     } else {
                         renderTasksPanel(section.id, section.tasks);
@@ -448,12 +452,10 @@
             })
             .catch(error => {
                 console.error('Error fetching tasks for right panel:', error);
-                ['this-week-tasks', 'next-week-tasks'].forEach(id => {
-                    const container = document.getElementById(id);
-                    if (container) {
-                        container.innerHTML = `<li class="error-message">Error loading tasks: ${error.message}</li>`;
-                    }
-                });
+                const taskPanelContent = document.querySelector('.task-panel-content');
+                if (taskPanelContent) {
+                    taskPanelContent.innerHTML = `<h3>Group Tasks</h3><div class="error-message">Error loading tasks: ${error.message}</div>`;
+                }
             });
     }
 
