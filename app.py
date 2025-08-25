@@ -833,10 +833,15 @@ def create_project_with_tasks(group_id):
             priority = task_data.get('priority', 'Low')
             # Always set week_category based on assigned_week if provided
             assigned_week = task_data.get('assigned_week')
+            deadline_str = task_data.get('deadline')
             if assigned_week:
                 week_category = f"week_{assigned_week}"
+            elif deadline_str:
+                # If deadline is provided but no week, fallback to week_1
+                week_category = "week_1"
             else:
-                week_category = task_data.get('week_category', '') or "week_1"
+                # If neither assigned_week nor deadline, always set to week_1
+                week_category = "week_1"
 
             # Use deadline from frontend if provided, else calculate as last day (Sunday) of assigned week
             deadline_date = None
