@@ -627,71 +627,73 @@ def get_group_members(group_id):
         traceback.print_exc()
         return jsonify({'success': False, 'message': f'Error fetching group members: {str(e)}'}), 500
 def get_group_members_with_roles(group_id):
-        try:
-            group_ref = db.reference(f'groups/{group_id}')
-            members_data_raw = group_ref.child('members').get() or {}
-            members = []
-            # Defensive: handle all possible member data structures
-            if not isinstance(members_data_raw, dict):
-                logging.error(f"members_data_raw is not a dictionary! Type: {type(members_data_raw)}, Value: {members_data_raw}")
-                members_data_raw = {}
+    logging.debug(f"[get_group_members_with_roles] Raw members_data_raw from Firebase: {members_data_raw}")
+    logging.debug(f"[get_group_members_with_roles] Processed members list: {members}")
+    try:
+        group_ref = db.reference(f'groups/{group_id}')
+        members_data_raw = group_ref.child('members').get() or {}
+        members = []
+        # Defensive: handle all possible member data structures
+        if not isinstance(members_data_raw, dict):
+            logging.error(f"members_data_raw is not a dictionary! Type: {type(members_data_raw)}, Value: {members_data_raw}")
+            members_data_raw = {}
 
-            # Always include all usernames, like assign task
-            for member_key, member_info in members_data_raw.items():
-                username = member_key
-                primary_role = 'member'
-                custom_roles = []
-                status = None
-                if isinstance(member_info, dict):
-                    username = member_info.get('username', member_key)
-                    primary_role = member_info.get('primary_role') or member_info.get('role', 'member')
-                    status = member_info.get('status', None)
-                    roles_field = member_info.get('roles', {})
-                    if isinstance(roles_field, dict):
-                        custom_roles = [r for r, v in roles_field.items() if v]
-                    elif isinstance(roles_field, list):
-                        custom_roles = roles_field
-                elif isinstance(member_info, str):
-                    primary_role = member_info
-                member_dict = {
-                    'username': username,
-                    'primary_role': primary_role,
-                    'custom_roles': custom_roles
-                }
-                if status:
-                    member_dict['status'] = status
-                members.append(member_dict)
+        # Always include all usernames, like assign task
+        for member_key, member_info in members_data_raw.items():
+            username = member_key
+            primary_role = 'member'
+            custom_roles = []
+            status = None
+            if isinstance(member_info, dict):
+                username = member_info.get('username', member_key)
+                primary_role = member_info.get('primary_role') or member_info.get('role', 'member')
+                status = member_info.get('status', None)
+                roles_field = member_info.get('roles', {})
+                if isinstance(roles_field, dict):
+                    custom_roles = [r for r, v in roles_field.items() if v]
+                elif isinstance(roles_field, list):
+                    custom_roles = roles_field
+            elif isinstance(member_info, str):
+                primary_role = member_info
+            member_dict = {
+                'username': username,
+                'primary_role': primary_role,
+                'custom_roles': custom_roles
+            }
+            if status:
+                member_dict['status'] = status
+            members.append(member_dict)
 
-            # For updating/applying roles, ensure update endpoint uses username as key
-            # Example update logic (for /update_roles/<group_id>):
-            # updates = { 'Deric': { 'custom_roles_to_assign': ['Backend'], 'username': 'Deric' } }
-            # for username, update_info in updates.items():
-            #     member_ref = db.reference(f'groups/{group_id}/members/{username}')
-            #     member_data = member_ref.get() or {}
-            #     # Update custom roles
-            #     roles_field = member_data.get('roles', {})
-            #     if not isinstance(roles_field, dict):
-            #         roles_field = {}
-            #     for role in update_info.get('custom_roles_to_assign', []):
-            #         roles_field[role] = True
-            #     member_data['roles'] = roles_field
-            #     member_ref.set(member_data)
+        # For updating/applying roles, ensure update endpoint uses username as key
+        # Example update logic (for /update_roles/<group_id>):
+        # updates = { 'Deric': { 'custom_roles_to_assign': ['Backend'], 'username': 'Deric' } }
+        # for username, update_info in updates.items():
+        #     member_ref = db.reference(f'groups/{group_id}/members/{username}')
+        #     member_data = member_ref.get() or {}
+        #     # Update custom roles
+        #     roles_field = member_data.get('roles', {})
+        #     if not isinstance(roles_field, dict):
+        #         roles_field = {}
+        #     for role in update_info.get('custom_roles_to_assign', []):
+        #         roles_field[role] = True
+        #     member_data['roles'] = roles_field
+        #     member_ref.set(member_data)
 
-            # Get available custom roles
-            custom_roles_ref = db.reference(f'groups/{group_id}/custom_roles')
-            all_available_custom_roles_data = custom_roles_ref.get() or {}
-            available_custom_roles_list = list(all_available_custom_roles_data.keys())
+        # Get available custom roles
+        custom_roles_ref = db.reference(f'groups/{group_id}/custom_roles')
+        all_available_custom_roles_data = custom_roles_ref.get() or {}
+        available_custom_roles_list = list(all_available_custom_roles_data.keys())
 
-            # If no members found, return empty list but success
-            return jsonify({
-                'success': True,
-                'members': members,
-                'available_custom_roles': available_custom_roles_list
-            }), 200
-        except Exception as e:
-            logging.error(f"Error fetching group members with roles for group {group_id}: {e}")
-            traceback.print_exc()
-            return jsonify({'success': False, 'message': f'Error fetching group members with roles: {str(e)}'}), 500
+        # If no members found, return empty list but success
+        return jsonify({
+            'success': True,
+            'members': members,
+            'available_custom_roles': available_custom_roles_list
+        }), 200
+    except Exception as e:
+        logging.error(f"Error fetching group members with roles for group {group_id}: {e}")
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'Error fetching group members with roles: {str(e)}'}), 500
 
 
 @app.route('/create_role/<group_id>', methods=['POST'])
