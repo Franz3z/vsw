@@ -1066,6 +1066,14 @@ function addProjectTask() {
     const taskEntryDiv = document.createElement('div');
     taskEntryDiv.className = 'task-entry';
     taskEntryDiv.id = taskId;
+    // Get project duration from input
+    const durationInput = document.getElementById('project-duration-weeks');
+    let durationWeeks = parseInt(durationInput && durationInput.value ? durationInput.value : '2');
+    if (isNaN(durationWeeks) || durationWeeks < 1) durationWeeks = 2;
+    let weekOptions = '<option value="this_week">This Week</option><option value="next_week">Next Week</option>';
+    for (let i = 2; i <= durationWeeks; i++) {
+        weekOptions += `<option value="week_${i}">Week ${i}</option>`;
+    }
     taskEntryDiv.innerHTML = `
         <h5>Task #${projectIdCounter}</h5>
         <label for="${taskId}-name">Task Name:</label>
@@ -1075,13 +1083,7 @@ function addProjectTask() {
         <textarea id="${taskId}-description" placeholder="Task Description" rows="2"></textarea>
 
         <label for="${taskId}-week">Assign to Week:</label>
-        <select id="${taskId}-week">
-            <option value="this_week">This Week</option>
-            <option value="next_week">Next Week</option>
-            <option value="week_2">Week 2</option>
-            <option value="week_3">Week 3</option>
-            <option value="week_4">Week 4</option>
-        </select>
+        <select id="${taskId}-week">${weekOptions}</select>
 
         <label for="${taskId}-priority">Priority:</label>
         <select id="${taskId}-priority">
