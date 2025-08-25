@@ -631,25 +631,35 @@ def get_group_members_with_roles(group_id):
             group_ref = db.reference(f'groups/{group_id}')
             members_data_raw = group_ref.child('members').get() or {}
             members = []
+            # Defensive: handle all possible member data structures
             if not isinstance(members_data_raw, dict):
                 logging.error(f"members_data_raw is not a dictionary! Type: {type(members_data_raw)}, Value: {members_data_raw}")
                 members_data_raw = {}
 
             for member_username, member_info in members_data_raw.items():
-                # Always include username
+                # Always include username, default to 'member' and [] if missing
+                primary_role = 'member'
+                custom_roles = []
                 if isinstance(member_info, dict):
                     primary_role = member_info.get('role', 'member')
-                    custom_roles = member_info.get('roles', {})
+                    # Accept both dict and list for custom roles
+                    roles_field = member_info.get('roles', {})
+                    if isinstance(roles_field, dict):
+                        custom_roles = [r for r in roles_field.keys() if roles_field[r]]
+                    elif isinstance(roles_field, list):
+                        custom_roles = roles_field
+                    else:
+                        custom_roles = []
                 elif isinstance(member_info, str):
                     primary_role = member_info
-                    custom_roles = {}
+                    custom_roles = []
                 else:
                     primary_role = 'member'
-                    custom_roles = {}
+                    custom_roles = []
                 members.append({
                     'username': member_username,
                     'primary_role': primary_role,
-                    'custom_roles': list(custom_roles.keys())
+                    'custom_roles': custom_roles
                 })
 
             # Get available custom roles
@@ -657,6 +667,7 @@ def get_group_members_with_roles(group_id):
             all_available_custom_roles_data = custom_roles_ref.get() or {}
             available_custom_roles_list = list(all_available_custom_roles_data.keys())
 
+            # If no members found, return empty list but success
             return jsonify({
                 'success': True,
                 'members': members,
