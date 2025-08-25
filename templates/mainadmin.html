@@ -857,44 +857,43 @@ function openAssignExistingRoleModal() {
 function populateRoleSelection() {
     // Fetch available roles from the server
     fetch(`/get_available_roles/${groupId}`)
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                return response.text().then(text => {
+                    throw new Error(`Server error: ${text}`);
+                });
+            }
+            return response.json();
+        })
         .then(data => {
-            if (data.success && data.available_roles) {
-                // Update roles dropdown for role assignment
-                const selectRole = document.getElementById('select-role-to-assign');
-                if (selectRole) {
-                    selectRole.innerHTML = '<option value="">-- Select a Role --</option>';
-                    data.available_roles.forEach(role => {
+            if (!data) {
+                throw new Error('No data received');
+            }
+
+            const roles = data.available_roles || [];
+            const selectRole = document.getElementById('select-role-to-assign');
+            if (selectRole) {
+                selectRole.innerHTML = '<option value="">-- Select a Role --</option>';
+                roles.forEach(role => {
+                    if (role) {
                         const option = document.createElement('option');
                         option.value = role;
                         option.textContent = role;
                         selectRole.appendChild(option);
-                    });
-                }
-                
-                // Update roles dropdown for task assignment
-                const taskRoleSelect = document.getElementById('assign-task-to-role');
-                if (taskRoleSelect) {
-                    taskRoleSelect.innerHTML = '<option value="">-- Select a Role --</option>';
-                    data.available_roles.forEach(role => {
-                        const option = document.createElement('option');
-                        option.value = role;
-                        option.textContent = role;
-                        taskRoleSelect.appendChild(option);
-                    });
-                }
-
-                // Update the global variable
-                availableCustomRoles = data.available_roles;
-
-                // Also update the global availableCustomRoles array
-                availableCustomRoles = data.available_roles;
-            } else {
-                console.error('Failed to fetch roles:', data.message);
+                    }
+                });
             }
+
+            // Also update the global availableCustomRoles array
+            availableCustomRoles = roles;
         })
         .catch(error => {
             console.error('Error fetching roles:', error);
+            // Set a default empty state for the dropdowns
+            const selectRole = document.getElementById('select-role-to-assign');
+            if (selectRole) {
+                selectRole.innerHTML = '<option value="">No roles available</option>';
+            }
         });
 }
 
@@ -1234,14 +1233,7 @@ function populateExistingTaskSelection(tasks) {
         tasks.forEach(task => {
             const option = document.createElement('option');
             option.value = task.task_id;
-            let taskText = task.task_name;
-            if (task.project_name) {
-                taskText = `${task.project_name} - ${taskText}`;
-            }
-            if (task.assigned_to) {
-                taskText += ` (Currently: ${task.assigned_to})`;
-            }
-            option.textContent = taskText;
+            option.textContent = task.task_name;
             selectTask.appendChild(option);
         });
     }
@@ -1249,16 +1241,55 @@ function populateExistingTaskSelection(tasks) {
 
 function populateExistingTaskRoleSelection() {
     const selectRole = document.getElementById('assign-task-to-role');
-    selectRole.innerHTML = '';
-    if (availableCustomRoles && availableCustomRoles.length > 0) {
+    if (!selectRole) return;
+
+    selectRole.innerHTML = '<option value="">-- Select a Role --</option>';
+    
+    // Use global availableCustomRoles if available
+    if (Array.isArray(availableCustomRoles) && availableCustomRoles.length > 0) {
         availableCustomRoles.forEach(role => {
-            const option = document.createElement('option');
-            option.value = role;
-            option.textContent = role;
-            selectRole.appendChild(option);
+            if (role) {
+                const option = document.createElement('option');
+                option.value = role;
+                option.textContent = role;
+                selectRole.appendChild(option);
+            }
         });
     } else {
-        selectRole.innerHTML = '<option value="">No custom roles available</option>';
+        // If no roles available, try to fetch them
+        fetch(`/get_available_roles/${groupId}`)
+            .then(response => {
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        throw new Error(`Server error: ${text}`);
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (!data) {
+                    throw new Error('No data received');
+                }
+                const roles = data.available_roles || [];
+                availableCustomRoles = roles; // Update global variable
+                
+                if (roles.length > 0) {
+                    roles.forEach(role => {
+                        if (role) {
+                            const option = document.createElement('option');
+                            option.value = role;
+                            option.textContent = role;
+                            selectRole.appendChild(option);
+                        }
+                    });
+                } else {
+                    selectRole.innerHTML = '<option value="">No roles available</option>';
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching roles:', error);
+                selectRole.innerHTML = '<option value="">Error loading roles</option>';
+            });
     }
 }
 
@@ -1268,11 +1299,6 @@ function toggleAssignToSelection() {
     const roleSelectDiv = document.getElementById('assign-task-role-selection');
     userSelectDiv.style.display = assigneeType === 'user' ? 'block' : 'none';
     roleSelectDiv.style.display = assigneeType === 'role' ? 'block' : 'none';
-    
-    // If switching to role assignment, make sure roles are populated
-    if (assigneeType === 'role') {
-        populateRoleSelection();
-    }
 }
 
 // CORRECTED: submitAssignExistingTask function
@@ -1281,17 +1307,10 @@ function submitAssignExistingTask() {
     const assigneeType = document.getElementById('assign-task-to-type').value;
     let assignedTo = '';
 
-    if (!taskId) { 
-        alert('Please select a task.'); 
-        return; 
-    }
+    if (!taskId) { alert('Please select a task.'); return; }
 
     if (assigneeType === 'user') {
         assignedTo = document.getElementById('assign-task-to-user').value;
-        if (!assignedTo) {
-            alert('Please select a user to assign the task to.');
-            return;
-        }
     } else if (assigneeType === 'role') {
         assignedTo = document.getElementById('assign-task-to-role').value;
     } else if (assigneeType === 'everyone') {
