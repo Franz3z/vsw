@@ -1188,12 +1188,17 @@ function submitProject() {
         }
 
         if (taskName && weekValue && (assignedTo || assigneeType === 'everyone')) {
+            // Calculate deadline as last day (Sunday) of the assigned week
             const today = new Date();
-            const selectedWeek = parseInt(weekValue);
-            const startOfWeek = new Date(today);
-            startOfWeek.setDate(today.getDate() - today.getDay());
-            const deadline = new Date(startOfWeek);
-            deadline.setDate(startOfWeek.getDate() + (selectedWeek * 7) + 6);
+            const startOfProjectWeek = new Date(today);
+            startOfProjectWeek.setDate(today.getDate() - today.getDay()); // Start of current week (Sunday)
+            let weekNum = 1;
+            if (weekValue.startsWith('week_')) {
+                weekNum = parseInt(weekValue.replace('week_', ''));
+            }
+            // Deadline is Sunday of the assigned week
+            const deadline = new Date(startOfProjectWeek);
+            deadline.setDate(startOfProjectWeek.getDate() + (weekNum * 7) - 1); // Sunday of weekNum
             const deadlineStr = deadline.getFullYear() + '-' + 
                 String(deadline.getMonth() + 1).padStart(2, '0') + '-' + 
                 String(deadline.getDate()).padStart(2, '0');
@@ -1231,7 +1236,14 @@ function submitProject() {
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            alert('Project and tasks created successfully!');
+            // Calculate and show project deadline
+            const today = new Date();
+            const durationWeeksInt = parseInt(projectDurationWeeks);
+            let endDate = new Date(today);
+            endDate.setDate(today.getDate() - today.getDay()); // Start of week
+            endDate.setDate(endDate.getDate() + (durationWeeksInt * 7) + 6); // End of last week
+            const deadlineStr = endDate.getFullYear() + '-' + String(endDate.getMonth() + 1).padStart(2, '0') + '-' + String(endDate.getDate()).padStart(2, '0');
+            alert('Project and tasks created successfully!\nProject Deadline: ' + deadlineStr);
             closeAssignModal();
             location.reload();
         } else {
