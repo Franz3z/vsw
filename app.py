@@ -636,13 +636,12 @@ def get_group_members_with_roles(group_id):
                 logging.error(f"members_data_raw is not a dictionary! Type: {type(members_data_raw)}, Value: {members_data_raw}")
                 members_data_raw = {}
 
+            # Always include all usernames, like assign task
             for member_key, member_info in members_data_raw.items():
-                # Always include username, prefer explicit username field
                 username = member_key
                 primary_role = 'member'
                 custom_roles = []
                 status = None
-                # Handle dict structure
                 if isinstance(member_info, dict):
                     username = member_info.get('username', member_key)
                     primary_role = member_info.get('primary_role') or member_info.get('role', 'member')
@@ -654,7 +653,6 @@ def get_group_members_with_roles(group_id):
                         custom_roles = roles_field
                 elif isinstance(member_info, str):
                     primary_role = member_info
-                # Build member dict
                 member_dict = {
                     'username': username,
                     'primary_role': primary_role,
@@ -663,6 +661,21 @@ def get_group_members_with_roles(group_id):
                 if status:
                     member_dict['status'] = status
                 members.append(member_dict)
+
+            # For updating/applying roles, ensure update endpoint uses username as key
+            # Example update logic (for /update_roles/<group_id>):
+            # updates = { 'Deric': { 'custom_roles_to_assign': ['Backend'], 'username': 'Deric' } }
+            # for username, update_info in updates.items():
+            #     member_ref = db.reference(f'groups/{group_id}/members/{username}')
+            #     member_data = member_ref.get() or {}
+            #     # Update custom roles
+            #     roles_field = member_data.get('roles', {})
+            #     if not isinstance(roles_field, dict):
+            #         roles_field = {}
+            #     for role in update_info.get('custom_roles_to_assign', []):
+            #         roles_field[role] = True
+            #     member_data['roles'] = roles_field
+            #     member_ref.set(member_data)
 
             # Get available custom roles
             custom_roles_ref = db.reference(f'groups/{group_id}/custom_roles')
