@@ -176,7 +176,30 @@
         .then(data => {
             console.log('Fetched task data:', data);
 
-            // Combine all tasks from all week categories (no filter by assignee)
+            // If week_tasks is present, use it for rendering
+            if (data.week_tasks && typeof data.week_tasks === 'object' && Object.keys(data.week_tasks).length > 0) {
+                const taskPanelContent = document.querySelector('.task-panel-content');
+                taskPanelContent.innerHTML = '<h3>My Tasks</h3>';
+                Object.keys(data.week_tasks).sort((a, b) => {
+                    const numA = parseInt(a.replace('week_', ''));
+                    const numB = parseInt(b.replace('week_', ''));
+                    return numA - numB;
+                }).forEach(weekKey => {
+                    const weekNum = weekKey.replace('week_', '');
+                    const sectionHTML = `
+                        <div class="task-section">
+                            <div class="collapsible">Week ${weekNum}</div>
+                            <ul id="week-${weekNum}-tasks"></ul>
+                        </div>
+                    `;
+                    taskPanelContent.insertAdjacentHTML('beforeend', sectionHTML);
+                    renderTasks(`week-${weekNum}-tasks`, data.week_tasks[weekKey]);
+                });
+                initCollapsibleSections();
+                return;
+            }
+
+            // Fallback: Combine all tasks from all week categories (no filter by assignee)
             const allTasks = [
                 ...(data.tasks_this_week || []),
                 ...(data.tasks_next_week || []),
