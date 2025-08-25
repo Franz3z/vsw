@@ -245,6 +245,35 @@ def group_redirect(username, group_id):
 
 @app.route('/mainadmin/<username>/<group_id>')
 def mainadmin(username, group_id):
+    # --- Group tasks by week number for right panel ---
+    week_tasks = {}
+    for task_id, task in tasks_data.items():
+        if not isinstance(task, dict):
+            continue
+        week_category = task.get('week_category', '')
+        if not week_category and 'week' in task:
+            week_category = task['week']
+        if week_category.startswith('week_'):
+            if week_category not in week_tasks:
+                week_tasks[week_category] = []
+            project_name = ''
+            project_description = ''
+            if 'project_id' in task and task['project_id'] in project_lookup:
+                project_name = project_lookup[task['project_id']]['project_name']
+                project_description = project_lookup[task['project_id']]['project_description']
+            week_tasks[week_category].append({
+                'task_id': task_id,
+                'task_name': task.get('task_name', 'No Name'),
+                'description': task.get('description', ''),
+                'assigned_to': task.get('assigned_to', 'N/A'),
+                'priority': task.get('priority', 'Low'),
+                'progress_reports': task.get('progress_reports', {}),
+                'assigned_type': task.get('assigned_type', 'user'),
+                'deadline': task.get('deadline', ''),
+                'week_category': week_category,
+                'project_name': project_name,
+                'project_description': project_description
+            })
     logging.debug(f"Accessing mainadmin for user: {username}, group: {group_id}")
     group_ref = db.reference(f'groups/{group_id}')
 
@@ -459,15 +488,43 @@ def mainadmin(username, group_id):
         group_id=group_id,
         members=members,
         pending_requests=pending_requests,
-        tasks_this_week=tasks_this_week, # Pass this data
-        tasks_next_week=tasks_next_week, # Pass this data
+        week_tasks=week_tasks,
         completed_tasks=completed_tasks,
         messages=messages,
-        available_custom_roles=available_custom_roles_list # Use the new name here
+        available_custom_roles=available_custom_roles_list
     )
 
 @app.route('/main/<username>/<group_id>')
 def main(username, group_id):
+    # --- Group tasks by week number for right panel ---
+    week_tasks = {}
+    for task_id, task in tasks_data.items():
+        if not isinstance(task, dict):
+            continue
+        week_category = task.get('week_category', '')
+        if not week_category and 'week' in task:
+            week_category = task['week']
+        if week_category.startswith('week_'):
+            if week_category not in week_tasks:
+                week_tasks[week_category] = []
+            project_name = ''
+            project_description = ''
+            if 'project_id' in task and task['project_id'] in project_lookup:
+                project_name = project_lookup[task['project_id']]['project_name']
+                project_description = project_lookup[task['project_id']]['project_description']
+            week_tasks[week_category].append({
+                'task_id': task_id,
+                'task_name': task.get('task_name', 'No Name'),
+                'description': task.get('description', ''),
+                'assigned_to': task.get('assigned_to', 'N/A'),
+                'priority': task.get('priority', 'Low'),
+                'progress_reports': task.get('progress_reports', {}),
+                'assigned_type': task.get('assigned_type', 'user'),
+                'deadline': task.get('deadline', ''),
+                'week_category': week_category,
+                'project_name': project_name,
+                'project_description': project_description
+            })
     """
     Renders the main collaboration space for regular group members.
     Fetches tasks and other relevant group data from Firebase.
@@ -589,8 +646,7 @@ def main(username, group_id):
     return render_template('main.html',
                            username=username,
                            group_id=group_id,
-                           tasks_this_week=tasks_this_week, # Pass this data
-                           tasks_next_week=tasks_next_week, # Pass this data
+                           week_tasks=week_tasks,
                            completed_tasks=completed_tasks,)
 
 @app.route('/get_available_roles/<group_id>', methods=['GET'])
