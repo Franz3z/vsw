@@ -595,6 +595,17 @@ def main(username, group_id):
 
 @app.route('/get_group_members_with_roles/<group_id>', methods=['GET'])
 @app.route('/get_group_members/<group_id>', methods=['GET'])
+@app.route('/get_available_roles/<group_id>', methods=['GET'])
+def get_available_roles(group_id):
+    try:
+        custom_roles_ref = db.reference(f'groups/{group_id}/custom_roles')
+        custom_roles_data = custom_roles_ref.get() or {}
+        available_roles = [role_name for role_name, is_active in custom_roles_data.items() if is_active]
+        return jsonify({'success': True, 'available_roles': available_roles}), 200
+    except Exception as e:
+        logging.error(f"Error fetching available roles for group {group_id}: {e}")
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'Error fetching available roles: {str(e)}'}), 500
 def get_group_members(group_id):
     try:
         # Fetch group members
