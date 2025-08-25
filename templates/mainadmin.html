@@ -743,6 +743,8 @@
                 <input type="text" id="project-name" placeholder="Enter project name" required>
                 <label for="project-description">Project Description:</label>
                 <textarea id="project-description" placeholder="Describe the project" rows="3"></textarea>
+                <label for="project-duration-weeks">Project Duration (weeks):</label>
+                <input type="number" id="project-duration-weeks" min="1" placeholder="Number of weeks" style="width: 120px;">
                 <h4>Project Tasks:</h4>
                 <div id="project-tasks-list"></div>
                 <button type="button" onclick="addProjectTask()">Add Task to Project</button>
@@ -1157,6 +1159,7 @@ function toggleProjectTaskAssignee(taskId) {
 function submitProject() {
     const projectName = document.getElementById('project-name').value.trim();
     const projectDescription = document.getElementById('project-description').value.trim();
+    const projectDurationWeeks = document.getElementById('project-duration-weeks').value;
     if (!projectName) { alert('Please enter a project name.'); return; }
 
     const taskForms = document.querySelectorAll('.task-entry');
@@ -1168,9 +1171,6 @@ function submitProject() {
         const taskId = taskForm.id;
         const taskName = document.getElementById(`${taskId}-name`).value.trim();
         const taskDescription = document.getElementById(`${taskId}-description`).value.trim();
-        // No start-date or deadline-date fields in the form, so use week selection for deadline
-        // We'll use the week selection as a proxy for deadline, or you can add a deadline input if needed
-        // For now, just use the week value as deadline info
         const weekValue = document.getElementById(`${taskId}-week`).value;
         const taskPriority = document.getElementById(`${taskId}-priority`).value;
         const assigneeType = document.getElementById(`${taskId}-assignee-type`).value;
@@ -1185,19 +1185,12 @@ function submitProject() {
         }
 
         if (taskName && weekValue && (assignedTo || assigneeType === 'everyone')) {
-            // Calculate the deadline based on the selected week
             const today = new Date();
             const selectedWeek = parseInt(weekValue);
-            
-            // Calculate the start of the current week (Sunday)
             const startOfWeek = new Date(today);
             startOfWeek.setDate(today.getDate() - today.getDay());
-            
-            // Calculate the deadline (Saturday of the selected week)
             const deadline = new Date(startOfWeek);
             deadline.setDate(startOfWeek.getDate() + (selectedWeek * 7) + 6);
-            
-            // Format the date as YYYY-MM-DD
             const deadlineStr = deadline.getFullYear() + '-' + 
                 String(deadline.getMonth() + 1).padStart(2, '0') + '-' + 
                 String(deadline.getDate()).padStart(2, '0');
@@ -1223,10 +1216,10 @@ function submitProject() {
     const projectData = {
         project_name: projectName,
         description: projectDescription,
+        duration_weeks: projectDurationWeeks,
         tasks: tasks
     };
 
-    // CORRECTED FETCH URL for creating project
     fetch(`/create_project_with_tasks/${groupId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
