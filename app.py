@@ -604,6 +604,8 @@ def get_available_roles(group_id):
         logging.error(f"Error fetching available roles for group {group_id}: {e}")
         traceback.print_exc()
         return jsonify({'success': False, 'message': f'Error fetching available roles: {str(e)}'}), 500
+    
+@app.route('/get_group_members/<group_id>', methods=['GET'])
 def get_group_members(group_id):
     try:
         # Fetch group members
@@ -624,6 +626,8 @@ def get_group_members(group_id):
         logging.error(f"Error fetching group members for group {group_id}: {e}")
         traceback.print_exc()
         return jsonify({'success': False, 'message': f'Error fetching group members: {str(e)}'}), 500
+    
+@app.route('/get_group_members_with_roles/<group_id>', methods=['GET'])
 def get_group_members_with_roles(group_id):
     try:
         group_ref = db.reference(f'groups/{group_id}')
