@@ -860,15 +860,32 @@ function populateRoleSelection() {
         .then(response => response.json())
         .then(data => {
             if (data.success && data.available_roles) {
+                // Update roles dropdown for role assignment
                 const selectRole = document.getElementById('select-role-to-assign');
-                selectRole.innerHTML = '<option value="">-- Select a Role --</option>';
+                if (selectRole) {
+                    selectRole.innerHTML = '<option value="">-- Select a Role --</option>';
+                    data.available_roles.forEach(role => {
+                        const option = document.createElement('option');
+                        option.value = role;
+                        option.textContent = role;
+                        selectRole.appendChild(option);
+                    });
+                }
                 
-                data.available_roles.forEach(role => {
-                    const option = document.createElement('option');
-                    option.value = role;
-                    option.textContent = role;
-                    selectRole.appendChild(option);
-                });
+                // Update roles dropdown for task assignment
+                const taskRoleSelect = document.getElementById('assign-task-to-role');
+                if (taskRoleSelect) {
+                    taskRoleSelect.innerHTML = '<option value="">-- Select a Role --</option>';
+                    data.available_roles.forEach(role => {
+                        const option = document.createElement('option');
+                        option.value = role;
+                        option.textContent = role;
+                        taskRoleSelect.appendChild(option);
+                    });
+                }
+
+                // Update the global variable
+                availableCustomRoles = data.available_roles;
 
                 // Also update the global availableCustomRoles array
                 availableCustomRoles = data.available_roles;
@@ -1217,7 +1234,14 @@ function populateExistingTaskSelection(tasks) {
         tasks.forEach(task => {
             const option = document.createElement('option');
             option.value = task.task_id;
-            option.textContent = task.task_name;
+            let taskText = task.task_name;
+            if (task.project_name) {
+                taskText = `${task.project_name} - ${taskText}`;
+            }
+            if (task.assigned_to) {
+                taskText += ` (Currently: ${task.assigned_to})`;
+            }
+            option.textContent = taskText;
             selectTask.appendChild(option);
         });
     }
@@ -1244,6 +1268,11 @@ function toggleAssignToSelection() {
     const roleSelectDiv = document.getElementById('assign-task-role-selection');
     userSelectDiv.style.display = assigneeType === 'user' ? 'block' : 'none';
     roleSelectDiv.style.display = assigneeType === 'role' ? 'block' : 'none';
+    
+    // If switching to role assignment, make sure roles are populated
+    if (assigneeType === 'role') {
+        populateRoleSelection();
+    }
 }
 
 // CORRECTED: submitAssignExistingTask function
@@ -1252,10 +1281,17 @@ function submitAssignExistingTask() {
     const assigneeType = document.getElementById('assign-task-to-type').value;
     let assignedTo = '';
 
-    if (!taskId) { alert('Please select a task.'); return; }
+    if (!taskId) { 
+        alert('Please select a task.'); 
+        return; 
+    }
 
     if (assigneeType === 'user') {
         assignedTo = document.getElementById('assign-task-to-user').value;
+        if (!assignedTo) {
+            alert('Please select a user to assign the task to.');
+            return;
+        }
     } else if (assigneeType === 'role') {
         assignedTo = document.getElementById('assign-task-to-role').value;
     } else if (assigneeType === 'everyone') {
