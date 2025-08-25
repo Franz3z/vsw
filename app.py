@@ -1469,24 +1469,20 @@ def download_file(filename):
         return 'File not found.', 404
 
 def get_week_category(start_date_str, deadline_str):
-    # Use deadline_str for categorization, fallback to start_date_str if needed
-    date_str = deadline_str or start_date_str
-    if not date_str:
-        return 'no_deadline'
+    """
+    Always returns week_# based on the difference between start_date and deadline.
+    If either date is missing or invalid, defaults to week_1.
+    """
+    if not start_date_str or not deadline_str:
+        return 'week_1'
     try:
-        date_obj = datetime.fromisoformat(date_str)
-        today = datetime.now()
-        time_difference = (date_obj.date() - today.date()).days
-        if time_difference < 0:
-            return 'overdue'
-        elif time_difference <= 7:
-            return 'this_week'
-        elif time_difference <= 14:
-            return 'next_week'
-        else:
-            return 'following_weeks'
+        start_date = datetime.fromisoformat(start_date_str)
+        deadline_date = datetime.fromisoformat(deadline_str)
+        days_diff = (deadline_date.date() - start_date.date()).days
+        week_num = max(1, (days_diff // 7) + 1)
+        return f"week_{week_num}"
     except Exception:
-        return 'invalid_date'
+        return 'week_1'
 
 # --- Backend Routes ---
 
